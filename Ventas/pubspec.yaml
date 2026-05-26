@@ -1,0 +1,36 @@
+name: solarapp
+description: Aplicación de ventas de equipos fotovoltaicos
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP & Auth
+  dio: ^5.4.0
+  flutter_secure_storage: ^9.0.0
+  jwt_decoder: ^2.0.1
+
+  # Estado
+  provider: ^6.1.1
+
+  # UI
+  google_fonts: ^6.1.0
+  iconsax: ^0.0.8
+  shimmer: ^3.0.0
+
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/

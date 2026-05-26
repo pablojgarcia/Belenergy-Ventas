@@ -1,0 +1,11 @@
+.env
+*.key
+*.pem
+/build/
+.dart_tool/
+*.iml
+.idea/
+__pycache__/
+venv/
+*.pyc
+.env.local
