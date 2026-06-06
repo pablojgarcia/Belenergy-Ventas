@@ -1,21 +1,21 @@
 ## Context
 
-El sistema actual tiene una base de datos PostgreSQL donde reside la tabla 'customers'. La aplicación requiere una nueva vista de usuario para listar clientes y sus respectivos vendedores.
+El sistema sincroniza clientes desde Odoo a PostgreSQL. Cada cliente tiene un campo `salesperson_id` (email del vendedor asignado). El frontend filtra localmente por el email del usuario autenticado.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Implementar la página 'my-customers'.
-- Obtener datos de clientes y vendedores mediante una consulta SQL optimizada o un endpoint existente.
+- Mostrar al vendedor solo los clientes que tiene asignados en Odoo.
+- Permitir crear presupuestos desde la lista de clientes.
 
 **Non-Goals:**
 - No se realizarán cambios en el esquema de base de datos existente.
-- No se implementarán funciones de edición o creación de clientes en esta primera fase.
+- No se implementarán funciones de edición o creación de clientes.
 
 ## Decisions
 
-- Se utilizará el stack tecnológico actual para la creación de la página y el endpoint de API necesario.
-- La consulta SQL realizará un `JOIN` entre 'customers' y la tabla correspondiente de usuarios/vendedores (basado en 'salesperson_id').
+- El filtrado se realiza en el frontend comparando `salespersonEmail` del cliente con `email` del usuario logueado.
+- A futuro el filtrado puede moverse al backend por seguridad.
 
 ## Risks / Trade-offs
 

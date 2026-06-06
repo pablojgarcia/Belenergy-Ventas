@@ -1,16 +1,16 @@
-## 1. Backend Implementation
+## 1. Backend (Ya implementado)
 
-- [ ] 1.1 Crear endpoint de API para obtener clientes y vendedores relacionados
-- [ ] 1.2 Verificar la consulta SQL y asegurar la obtención de campos 'salesperson_id'
+- [x] 1.1 Endpoint `GET /customers` existente con filtro por `salesperson_id`
+- [x] 1.2 Sincronización desde Odoo con campo `salesperson_id` mapeado
 
-## 2. Frontend Implementation
+## 2. Frontend
 
-- [ ] 2.1 Crear nueva página/vista 'my-customers'
-- [ ] 2.2 Integrar el componente de tabla para mostrar los datos
-- [ ] 2.3 Conectar frontend con el endpoint de backend
-- [ ] 2.4 Implementar estado de carga y mensaje de vacío
+- [x] 2.1 Pantalla `ClientesScreen` creada con listado de clientes
+- [x] 2.2 Filtrado por email del vendedor logueado implementado
+- [ ] 2.3 Mejorar UI de la tarjeta de cliente (estados de carga, error, vacío)
+- [ ] 2.4 Agregar paginación para volumen grande de clientes
 
 ## 3. Verification
 
-- [ ] 3.1 Realizar pruebas unitarias de la consulta de datos
-- [ ] 3.2 Verificar visualización correcta en el navegador
+- [ ] 3.1 Verificar que el `salesperson_id` de Odoo coincida con el email del usuario local
+- [ ] 3.2 Probar flujo completo: login → ver solo mis clientes → crear presupuesto
