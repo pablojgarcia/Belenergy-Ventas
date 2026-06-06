@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/client_model.dart';
 import '../utils/theme.dart';
@@ -34,7 +35,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
         backgroundColor: AppColors.primary,
       ),
     );
-    Navigator.of(context).pop();
+    context.pop();
   }
 
   @override

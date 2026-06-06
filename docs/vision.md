@@ -1,29 +1,70 @@
-# Vision: Belenergy-Ventas Sales Portal
+# Visión del Producto
 
-Belenergy-Ventas is a dedicated sales portal designed to streamline the sales process for Belenergy, directly integrated with Odoo Online. It acts as an optimized interface for salespeople to manage their sales pipeline while maintaining a seamless synchronization with Odoo's backend.
+## Nombre del Producto
 
-## Core Purpose
-To provide a specialized, high-performance, and mobile-friendly interface for Belenergy sales personnel, ensuring secure access to customer data and sales tools, while offloading complex management tasks to the robust Odoo ecosystem.
+Portal de Ventas Belenergy
 
-## Key Features
+## Propósito
 
-### 1. Authenticated Sales Workspace
-- **Secure Authentication:** Salespeople access the portal via secure individual accounts.
-- **Role-Based Visibility:** Salespeople are restricted to viewing only the customers assigned to them within Odoo, ensuring data privacy and a focused workspace.
+El Portal de Ventas Belenergy es una plataforma comercial que proporciona a los representantes de ventas acceso a información de clientes, presupuestos, pedidos y métricas de ventas sin requerir licencias individuales de Odoo.
 
-### 2. Customer Management
-- **Integrated View:** Access to a comprehensive customer list and detailed profiles, synchronized in real-time with Odoo.
-- **Assigned Ownership:** Strict adherence to Odoo's customer-salesperson assignments.
+La plataforma se integra con Odoo Online, que sigue siendo la fuente de la verdad para los datos comerciales.
 
-### 3. Sales Operations
-- **Quotations:** Create, manage, and track sales quotations directly within the portal.
-- **Sales Orders:** Ability to convert and manage full sales orders seamlessly.
+## Declaración del Problema
 
-### 4. Sales Insights
-- **Dashboard:** A personalized dashboard providing key performance metrics, sales progress, and quick access to active quotations and orders.
+Los representantes de ventas necesitan acceso a la información de los clientes y a la actividad comercial, pero proporcionar licencias de Odoo a cada vendedor aumenta los costos y la complejidad.
 
-### 5. Administration & Synchronization
-- **Centralized Control:** Administrators manage salesperson-customer assignments, system configurations, and data synchronization routines within Odoo, which are then propagated to the sales portal.
+La empresa necesita un portal seguro y sencillo donde los vendedores puedan acceder solo a la información relevante para sus clientes asignados.
 
-## Strategic Goal
-To bridge the gap between Odoo's comprehensive back-office capabilities and the dynamic, real-time needs of field salespeople, resulting in increased efficiency, faster sales cycles, and a more intuitive user experience for the sales team.
+## Objetivos del Producto
+
+* Reducir la dependencia de las licencias de Odoo.
+* Proporcionar una experiencia sencilla para los representantes de ventas.
+* Centralizar la información de los clientes.
+* Mejorar la visibilidad de presupuestos y actividad de ventas.
+* Proporcionar KPIs comerciales a través de paneles (dashboards).
+
+## Tipos de Usuario
+
+### Administrador
+
+Puede:
+
+* Gestionar usuarios.
+* Configurar integraciones.
+* Ver todos los clientes.
+* Ver todas las métricas.
+
+### Vendedor
+
+Puede:
+
+* Iniciar sesión.
+* Ver clientes asignados.
+* Ver detalles de clientes.
+* Ver presupuestos.
+* Ver órdenes de venta.
+* Ver KPIs personales.
+
+No puede:
+
+* Acceder a clientes asignados a otros vendedores.
+* Modificar asignaciones de clientes.
+
+## Fuente de la Verdad
+
+Odoo Online es la fuente de la verdad para:
+
+* Clientes
+* Asignaciones de clientes
+* Presupuestos
+* Órdenes de venta
+
+El Portal de Ventas consume y muestra información sincronizada.
+
+## Criterios de Éxito
+
+* Los vendedores pueden acceder a la información de los clientes sin licencias de Odoo.
+* La visibilidad de los clientes está restringida por asignación.
+* La información de los clientes se sincroniza desde Odoo.
+* Las métricas comerciales están disponibles en un dashboard dedicado.

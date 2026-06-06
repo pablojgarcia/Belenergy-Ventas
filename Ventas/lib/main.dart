@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_provider.dart';
+import 'services/api_service.dart';
 import 'utils/theme.dart';
-import 'screens/splash_screen.dart';
+import 'config/router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,24 +13,33 @@ void main() {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(const SolarApp());
+
+  final authProvider = AuthProvider();
+  final router = createRouter(authProvider);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider(create: (_) => ApiService()),
+        ChangeNotifierProvider.value(value: authProvider),
+      ],
+      child: SolarApp(router: router),
+    ),
+  );
 }
 
 class SolarApp extends StatelessWidget {
-  const SolarApp({super.key});
+  final GoRouter router;
+
+  const SolarApp({super.key, required this.router});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ],
-      child: MaterialApp(
-        title: 'SolarApp',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const SplashScreen(),
-      ),
+    return MaterialApp.router(
+      title: 'SolarApp',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      routerConfig: router,
     );
   }
 }

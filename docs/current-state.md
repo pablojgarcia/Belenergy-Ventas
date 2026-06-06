@@ -1,27 +1,27 @@
-# Current State of Belenergy-Ventas
+# Estado Actual de Belenergy-Ventas
 
-This document outlines the current functional state of the Belenergy-Ventas repository.
+Este documento detalla el estado funcional actual del repositorio de Belenergy-Ventas.
 
 ## Backend
 - **Framework:** FastAPI (Python)
-- **Database:** Uses SQLAlchemy ORM.
-- **Health Check:** Provides a basic `/health` endpoint.
-- **Functionality:** Primarily serves authentication purposes at this stage.
+- **Base de datos:** Utiliza SQLAlchemy ORM.
+- **Verificación de salud:** Proporciona un endpoint `/health` básico.
+- **Funcionalidad:** Sirve principalmente para propósitos de autenticación en esta etapa.
 
 ## Frontend
-- **Framework:** Flutter (Web-capable)
-- **Features:** 
-    - Login Screen: Includes email/password fields, validation, error handling via `AuthProvider`, and visual feedback (loading indicators, error messages).
-    - Navigation: Basic routing setup with a splash screen, login screen, and home screen.
-    - Assets: Includes branded assets (Belenergy ARG logo).
+- **Framework:** Flutter (compatible con Web)
+- **Funcionalidades:** 
+    - Pantalla de inicio de sesión: Incluye campos de correo/contraseña, validación, manejo de errores a través de `AuthProvider` y retroalimentación visual (indicadores de carga, mensajes de error).
+    - Navegación: Configuración básica de enrutamiento con una pantalla de inicio (splash), pantalla de inicio de sesión y pantalla principal.
+    - Recursos: Incluye recursos gráficos de la marca (logo de Belenergy ARG).
 
-## Authentication
+## Autenticación
 - **Backend:** 
-    - Endpoints: `/auth/register` (POST), `/auth/login` (POST), `/auth/me` (GET, protected).
-    - Logic: Implements password hashing and JWT-based authentication with expiration.
+    - Endpoints: `/auth/register` (POST), `/auth/login` (POST), `/auth/me` (GET, protegido).
+    - Lógica: Implementa hashing de contraseñas y autenticación basada en JWT con tiempo de expiración.
 - **Frontend:** 
-    - Manages authentication state via `AuthProvider`.
-    - Handles user login flow and persistent session management logic.
+    - Gestiona el estado de autenticación a través de `AuthProvider`.
+    - Maneja el flujo de inicio de sesión del usuario y la lógica de gestión persistente de la sesión.
 
-## Infrastructure
-- **Containerization:** Dockerfile present in `Backend` directory and `docker-compose.yml` at the root, facilitating containerized deployment.
+## Infraestructura
+- **Contenedores:** Dockerfile presente en el directorio `Backend` y `docker-compose.yml` en la raíz, facilitando el despliegue contenedorizado.

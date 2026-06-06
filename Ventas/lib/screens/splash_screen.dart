@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
-import 'login_screen.dart';
-import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -43,11 +42,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final isAuth = auth.status == AuthStatus.authenticated;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => isAuth ? const HomeScreen() : const LoginScreen(),
-      ),
-    );
+    context.go(isAuth ? '/home' : '/login');
   }
 
   @override
