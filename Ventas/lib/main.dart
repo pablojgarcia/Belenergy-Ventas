@@ -20,7 +20,13 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        Provider(create: (_) => ApiService()),
+        Provider(create: (_) {
+          final api = ApiService();
+          api.onAuthFailure = () {
+            authProvider.logout();
+          };
+          return api;
+        }),
         ChangeNotifierProvider.value(value: authProvider),
       ],
       child: SolarApp(router: router),

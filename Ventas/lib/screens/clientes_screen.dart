@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../models/client_model.dart';
 import '../utils/theme.dart';
 import '../services/api_service.dart';
-import '../services/auth_provider.dart';
 
 class ClientesScreen extends StatefulWidget {
   const ClientesScreen({super.key});
@@ -25,19 +24,8 @@ class _ClientesScreenState extends State<ClientesScreen> {
 
   Future<List<Client>> _fetchClients() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
     final data = await apiService.getCustomers();
-    final allClients = data.map((json) => Client.fromJson(json)).toList();
-    
-    final currentUser = authProvider.user;
-    if (currentUser != null) {
-      return allClients.where((c) {
-        return c.salespersonEmail != null && c.salespersonEmail == currentUser.email;
-      }).toList();
-    }
-
-    return allClients;
+    return data.map((json) => Client.fromJson(json)).toList();
   }
 
   @override

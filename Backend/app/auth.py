@@ -9,9 +9,10 @@ from . import models, schemas
 
 from .config import settings
 
-SECRET_KEY  = settings.JWT_SECRET
-ALGORITHM   = os.getenv("ALGORITHM", "HS256")
-EXPIRE_MINS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+SECRET_KEY        = settings.JWT_SECRET
+ALGORITHM         = os.getenv("ALGORITHM", "HS256")
+EXPIRE_MINS       = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+REFRESH_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -23,7 +24,15 @@ def hash_password(plain: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
+    to_encode["type"] = "access"
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=EXPIRE_MINS))
+    to_encode["exp"] = expire
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    to_encode["type"] = "refresh"
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_EXPIRE_DAYS))
     to_encode["exp"] = expire
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -39,6 +48,7 @@ def authenticate_user(db: Session, username_or_email: str, password: str):
 def decode_token(token: str) -> schemas.TokenData:
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     username: str = payload.get("sub")
-    if username is None:
+    token_type: str = payload.get("type")
+    if username is None or token_type is None:
         raise JWTError("Token inválido")
-    return schemas.TokenData(username=username)
+    return schemas.TokenData(username=username, type=token_type)
