@@ -42,7 +42,7 @@ class UserInfo {
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
       id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      name: json['name'] ?? json['username'] ?? '',
       email: json['email'] ?? '',
       avatarUrl: json['avatar_url'],
       role: json['role'] ?? 'vendedor',

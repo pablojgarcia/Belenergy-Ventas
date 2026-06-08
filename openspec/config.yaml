@@ -1,0 +1,54 @@
+schema: spec-driven
+context: |
+Project: Belenergy Sales Portal
+
+Odoo Online is the source of truth.
+Customer assignments originate in Odoo.
+Salespeople authenticate in the Sales Portal.
+Salespeople can only access customers assigned to them.
+Customer assignments cannot be modified from the Sales Portal.
+
+Tech Stack:
+
+* Backend: Python, FastAPI, SQLAlchemy
+* Frontend: Flutter
+* Database: PostgreSQL
+* Authentication: JWT
+* Infrastructure: Docker
+
+Domain:
+
+* Solar energy equipment sales
+* Odoo Online is the system of record
+* Customers are managed in Odoo
+* Customer assignments are managed in Odoo
+
+Business Rules:
+
+* Each customer must be assigned to exactly one salesperson
+* Salespeople can only view assigned customers
+* Customer assignments originate in Odoo
+* The Sales Portal cannot modify customer assignments
+
+Development Conventions:
+
+* Feature branches
+* Conventional commits
+
+Language:
+
+* Code: English
+* Documentation / specs: Spanish
+
+rules:
+proposal:
+- Include business goal
+- Include non-goals
+- Include assumptions
+
+design:
+- Include architecture impact
+- Include security considerations
+
+tasks:
+- Tasks should be smaller than one day of work

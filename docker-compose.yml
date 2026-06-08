@@ -7,6 +7,8 @@ services:
       POSTGRES_DB: authdb
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U appuser -d authdb"]
       interval: 5s
@@ -22,6 +24,10 @@ services:
       SECRET_KEY: "cambia-esto-por-algo-muy-secreto-en-produccion"
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      ODOO_URL: "https://belenergy-prueba.odoo.com"
+      ODOO_DB: "belenergy-prueba"
+      ODOO_USER: "informatica@belenergy.com.ar"
+      ODOO_PASSWORD: "819b754e5adfc18b54b7627ed1ddd6c3d1df06f8"
     depends_on:
       db:
         condition: service_healthy

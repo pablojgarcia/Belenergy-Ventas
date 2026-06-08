@@ -20,6 +20,8 @@ def get_current_user(
     )
     try:
         token_data = decode_token(credentials.credentials)
+        if token_data.type != "access":
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
 
