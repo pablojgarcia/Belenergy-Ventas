@@ -75,7 +75,7 @@ def sync_products(db: Session):
     fields = [
         'id', 'name', 'default_code', 'barcode', 'list_price',
         'standard_price', 'type', 'categ_id', 'uom_id',
-        'description_sale', 'active', 'sale_ok'
+        'description_sale', 'active', 'sale_ok', 'image_1920'
     ]
 
     print("Buscando productos en Odoo...")
@@ -83,6 +83,9 @@ def sync_products(db: Session):
     print(f"Encontrados {len(products_data)} productos. Procesando...")
 
     for p in products_data:
+        raw_image = p.get('image_1920')
+        image_bytes = base64.b64decode(raw_image) if raw_image else None
+
         product_data = {
             "odoo_id": int(p['id']),
             "name": str(p.get('name') or ""),
@@ -96,6 +99,7 @@ def sync_products(db: Session):
             "description_sale": str(p.get('description_sale') or ""),
             "active": bool(p.get('active', True)),
             "sale_ok": bool(p.get('sale_ok', True)),
+            "image": image_bytes,
         }
 
         product = db.query(models.Product).filter(models.Product.odoo_id == p['id']).first()
@@ -108,11 +112,3 @@ def sync_products(db: Session):
 
     db.commit()
     print("Sincronización de productos completada.")
-
-def get_product_image(odoo_id: int) -> bytes | None:
-    odoo = get_odoo_connection()
-    product = odoo.env['product.template'].browse(odoo_id)
-    image_b64 = product.image_1920
-    if not image_b64:
-        return None
-    return base64.b64decode(image_b64)

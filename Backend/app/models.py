@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -46,3 +46,4 @@ class Product(Base):
     description_sale = Column(String)
     active = Column(Boolean, default=True)
     sale_ok = Column(Boolean, default=True)
+    image = Column(LargeBinary, nullable=True)

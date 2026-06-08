@@ -9,7 +9,7 @@ from .auth import hash_password, authenticate_user, create_access_token, create_
 from .dependencies import get_current_user
 from . import models, schemas
 from fastapi.responses import Response
-from .services.odoo_sync import sync_customers, sync_products, get_product_image
+from .services.odoo_sync import sync_customers, sync_products
 
 # Crea tablas al iniciar (en producción usar Alembic)
 Base.metadata.create_all(bind=engine)
@@ -69,12 +69,9 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: mo
 @app.get("/products/{product_id}/image")
 def get_product_image_endpoint(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    image_data = get_product_image(product.odoo_id)
-    if image_data is None:
+    if not product or not product.image:
         raise HTTPException(status_code=404, detail="Imagen no disponible")
-    return Response(content=image_data, media_type="image/png")
+    return Response(content=product.image, media_type="image/png")
 
 @app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
