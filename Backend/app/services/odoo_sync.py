@@ -1,3 +1,4 @@
+import base64
 import odoorpc
 from sqlalchemy.orm import Session
 from .. import models, config
@@ -107,3 +108,11 @@ def sync_products(db: Session):
 
     db.commit()
     print("Sincronización de productos completada.")
+
+def get_product_image(odoo_id: int) -> bytes | None:
+    odoo = get_odoo_connection()
+    product = odoo.env['product.template'].browse(odoo_id)
+    image_b64 = product.image_1920
+    if not image_b64:
+        return None
+    return base64.b64decode(image_b64)

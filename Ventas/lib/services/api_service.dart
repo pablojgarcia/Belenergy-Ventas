@@ -82,6 +82,16 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getProducts() async {
+    try {
+      final response = await _dio.get('/products');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching products: $e');
+      rethrow;
+    }
+  }
+
   Future<void> saveToken(String token) async {
     await _storage.write(key: _accessTokenKey, value: token);
   }

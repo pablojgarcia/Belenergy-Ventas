@@ -243,6 +243,10 @@ class HomeScreen extends StatelessWidget {
       context.push('/clientes');
       return;
     }
+    if (route == '/productos') {
+      context.push('/productos');
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
