@@ -1,0 +1,1 @@
+- [x] Definir modelo Customer

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/menu_card.dart';
 import '../widgets/stat_card.dart';
-import 'login_screen.dart';
-import 'clientes_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -241,9 +240,7 @@ class HomeScreen extends StatelessWidget {
 
   void _navigateTo(BuildContext context, String route) {
     if (route == '/clientes') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ClientesScreen()),
-      );
+      context.push('/clientes');
       return;
     }
 
@@ -255,7 +252,6 @@ class HomeScreen extends StatelessWidget {
         duration: const Duration(seconds: 1),
       ),
     );
-    // TODO: Navigator.pushNamed(context, route);
   }
 
   Future<void> _logout(BuildContext context, AuthProvider auth) async {
@@ -287,10 +283,7 @@ class HomeScreen extends StatelessWidget {
     if (confirm == true) {
       await auth.logout();
       if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (_) => false,
-        );
+        context.go('/login');
       }
     }
   }

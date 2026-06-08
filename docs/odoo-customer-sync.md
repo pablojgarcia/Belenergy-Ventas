@@ -1,31 +1,31 @@
 # OpenSpec: odoo-customer-sync
 
-## 1. Proposal
-Synchronize customer data from Odoo Online into the local application database. This ensures salespeople have quick, offline-capable access to their assigned customers and lays the architectural foundation for syncing quotations and sales orders.
+## 1. Propuesta
+Sincronizar los datos de clientes desde Odoo Online a la base de datos local de la aplicación. Esto asegura que los vendedores tengan acceso rápido y capaz de funcionar sin conexión a sus clientes asignados, y sienta las bases arquitectónicas para sincronizar presupuestos y órdenes de venta.
 
-## 2. Specification
-- **Data Source:** Odoo Online API (XML-RPC or JSON-RPC).
-- **Local Storage:** Extend the existing SQLite/SQLAlchemy schema to include `Customer` and `Assignment` entities.
-- **Assignment Mapping:** Store a relationship mapping between `Salesperson` (User) and `Customer` (Partner).
-- **Filtering:** Implement database queries to filter customers by the current user's ID.
-- **Extensibility:** Use an abstraction layer for sync jobs to allow future modules (Quotations/Sales Orders) to integrate easily.
+## 2. Especificación
+- **Fuente de datos:** API de Odoo Online (XML-RPC o JSON-RPC).
+- **Almacenamiento local:** Extender el esquema existente de SQLite/SQLAlchemy para incluir las entidades `Customer` y `Assignment`.
+- **Mapeo de asignaciones:** Almacenar una relación entre `Vendedor` (Usuario) y `Cliente` (Socio).
+- **Filtrado:** Implementar consultas a la base de datos para filtrar clientes por el ID del usuario actual.
+- **Extensibilidad:** Utilizar una capa de abstracción para los trabajos de sincronización, permitiendo que futuros módulos (Presupuestos/Órdenes de Venta) se integren fácilmente.
 
-## 3. Design
-- **Entities:**
-    - `Customer`: id (Odoo ID), name, email, phone, address, salesperson_id (FK).
+## 3. Diseño
+- **Entidades:**
+    - `Customer`: id (ID de Odoo), nombre, email, teléfono, dirección, salesperson_id (FK).
 - **API:**
-    - New backend endpoint: `/sync/customers` (Triggered by Admin/System).
-    - Updated endpoint: `GET /customers` (Supports filter by `current_user`).
-- **Data Flow:**
-    1.  Sync job requests data from Odoo API.
-    2.  Local DB upserts customer records.
-    3.  Relationship tables updated to reflect Odoo assignment state.
-    4.  Application frontend requests filtered list from backend.
+    - Nuevo endpoint de backend: `/sync/customers` (Activado por Administrador/Sistema).
+    - Endpoint actualizado: `GET /customers` (Soporta filtrado por `current_user`).
+- **Flujo de datos:**
+    1.  El trabajo de sincronización solicita datos de la API de Odoo.
+    2.  La base de datos local realiza upserts de los registros de clientes.
+    3.  Las tablas de relaciones se actualizan para reflejar el estado de asignación de Odoo.
+    4.  El frontend de la aplicación solicita la lista filtrada al backend.
 
-## 4. Tasks
-- [ ] Define SQLAlchemy `Customer` model and relationships in `Backend/app/models.py`.
-- [ ] Create `schemas.py` definitions for `Customer` data transfer.
-- [ ] Implement Odoo API service module in `Backend/app/odoo_service.py`.
-- [ ] Create `/sync/customers` endpoint in `Backend/app/main.py`.
-- [ ] Update `/customers` retrieval endpoint to enforce `salesperson_id` filtering.
-- [ ] Verify synchronization and filtering logic with tests.
+## 4. Tareas
+- [ ] Definir el modelo `Customer` de SQLAlchemy y las relaciones en `Backend/app/models.py`.
+- [ ] Crear las definiciones de `schemas.py` para la transferencia de datos de `Customer`.
+- [ ] Implementar el módulo de servicio de API de Odoo en `Backend/app/odoo_service.py`.
+- [ ] Crear el endpoint `/sync/customers` en `Backend/app/main.py`.
+- [ ] Actualizar el endpoint de recuperación `/customers` para aplicar el filtrado por `salesperson_id`.
+- [ ] Verificar la lógica de sincronización y filtrado con pruebas.

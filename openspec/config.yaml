@@ -32,9 +32,13 @@ Business Rules:
 
 Development Conventions:
 
-* English for code and documentation
 * Feature branches
 * Conventional commits
+
+Language:
+
+* Code: English
+* Documentation / specs: Spanish
 
 rules:
 proposal:
