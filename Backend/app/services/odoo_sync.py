@@ -1,3 +1,4 @@
+import base64
 import odoorpc
 from sqlalchemy.orm import Session
 from .. import models, config
@@ -67,3 +68,47 @@ def sync_customers(db: Session):
     
     db.commit()
     print("Sincronización completada en la base de datos.")
+
+def sync_products(db: Session):
+    odoo = get_odoo_connection()
+
+    fields = [
+        'id', 'name', 'default_code', 'barcode', 'list_price',
+        'standard_price', 'type', 'categ_id', 'uom_id',
+        'description_sale', 'active', 'sale_ok', 'image_1920'
+    ]
+
+    print("Buscando productos en Odoo...")
+    products_data = odoo.env['product.template'].search_read([('active', '=', True)], fields)
+    print(f"Encontrados {len(products_data)} productos. Procesando...")
+
+    for p in products_data:
+        raw_image = p.get('image_1920')
+        image_bytes = base64.b64decode(raw_image) if raw_image else None
+
+        product_data = {
+            "odoo_id": int(p['id']),
+            "name": str(p.get('name') or ""),
+            "default_code": str(p.get('default_code') or ""),
+            "barcode": str(p.get('barcode') or ""),
+            "list_price": float(p.get('list_price') or 0.0),
+            "standard_price": float(p.get('standard_price') or 0.0),
+            "type": str(p.get('type') or "product"),
+            "categ_id": str(p.get('categ_id')[1] if p.get('categ_id') else ""),
+            "uom_id": str(p.get('uom_id')[1] if p.get('uom_id') else ""),
+            "description_sale": str(p.get('description_sale') or ""),
+            "active": bool(p.get('active', True)),
+            "sale_ok": bool(p.get('sale_ok', True)),
+            "image": image_bytes,
+        }
+
+        product = db.query(models.Product).filter(models.Product.odoo_id == p['id']).first()
+        if product:
+            for key, value in product_data.items():
+                setattr(product, key, value)
+        else:
+            product = models.Product(**product_data)
+            db.add(product)
+
+    db.commit()
+    print("Sincronización de productos completada.")

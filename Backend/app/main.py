@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -7,7 +8,8 @@ from .database import Base, engine, get_db
 from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
 from .dependencies import get_current_user
 from . import models, schemas
-from .services.odoo_sync import sync_customers
+from fastapi.responses import Response
+from .services.odoo_sync import sync_customers, sync_products
 
 # Crea tablas al iniciar (en producción usar Alembic)
 Base.metadata.create_all(bind=engine)
@@ -32,6 +34,44 @@ def get_customers(db: Session = Depends(get_db), current_user: models.User = Dep
     return db.query(models.Customer).filter(
         models.Customer.salesperson_id.in_([current_user.email, current_user.name])
     ).all()
+
+@app.post("/sync/products", status_code=200)
+def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    sync_products(db)
+    return {"message": "Sincronización de productos completada"}
+
+@app.get("/products", response_model=list[schemas.ProductOut])
+def get_products(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    search: Optional[str] = None,
+    categ_id: Optional[str] = None,
+    active: Optional[bool] = True,
+    sale_ok: Optional[bool] = True,
+):
+    q = db.query(models.Product).filter(
+        models.Product.active == active,
+        models.Product.sale_ok == sale_ok,
+    )
+    if search:
+        q = q.filter(models.Product.name.ilike(f"%{search}%"))
+    if categ_id:
+        q = q.filter(models.Product.categ_id == categ_id)
+    return q.all()
+
+@app.get("/products/{product_id}", response_model=schemas.ProductOut)
+def get_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return product
+
+@app.get("/products/{product_id}/image")
+def get_product_image_endpoint(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product or not product.image:
+        raise HTTPException(status_code=404, detail="Imagen no disponible")
+    return Response(content=product.image, media_type="image/png")
 
 @app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):

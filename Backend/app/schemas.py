@@ -53,3 +53,26 @@ class CustomerOut(CustomerBase):
 
     class Config:
         from_attributes = True
+
+class ProductBase(BaseModel):
+    name: str
+    default_code: Optional[str] = None
+    barcode: Optional[str] = None
+    list_price: Optional[float] = None
+    standard_price: Optional[float] = None
+    type: Optional[str] = "product"
+    categ_id: Optional[str] = None
+    uom_id: Optional[str] = None
+    description_sale: Optional[str] = None
+    active: Optional[bool] = True
+    sale_ok: Optional[bool] = True
+
+class ProductCreate(ProductBase):
+    odoo_id: int
+
+class ProductOut(ProductBase):
+    id: int
+    odoo_id: int
+
+    class Config:
+        from_attributes = True

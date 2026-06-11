@@ -4,6 +4,7 @@ import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/clientes_screen.dart';
+import '../screens/productos_screen.dart';
 import '../screens/crear_presupuesto_screen.dart';
 import '../models/client_model.dart';
 
@@ -43,6 +44,10 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/clientes',
         builder: (_, __) => const ClientesScreen(),
+      ),
+      GoRoute(
+        path: '/productos',
+        builder: (_, __) => const ProductosScreen(),
       ),
       GoRoute(
         path: '/presupuesto/crear',
