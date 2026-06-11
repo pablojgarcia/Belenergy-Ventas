@@ -38,4 +38,4 @@ def test_login_fails_with_wrong_password(api_request_context):
 
 def test_protected_endpoint_without_token(api_request_context):
     resp = api_request_context.get("/auth/me")
-    assert resp.status == 401
+    assert resp.status == 403

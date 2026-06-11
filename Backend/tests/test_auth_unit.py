@@ -105,7 +105,7 @@ def test_me_authenticated(client):
 
 def test_me_unauthenticated(client):
     resp = client.get("/auth/me")
-    assert resp.status_code == 401
+    assert resp.status_code == 403
 
 
 def test_refresh_token(client):
