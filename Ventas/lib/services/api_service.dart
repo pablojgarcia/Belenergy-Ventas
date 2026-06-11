@@ -6,17 +6,17 @@ class ApiService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
 
-  // Callback cuando el refresh falla (para que AuthProvider haga logout)
   VoidCallback? onAuthFailure;
 
-  // Evaluamos en tiempo de ejecución para evitar problemas de caché de compilación
-  String get baseUrl => kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
+  final String? overrideBaseUrl;
+
+  String get baseUrl => overrideBaseUrl ?? (kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000');
 
   late Dio _dio;
   final _storage = const FlutterSecureStorage();
   bool _isRefreshing = false;
 
-  ApiService() {
+  ApiService({this.overrideBaseUrl}) {
     debugPrint('--- BASE URL: ${baseUrl} ---');
     _dio = Dio(BaseOptions(baseUrl: baseUrl));
     _dio.interceptors.add(InterceptorsWrapper(
@@ -52,7 +52,6 @@ class ApiService {
           await _storage.write(key: _accessTokenKey, value: newAccess);
           await _storage.write(key: _refreshTokenKey, value: newRefresh);
 
-          // Retry with a fresh Dio to avoid interceptor loop
           final opts = error.requestOptions;
           opts.headers['Authorization'] = 'Bearer $newAccess';
           final retryDio = Dio(BaseOptions(baseUrl: baseUrl));
@@ -78,6 +77,16 @@ class ApiService {
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
       debugPrint('Error fetching customers: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProducts() async {
+    try {
+      final response = await _dio.get('/products');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching products: $e');
       rethrow;
     }
   }
