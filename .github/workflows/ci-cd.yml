@@ -99,7 +99,7 @@ jobs:
           DATABASE_URL: postgresql://appuser:apppassword@localhost:5432/authdb
           JWT_SECRET: test-secret-key
         run: |
-          pytest tests/test_api/ -v
+          python -m pytest tests/test_api/ -v
 
   test-frontend:
     runs-on: ubuntu-latest
