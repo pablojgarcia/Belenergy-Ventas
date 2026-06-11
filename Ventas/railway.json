@@ -5,7 +5,6 @@
     "dockerfilePath": "Dockerfile.frontend"
   },
   "deploy": {
-    "restartPolicyType": "ON_FAILURE",
-    "port": 80
+    "restartPolicyType": "ON_FAILURE"
   }
 }
