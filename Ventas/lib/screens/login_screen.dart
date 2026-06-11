@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,15 +61,12 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ─────────────────────────────────────────────────────
-            Expanded(
-              flex: 2,
-              child: FadeTransition(
+    final body = Column(
+      children: [
+        // ── Header ─────────────────────────────────────────────────────
+        Expanded(
+          flex: 2,
+          child: FadeTransition(
                 opacity: _fadeAnim,
                 child: Center(
                   child: Column(
@@ -292,7 +290,19 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ],
-        ),
+        );
+
+    return Scaffold(
+      backgroundColor: AppColors.primary,
+      body: SafeArea(
+        child: context.isPhone
+            ? body
+            : Center(
+                child: SizedBox(
+                  width: 500,
+                  child: body,
+                ),
+              ),
       ),
     );
   }

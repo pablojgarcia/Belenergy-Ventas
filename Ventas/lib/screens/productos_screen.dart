@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../models/product_model.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
 import '../services/api_service.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -76,13 +77,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
             );
           }
 
-          return ListView.separated(
+          final columns = Responsive.value(context, mobile: 1, tablet: 2, desktop: 3);
+
+          return GridView.builder(
             padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: columns == 1 ? 2.6 : 1.3,
+            ),
             itemCount: products.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final product = products[index];
-              return _ProductCard(product: product);
+              return _ProductCard(product: products[index]);
             },
           );
         },

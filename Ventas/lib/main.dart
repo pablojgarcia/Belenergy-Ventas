@@ -5,14 +5,11 @@ import 'package:provider/provider.dart';
 import 'services/auth_provider.dart';
 import 'services/api_service.dart';
 import 'utils/theme.dart';
+import 'utils/responsive.dart';
 import 'config/router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
 
   final authProvider = AuthProvider();
   final router = createRouter(authProvider);
@@ -34,10 +31,37 @@ void main() {
   );
 }
 
-class SolarApp extends StatelessWidget {
+class SolarApp extends StatefulWidget {
   final GoRouter router;
 
   const SolarApp({super.key, required this.router});
+
+  @override
+  State<SolarApp> createState() => _SolarAppState();
+}
+
+class _SolarAppState extends State<SolarApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateOrientation());
+  }
+
+  void _updateOrientation() {
+    if (Responsive.isPhone(context)) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +69,7 @@ class SolarApp extends StatelessWidget {
       title: 'SolarApp',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      routerConfig: router,
+      routerConfig: widget.router,
     );
   }
 }

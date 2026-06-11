@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
 import '../widgets/menu_card.dart';
 import '../widgets/stat_card.dart';
 
@@ -148,40 +149,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    clipBehavior: Clip.none,
-                    child: Row(
-                      children: [
-                        StatCard(
-                          label: 'Presupuestos',
-                          value: '12',
-                          delta: '+3',
-                          positive: true,
-                          icon: Icons.bolt_rounded,
-                          iconColor: Color(0xFF5E60CE),
-                        ),
-                        SizedBox(width: 12),
-                        StatCard(
-                          label: 'kWp vendidos',
-                          value: '48.5',
-                          delta: '+12%',
-                          positive: true,
-                          icon: Icons.solar_power_rounded,
-                          iconColor: AppColors.accent,
-                        ),
-                        SizedBox(width: 12),
-                        StatCard(
-                          label: 'Pedidos pend.',
-                          value: '5',
-                          delta: '-2',
-                          positive: false,
-                          icon: Icons.receipt_long_rounded,
-                          iconColor: Color(0xFFEB5757),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _StatsSection(),
                 ],
               ),
             ),
@@ -205,8 +173,8 @@ class HomeScreen extends StatelessWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: Responsive.gridColumns(context),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.15,
@@ -425,4 +393,75 @@ class _MenuItem {
     required this.color,
     required this.route,
   });
+}
+
+const _statCards = [
+  StatCard(
+    label: 'Presupuestos',
+    value: '12',
+    delta: '+3',
+    positive: true,
+    icon: Icons.bolt_rounded,
+    iconColor: Color(0xFF5E60CE),
+  ),
+  StatCard(
+    label: 'kWp vendidos',
+    value: '48.5',
+    delta: '+12%',
+    positive: true,
+    icon: Icons.solar_power_rounded,
+    iconColor: AppColors.accent,
+  ),
+  StatCard(
+    label: 'Pedidos pend.',
+    value: '5',
+    delta: '-2',
+    positive: false,
+    icon: Icons.receipt_long_rounded,
+    iconColor: Color(0xFFEB5757),
+  ),
+];
+
+class _StatsSection extends StatelessWidget {
+  const _StatsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    if (context.isPhone) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        child: Row(
+          children: _statCards
+              .map((card) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: SizedBox(width: 140, child: card),
+                  ))
+              .toList(),
+        ),
+      );
+    }
+
+    if (context.isTablet) {
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: _statCards
+            .map((card) => SizedBox(
+                  width: (MediaQuery.of(context).size.width - 44) / 2,
+                  child: card,
+                ))
+            .toList(),
+      );
+    }
+
+    return Row(
+      children: _statCards
+          .map((card) => Expanded(child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: card,
+              )))
+          .toList(),
+    );
+  }
 }
