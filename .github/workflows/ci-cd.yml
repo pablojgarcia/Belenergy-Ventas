@@ -143,8 +143,8 @@ jobs:
 
       - name: Deploy backend
         working-directory: Backend
-        run: railway up --service=5d43e2cd-eb5b-4b81-adc8-9c5026e40d74 --ci --verbose
+        run: railway up --service=5d43e2cd-eb5b-4b81-adc8-9c5026e40d74 --detach --json --yes
 
       - name: Deploy frontend
         working-directory: Ventas
-        run: railway up --service=04cda778-1a46-4782-af83-7507ba4c1eab --ci
+        run: railway up --service=04cda778-1a46-4782-af83-7507ba4c1eab --detach --json --yes
