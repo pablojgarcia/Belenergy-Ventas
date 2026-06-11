@@ -98,6 +98,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://appuser:apppassword@localhost:5432/authdb
           JWT_SECRET: test-secret-key
+          ODOO_URL: http://localhost:8069
+          ODOO_DB: test
+          ODOO_USER: test
+          ODOO_PASSWORD: test
         run: |
           python -m pytest tests/test_api/ -v
 
