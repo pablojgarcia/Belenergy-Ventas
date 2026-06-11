@@ -19,6 +19,7 @@ void main() {
         child: SolarApp(router: router),
       ),
     );
+    await tester.pump(const Duration(milliseconds: 1500));
     await tester.pump();
     expect(find.byType(MaterialApp), findsOneWidget);
   });

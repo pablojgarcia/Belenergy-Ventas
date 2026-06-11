@@ -48,7 +48,7 @@ jobs:
           ODOO_USER: test
           ODOO_PASSWORD: test
         run: |
-          pytest tests/ -v --ignore=tests/test_api --ignore=tests/test_odoo_connection.py
+          python -m pytest tests/ -v --ignore=tests/test_api --ignore=tests/test_odoo_connection.py
 
   test-backend-api:
     runs-on: ubuntu-latest
