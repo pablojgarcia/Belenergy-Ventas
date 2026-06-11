@@ -11,3 +11,7 @@ venv/
 .env.local
 *.db
 *.db-journal
+
+# Flutter web build output (served by backend)
+Backend/static/*
+!Backend/static/.gitkeep

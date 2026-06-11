@@ -138,13 +138,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Build Flutter web
+        working-directory: Ventas
+        run: flutter build web --release
+
+      - name: Copy Flutter build to backend
+        run: cp -r Ventas/build/web/. Backend/static/
+
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy backend
+      - name: Deploy backend (includes Flutter web)
         working-directory: Backend
         run: railway up --service=5d43e2cd-eb5b-4b81-adc8-9c5026e40d74 --detach --json --yes
-
-      - name: Deploy frontend
-        working-directory: Ventas
-        run: railway up --service=04cda778-1a46-4782-af83-7507ba4c1eab --detach --json --yes

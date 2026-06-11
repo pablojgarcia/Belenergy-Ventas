@@ -10,14 +10,13 @@ class ApiService {
 
   final String? overrideBaseUrl;
 
-  String get baseUrl =>
-      overrideBaseUrl ??
-      (const String.fromEnvironment('API_URL', defaultValue: '')
-              .isNotEmpty
-          ? const String.fromEnvironment('API_URL')
-          : kIsWeb
-              ? 'http://localhost:8000'
-              : 'http://10.0.2.2:8000');
+  String get baseUrl {
+    if (overrideBaseUrl != null) return overrideBaseUrl!;
+    final apiUrl = const String.fromEnvironment('API_URL', defaultValue: '');
+    if (apiUrl.isNotEmpty) return apiUrl;
+    if (kIsWeb) return '';
+    return 'http://10.0.2.2:8000';
+  }
 
   late Dio _dio;
   final _storage = const FlutterSecureStorage();

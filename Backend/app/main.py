@@ -1,5 +1,6 @@
+import os
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -8,8 +9,10 @@ from .database import Base, engine, get_db
 from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
 from .dependencies import get_current_user
 from . import models, schemas
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from .services.odoo_sync import sync_customers, sync_products
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 
 # Crea tablas al iniciar (en producción usar Alembic)
 Base.metadata.create_all(bind=engine)
@@ -158,3 +161,16 @@ def me(current_user: models.User = Depends(get_current_user)):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.middleware("http")
+async def spa_fallback(request: Request, call_next):
+    response = await call_next(request)
+    if response.status_code == 404:
+        path = request.url.path
+        if path.startswith(("/auth/", "/sync/", "/health", "/products", "/customers")):
+            return response
+        index_path = os.path.join(STATIC_DIR, "index.html")
+        if os.path.isfile(index_path):
+            return FileResponse(index_path, media_type="text/html")
+    return response
