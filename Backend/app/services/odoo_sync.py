@@ -14,20 +14,19 @@ def sync_customers(db: Session):
     fields = [
         'id', 'name', 'email', 'phone', 'street', 'city', 
         'state_id', 'zip', 'country_id', 'vat', 
-        'x_studio_many2one_field_2kr_1jqafs13j', 'website'
+        'x_studio_vendedor_externo', 'website'
     ]
     
     print("Buscando clientes en Odoo...")
     partners_data = odoo.env['res.partner'].search_read([('customer_rank', '>', 0)], fields)
     print(f"Encontrados {len(partners_data)} clientes. Procesando...")
 
-    # Coleccionar IDs de vendedores para buscar sus emails de una vez
     vendedor_ids = set()
     for p in partners_data:
-        vendedor = p.get('x_studio_many2one_field_2kr_1jqafs13j')
+        vendedor = p.get('x_studio_vendedor_externo')
         if vendedor and isinstance(vendedor, (list, tuple)):
             vendedor_ids.add(vendedor[0])
-    
+
     vendedores_map = {}
     if vendedor_ids:
         vendedores_info = odoo.env['res.partner'].read(list(vendedor_ids), ['name', 'email'])
@@ -35,8 +34,7 @@ def sync_customers(db: Session):
             vendedores_map[v['id']] = v['email'] or v['name'] or ""
 
     for p in partners_data:
-        # Procesar salesperson_id
-        vendedor = p.get('x_studio_many2one_field_2kr_1jqafs13j')
+        vendedor = p.get('x_studio_vendedor_externo')
         salesperson_val = None
         if vendedor and isinstance(vendedor, (list, tuple)):
             salesperson_val = vendedores_map.get(vendedor[0])
