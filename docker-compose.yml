@@ -21,13 +21,11 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://appuser:apppassword@db:5432/authdb
-      SECRET_KEY: "cambia-esto-por-algo-muy-secreto-en-produccion"
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      ODOO_URL: "https://belenergy-prueba.odoo.com"
-      ODOO_DB: "belenergy-prueba"
-      ODOO_USER: "informatica@belenergy.com.ar"
-      ODOO_PASSWORD: "819b754e5adfc18b54b7627ed1ddd6c3d1df06f8"
+      JWT_SECRET: "${JWT_SECRET:-cambia-esto-en-produccion}"
+      ODOO_URL: "${ODOO_URL:-https://dev.odoo.com}"
+      ODOO_DB: "${ODOO_DB:-dev}"
+      ODOO_USER: "${ODOO_USER:-dev@example.com}"
+      ODOO_PASSWORD: "${ODOO_PASSWORD:-dev-password}"
     depends_on:
       db:
         condition: service_healthy
