@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     ODOO_DB: str = os.getenv("ODOO_DB")
     ODOO_USER: str = os.getenv("ODOO_USER")
     ODOO_PASSWORD: str = os.getenv("ODOO_PASSWORD")
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "super-secret-key-change-in-prod")
+    JWT_SECRET: str = os.getenv("JWT_SECRET")
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
     class Config:
