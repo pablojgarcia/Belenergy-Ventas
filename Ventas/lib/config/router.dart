@@ -42,15 +42,15 @@ GoRouter createRouter(AuthProvider authProvider) {
         builder: (_, __) => const HomeScreen(),
       ),
       GoRoute(
-        path: '/clientes',
+        path: '/customers',
         builder: (_, __) => const ClientesScreen(),
       ),
       GoRoute(
-        path: '/productos',
+        path: '/products',
         builder: (_, __) => const ProductosScreen(),
       ),
       GoRoute(
-        path: '/presupuesto/crear',
+        path: '/budget/create',
         builder: (_, state) =>
             CrearPresupuestoScreen(client: state.extra as Client),
       ),

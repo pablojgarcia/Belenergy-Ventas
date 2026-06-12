@@ -17,28 +17,28 @@ class HomeScreen extends StatelessWidget {
       label: 'Clientes',
       subtitle: 'Cartera de clientes',
       color: Color(0xFF2D9CDB),
-      route: '/clientes',
+      route: '/customers',
     ),
     const _MenuItem(
       icon: Icons.bolt_rounded,
       label: 'Presupuestos',
       subtitle: 'Crear y gestionar',
       color: Color(0xFF5E60CE),
-      route: '/presupuestos',
+      route: '/budgets',
     ),
     const _MenuItem(
       icon: Icons.solar_power_rounded,
       label: 'Productos',
       subtitle: 'Catálogo FV',
       color: Color(0xFFF4A900),
-      route: '/productos',
+      route: '/products',
     ),
     const _MenuItem(
       icon: Icons.receipt_long_rounded,
       label: 'Pedidos',
       subtitle: 'Órdenes activas',
       color: Color(0xFF27AE60),
-      route: '/pedidos',
+      route: '/orders',
     ),
     /* const _MenuItem(
       icon: Icons.bar_chart_rounded,
@@ -207,23 +207,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _navigateTo(BuildContext context, String route) {
-    if (route == '/clientes') {
-      context.push('/clientes');
-      return;
-    }
-    if (route == '/productos') {
-      context.push('/productos');
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navegando a $route...'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primary,
-        duration: const Duration(seconds: 1),
-      ),
-    );
+    context.go(route);
   }
 
   Future<void> _logout(BuildContext context, AuthProvider auth) async {

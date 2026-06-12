@@ -221,7 +221,7 @@ class _ClientCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: ElevatedButton(
                 onPressed: () {
-                  context.push('/presupuesto/crear', extra: client);
+                  context.go('/budget/create', extra: client);
                 },
                 child: const Text('Crear presupuesto'),
               ),

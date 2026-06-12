@@ -8,8 +8,11 @@ import 'utils/theme.dart';
 import 'utils/responsive.dart';
 import 'config/router.dart';
 
+import 'package:flutter_web_plugins/url_strategy.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
 
   final authProvider = AuthProvider();
   final router = createRouter(authProvider);
