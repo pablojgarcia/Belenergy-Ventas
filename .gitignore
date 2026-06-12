@@ -12,6 +12,6 @@ venv/
 *.db
 *.db-journal
 
-# Flutter web build output (served by backend)
+# Flutter web build output (copied by CI/CD, not committed)
 Backend/static/*
 !Backend/static/.gitkeep

@@ -154,4 +154,4 @@ jobs:
 
       - name: Deploy backend (includes Flutter web)
         working-directory: Backend
-        run: railway up --service=5d43e2cd-eb5b-4b81-adc8-9c5026e40d74 --detach --json --yes
+        run: railway up --service=a75f02b1-abe2-4155-9589-2ec79f289cb3 --detach --json --yes --no-gitignore
