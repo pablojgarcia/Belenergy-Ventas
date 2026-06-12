@@ -1,11 +1,11 @@
 {
-    "name": "solarapp",
-    "short_name": "solarapp",
+    "name": "SolarApp",
+    "short_name": "SolarApp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Aplicación de ventas de equipos fotovoltaicos",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
