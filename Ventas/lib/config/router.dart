@@ -6,6 +6,8 @@ import '../screens/home_screen.dart';
 import '../screens/clientes_screen.dart';
 import '../screens/productos_screen.dart';
 import '../screens/crear_presupuesto_screen.dart';
+import '../screens/presupuestos_screen.dart';
+import '../screens/presupuesto_detalle_screen.dart';
 import '../models/client_model.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
@@ -53,6 +55,15 @@ GoRouter createRouter(AuthProvider authProvider) {
         path: '/budget/create',
         builder: (_, state) =>
             CrearPresupuestoScreen(client: state.extra as Client),
+      ),
+      GoRoute(
+        path: '/orders',
+        builder: (_, __) => const PresupuestosScreen(),
+      ),
+      GoRoute(
+        path: '/orders/:id',
+        builder: (_, state) =>
+            PresupuestoDetalleScreen(orderId: int.parse(state.pathParameters['id']!)),
       ),
     ],
   );

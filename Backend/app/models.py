@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -47,3 +47,16 @@ class Product(Base):
     active = Column(Boolean, default=True)
     sale_ok = Column(Boolean, default=True)
     image = Column(LargeBinary, nullable=True)
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    odoo_id = Column(Integer, unique=True, index=True, nullable=False)
+    client_id = Column(Integer, nullable=False)
+    client_name = Column(String, nullable=False)
+    amount_total = Column(Float, default=0.0)
+    state = Column(String, default="draft")
+    date_order = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, nullable=False)
+    description = Column(Text, nullable=True)

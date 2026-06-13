@@ -97,6 +97,38 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createQuotation(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/orders/quotation', data: data);
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error creating quotation: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getOrders({String? state}) async {
+    try {
+      final params = <String, dynamic>{};
+      if (state != null) params['state'] = state;
+      final response = await _dio.get('/orders', queryParameters: params);
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching orders: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getOrder(int id) async {
+    try {
+      final response = await _dio.get('/orders/$id');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching order: $e');
+      rethrow;
+    }
+  }
+
   Future<void> saveToken(String token) async {
     await _storage.write(key: _accessTokenKey, value: token);
   }

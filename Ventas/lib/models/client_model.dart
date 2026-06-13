@@ -42,5 +42,7 @@ class Client {
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
+  int get odooId => id;
+
   static List<Client> sampleClients() => [];
 }
