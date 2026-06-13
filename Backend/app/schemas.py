@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import datetime
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -96,7 +97,7 @@ class OrderOut(BaseModel):
     client_name: str
     amount_total: float
     state: str
-    date_order: str
+    date_order: datetime
     user_id: int
     description: str | None = None
 
