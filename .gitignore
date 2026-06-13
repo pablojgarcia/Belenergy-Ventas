@@ -15,6 +15,7 @@ Ventas/build/
 *.db-journal
 
 login.json
+scripts/promote_to_admin.py
 
 # Flutter web build output (copied by CI/CD, not committed)
 Backend/static/*
