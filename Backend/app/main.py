@@ -31,9 +31,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Auth API")
 
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:8000", "http://localhost:3000", "https://belenergy-ventas.up.railway.app"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

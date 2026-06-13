@@ -14,6 +14,8 @@ Ventas/build/
 *.db
 *.db-journal
 
+login.json
+
 # Flutter web build output (copied by CI/CD, not committed)
 Backend/static/*
 !Backend/static/.gitkeep

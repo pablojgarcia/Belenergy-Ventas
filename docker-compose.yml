@@ -21,7 +21,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://appuser:apppassword@db:5432/authdb
-      JWT_SECRET: "${JWT_SECRET:-cambia-esto-en-produccion}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET es obligatorio en produccion}"
       ODOO_URL: "${ODOO_URL:-https://dev.odoo.com}"
       ODOO_DB: "${ODOO_DB:-dev}"
       ODOO_USER: "${ODOO_USER:-dev@example.com}"
