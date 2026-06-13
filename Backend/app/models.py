@@ -10,6 +10,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     name     = Column(String, default='')
     hashed_password = Column(String, nullable=False)
+    role     = Column(String, default='vendedor')
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

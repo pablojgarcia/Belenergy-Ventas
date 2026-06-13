@@ -1,10 +1,10 @@
-def test_register(client):
+def test_register(client, admin_headers):
     resp = client.post("/auth/register", json={
         "email": "test@example.com",
         "username": "testuser",
         "name": "Test User",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["email"] == "test@example.com"
@@ -12,47 +12,57 @@ def test_register(client):
     assert "id" in data
 
 
-def test_register_duplicate_email(client):
+def test_register_duplicate_email(client, admin_headers):
     client.post("/auth/register", json={
         "email": "dup@example.com",
         "username": "user1",
         "name": "User 1",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     resp = client.post("/auth/register", json={
         "email": "dup@example.com",
         "username": "user2",
         "name": "User 2",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     assert resp.status_code == 400
     assert "email" in resp.json()["detail"].lower()
 
 
-def test_register_duplicate_username(client):
+def test_register_duplicate_username(client, admin_headers):
     client.post("/auth/register", json={
         "email": "a@example.com",
         "username": "dupuser",
         "name": "User A",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     resp = client.post("/auth/register", json={
         "email": "b@example.com",
         "username": "dupuser",
         "name": "User B",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     assert resp.status_code == 400
     assert "usuario" in resp.json()["detail"].lower()
 
 
-def test_login_success(client):
+def test_register_requires_admin(client):
+    resp = client.post("/auth/register", json={
+        "email": "noauth@example.com",
+        "username": "noauth",
+        "name": "No Auth",
+        "password": "test123",
+    })
+    assert resp.status_code == 403
+
+
+def test_login_success(client, admin_headers):
     client.post("/auth/register", json={
         "email": "login@example.com",
         "username": "loginuser",
         "name": "Login User",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     resp = client.post("/auth/login", json={
         "username": "loginuser",
         "password": "test123",
@@ -64,13 +74,13 @@ def test_login_success(client):
     assert data["token_type"] == "bearer"
 
 
-def test_login_wrong_password(client):
+def test_login_wrong_password(client, admin_headers):
     client.post("/auth/register", json={
         "email": "wrongpw@example.com",
         "username": "wrongpw",
         "name": "Wrong PW",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     resp = client.post("/auth/login", json={
         "username": "wrongpw",
         "password": "wrongpass",
@@ -86,13 +96,13 @@ def test_login_nonexistent_user(client):
     assert resp.status_code == 401
 
 
-def test_me_authenticated(client):
+def test_me_authenticated(client, admin_headers):
     client.post("/auth/register", json={
         "email": "me@example.com",
         "username": "meuser",
         "name": "Me User",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     login_resp = client.post("/auth/login", json={
         "username": "meuser",
         "password": "test123",
@@ -101,6 +111,7 @@ def test_me_authenticated(client):
     resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["username"] == "meuser"
+    assert resp.json()["role"] == "vendedor"
 
 
 def test_me_unauthenticated(client):
@@ -108,13 +119,13 @@ def test_me_unauthenticated(client):
     assert resp.status_code == 403
 
 
-def test_refresh_token(client):
+def test_refresh_token(client, admin_headers):
     client.post("/auth/register", json={
         "email": "refresh@example.com",
         "username": "refreshuser",
         "name": "Refresh User",
         "password": "test123",
-    })
+    }, headers=admin_headers)
     login_resp = client.post("/auth/login", json={
         "username": "refreshuser",
         "password": "test123",
@@ -134,3 +145,30 @@ def test_refresh_invalid_token(client):
         "refresh_token": "invalidtoken123",
     })
     assert resp.status_code == 401
+
+
+def test_register_requires_admin(client):
+    resp = client.post("/auth/register", json={
+        "email": "noauth@example.com",
+        "username": "noauth",
+        "name": "No Auth",
+        "password": "test123",
+    })
+    assert resp.status_code == 403
+
+
+def test_admin_endpoints_blocked_for_vendedor(client, admin_headers):
+    client.post("/auth/register", json={
+        "email": "vendedor@test.com",
+        "username": "vendedor",
+        "name": "Vendedor",
+        "password": "test123",
+        "role": "vendedor",
+    }, headers=admin_headers)
+    login_vendedor = client.post("/auth/login", json={
+        "username": "vendedor",
+        "password": "test123",
+    })
+    vendedor_token = login_vendedor.json()["access_token"]
+    resp = client.post("/sync/customers", headers={"Authorization": f"Bearer {vendedor_token}"})
+    assert resp.status_code == 403

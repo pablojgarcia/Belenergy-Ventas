@@ -10,7 +10,7 @@ from datetime import timedelta, datetime, timezone
 
 from .database import Base, engine, get_db
 from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, store_refresh_token, consume_refresh_token, generate_jti, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
-from .dependencies import get_current_user
+from .dependencies import get_current_user, get_current_admin
 from . import models, schemas
 from fastapi.responses import Response
 from .services.odoo_sync import sync_customers, sync_products
@@ -64,7 +64,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=VALID_HOSTS)
 
 @app.post("/sync/customers", status_code=200)
-def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
     sync_customers(db)
     return {"message": "Sincronización completada"}
 
@@ -75,7 +75,7 @@ def get_customers(db: Session = Depends(get_db), current_user: models.User = Dep
     ).all()
 
 @app.post("/sync/products", status_code=200)
-def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
     sync_products(db)
     return {"message": "Sincronización de productos completada"}
 
@@ -129,14 +129,37 @@ def limit(rate: str):
 @app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
 @limit("5/minute")
 def register(request: Request, user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    first_user = db.query(models.User).count() == 0
+
+    if not first_user:
+        auth = request.headers.get("Authorization") or ""
+        if not auth.startswith("Bearer "):
+            raise HTTPException(403, "Se requieren permisos de administrador")
+        try:
+            token_data = decode_token(auth.removeprefix("Bearer "))
+        except Exception:
+            raise HTTPException(403, "Se requieren permisos de administrador")
+        if token_data.type != "access":
+            raise HTTPException(403, "Se requieren permisos de administrador")
+        admin = db.query(models.User).filter(
+            models.User.username == token_data.username,
+            models.User.role == "admin",
+        ).first()
+        if not admin:
+            raise HTTPException(403, "Se requieren permisos de administrador")
+
     if db.query(models.User).filter(models.User.email == user_in.email).first():
         raise HTTPException(400, "El email ya está registrado")
     if db.query(models.User).filter(models.User.username == user_in.username).first():
         raise HTTPException(400, "El nombre de usuario ya existe")
+
+    role = "admin" if first_user else user_in.role
+
     user = models.User(
         email=user_in.email,
         username=user_in.username,
         name=user_in.name,
+        role=role,
         hashed_password=hash_password(user_in.password),
     )
     db.add(user)
