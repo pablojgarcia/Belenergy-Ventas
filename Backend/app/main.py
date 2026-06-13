@@ -12,6 +12,7 @@ from .dependencies import get_current_user
 from . import models, schemas
 from fastapi.responses import Response
 from .services.odoo_sync import sync_customers, sync_products
+from .services.odoo_sale import create_quotation
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 
@@ -168,6 +169,73 @@ def refresh(token_in: schemas.TokenRefresh, db: Session = Depends(get_db)):
 @app.get("/auth/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+@app.post("/orders/quotation", status_code=201)
+def create_quotation_endpoint(
+    order_in: schemas.OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    customer = db.query(models.Customer).filter(models.Customer.odoo_id == order_in.partner_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    if customer.salesperson_id not in [current_user.email, current_user.name]:
+        raise HTTPException(status_code=403, detail="No tenés permiso para crear presupuestos para este cliente")
+
+    try:
+        odoo_id = create_quotation(
+            partner_id=order_in.partner_id,
+            order_lines=[line.model_dump() for line in order_in.order_line],
+            description=order_in.description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=502, detail="Error al comunicarse con Odoo")
+
+    total = sum(
+        line.quantity * line.price_unit * (1 - line.discount / 100)
+        for line in order_in.order_line
+    )
+
+    order = models.Order(
+        odoo_id=odoo_id,
+        client_id=customer.id,
+        client_name=customer.name,
+        amount_total=total,
+        state="draft",
+        user_id=current_user.id,
+        description=order_in.description,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    return order
+
+@app.get("/orders", response_model=list[schemas.OrderOut])
+def list_orders(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    state: Optional[str] = None,
+):
+    q = db.query(models.Order).filter(models.Order.user_id == current_user.id)
+    if state:
+        q = q.filter(models.Order.state == state)
+    return q.all()
+
+@app.get("/orders/{order_id}", response_model=schemas.OrderOut)
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tenés permiso para ver este presupuesto")
+    return order
 
 @app.get("/health")
 def health():

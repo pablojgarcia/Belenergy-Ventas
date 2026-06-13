@@ -24,7 +24,7 @@ class HomeScreen extends StatelessWidget {
       label: 'Presupuestos',
       subtitle: 'Crear y gestionar',
       color: Color(0xFF5E60CE),
-      route: '/budgets',
+      route: '/orders',
     ),
     const _MenuItem(
       icon: Icons.solar_power_rounded,

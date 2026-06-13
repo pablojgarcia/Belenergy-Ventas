@@ -76,3 +76,29 @@ class ProductOut(ProductBase):
 
     class Config:
         from_attributes = True
+
+class OrderLineInput(BaseModel):
+    product_id: int
+    quantity: float
+    price_unit: float
+    tax_id: list[int] = []
+    discount: float = 0.0
+
+class OrderCreate(BaseModel):
+    partner_id: int
+    order_line: list[OrderLineInput]
+    description: str = ""
+
+class OrderOut(BaseModel):
+    id: int
+    odoo_id: int
+    client_id: int
+    client_name: str
+    amount_total: float
+    state: str
+    date_order: str
+    user_id: int
+    description: str | None = None
+
+    class Config:
+        from_attributes = True
