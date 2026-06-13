@@ -31,6 +31,7 @@ class TokenRefresh(BaseModel):
 class TokenData(BaseModel):
     username: str | None = None
     type: str | None = None
+    jti: str | None = None
 
 class CustomerBase(BaseModel):
     name: str

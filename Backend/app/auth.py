@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -22,6 +23,9 @@ def verify_password(plain: str, hashed: str) -> bool:
 def hash_password(plain: str) -> str:
     return pwd_context.hash(plain)
 
+def generate_jti() -> str:
+    return secrets.token_urlsafe(32)
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     to_encode["type"] = "access"
@@ -29,12 +33,35 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode["exp"] = expire
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None, jti: Optional[str] = None) -> str:
     to_encode = data.copy()
     to_encode["type"] = "refresh"
+    to_encode["jti"] = jti or generate_jti()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_EXPIRE_DAYS))
     to_encode["exp"] = expire
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def store_refresh_token(db: Session, user_id: int, jti: str, expires_at: datetime):
+    token = models.RefreshToken(
+        jti=jti,
+        user_id=user_id,
+        expires_at=expires_at,
+    )
+    db.add(token)
+    db.commit()
+
+def consume_refresh_token(db: Session, jti: str) -> bool:
+    now = datetime.now(timezone.utc)
+    token = db.query(models.RefreshToken).filter(
+        models.RefreshToken.jti == jti,
+        models.RefreshToken.used_at.is_(None),
+        models.RefreshToken.expires_at > now,
+    ).first()
+    if not token:
+        return False
+    token.used_at = now
+    db.commit()
+    return True
 
 def authenticate_user(db: Session, username_or_email: str, password: str):
     # Buscar por username o por email
@@ -49,6 +76,7 @@ def decode_token(token: str) -> schemas.TokenData:
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     username: str = payload.get("sub")
     token_type: str = payload.get("type")
+    jti: str = payload.get("jti")
     if username is None or token_type is None:
         raise JWTError("Token inválido")
-    return schemas.TokenData(username=username, type=token_type)
+    return schemas.TokenData(username=username, type=token_type, jti=jti)

@@ -1,3 +1,6 @@
+import os
+os.environ["DISABLE_RATE_LIMIT"] = "true"
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
