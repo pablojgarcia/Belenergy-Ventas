@@ -5,14 +5,14 @@ from .odoo_sync import get_odoo_connection
 def create_quotation(partner_id: int, order_lines: list[dict], description: str = ""):
     odoo = get_odoo_connection()
 
-    partner = odoo.env['res.partner'].browse(partner_id)
-    if not partner.exists():
+    partner_count = odoo.env['res.partner'].search_count([('id', '=', partner_id)])
+    if partner_count == 0:
         raise ValueError("El cliente no existe en Odoo")
 
     lines = []
     for line in order_lines:
-        product = odoo.env['product.product'].browse(line['product_id'])
-        if not product.exists():
+        product_count = odoo.env['product.product'].search_count([('id', '=', line['product_id'])])
+        if product_count == 0:
             raise ValueError(f"Producto ID {line['product_id']} no existe en Odoo")
 
         line_vals = {
