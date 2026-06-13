@@ -1,3 +1,13 @@
+"""
+Configuracion via variables de entorno.
+
+⚠️ SEGURIDAD:
+- En produccion (Railway) las env vars estan cifradas en reposo y transito.
+- En local, el .env esta en .gitignore pero igual: no compartir el archivo.
+- JWT_SECRET debe ser un valor fuerte (openssl rand -hex 32).
+- ODOO_PASSWORD da acceso al ERP: rotarla periodicamente.
+"""
+
 import os
 from pydantic_settings import BaseSettings
 

@@ -9,6 +9,9 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime, timezone
 
+from alembic.config import Config as AlembicConfig
+from alembic import command as alembic_command
+
 from .database import Base, engine, get_db
 from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, store_refresh_token, consume_refresh_token, generate_jti, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
 from .dependencies import get_current_user, get_current_admin
@@ -44,15 +47,16 @@ class SPAStaticFiles(StaticFiles):
                 return await super().get_response("index.html", scope)
             raise
 
-# Crea tablas al iniciar + migraciones livianas
-Base.metadata.create_all(bind=engine)
-
-inspector = inspect(engine)
-if "users" in inspector.get_table_names():
-    cols = [c["name"] for c in inspector.get_columns("users")]
-    if "role" not in cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'vendedor'"))
+# Migraciones con Alembic (fallback a create_all si no hay alembic.cfg)
+_alembic_cfg_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+if os.path.isfile(_alembic_cfg_path):
+    try:
+        _cfg = AlembicConfig(_alembic_cfg_path)
+        alembic_command.upgrade(_cfg, "head")
+    except Exception:
+        Base.metadata.create_all(bind=engine)
+else:
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Auth API")
 
