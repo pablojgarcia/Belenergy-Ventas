@@ -11,6 +11,6 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
     class Config:
-        env_file = os.path.join(os.path.dirname(__file__), "../.env")
+        env_file = os.path.join(os.path.dirname(__file__), "../../.env")
 
 settings = Settings()
