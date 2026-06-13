@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: apppassword
-      POSTGRES_DB: authdb
+      POSTGRES_USER: "${POSTGRES_USER:-appuser}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-apppassword}"
+      POSTGRES_DB: "${POSTGRES_DB:-authdb}"
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser -d authdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-authdb}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -20,7 +20,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://appuser:apppassword@db:5432/authdb
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-appuser}:${POSTGRES_PASSWORD:-apppassword}@db:${DB_PORT:-5432}/${POSTGRES_DB:-authdb}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET es obligatorio en produccion}"
       ODOO_URL: "${ODOO_URL:-https://dev.odoo.com}"
       ODOO_DB: "${ODOO_DB:-dev}"

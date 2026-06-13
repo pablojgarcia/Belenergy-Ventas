@@ -1,20 +1,41 @@
 import os
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
+
+from alembic.config import Config as AlembicConfig
+from alembic import command as alembic_command
 
 from .database import Base, engine, get_db
-from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
-from .dependencies import get_current_user
+from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, store_refresh_token, consume_refresh_token, generate_jti, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
+from .dependencies import get_current_user, get_current_admin
 from . import models, schemas
 from fastapi.responses import Response
 from .services.odoo_sync import sync_customers, sync_products
 from .services.odoo_sale import create_quotation
 
+
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'"
+        response.headers["Content-Security-Policy"] = csp
+        return response
 
 
 class SPAStaticFiles(StaticFiles):
@@ -26,12 +47,22 @@ class SPAStaticFiles(StaticFiles):
                 return await super().get_response("index.html", scope)
             raise
 
-# Crea tablas al iniciar (en producción usar Alembic)
-Base.metadata.create_all(bind=engine)
+# Migraciones con Alembic (fallback a create_all si no hay alembic.cfg)
+_alembic_cfg_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+if os.path.isfile(_alembic_cfg_path):
+    try:
+        _cfg = AlembicConfig(_alembic_cfg_path)
+        alembic_command.upgrade(_cfg, "head")
+    except Exception:
+        Base.metadata.create_all(bind=engine)
+else:
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Auth API")
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:8000", "http://localhost:3000", "https://belenergy-ventas.up.railway.app"]
+
+VALID_HOSTS = os.getenv("VALID_HOSTS", "").split(",") if os.getenv("VALID_HOSTS") else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,8 +72,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=VALID_HOSTS)
+
 @app.post("/sync/customers", status_code=200)
-def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
     sync_customers(db)
     return {"message": "Sincronización completada"}
 
@@ -53,7 +87,7 @@ def get_customers(db: Session = Depends(get_db), current_user: models.User = Dep
     ).all()
 
 @app.post("/sync/products", status_code=200)
-def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
     sync_products(db)
     return {"message": "Sincronización de productos completada"}
 
@@ -90,16 +124,54 @@ def get_product_image_endpoint(product_id: int, db: Session = Depends(get_db), c
         raise HTTPException(status_code=404, detail="Imagen no disponible")
     return Response(content=product.image, media_type="image/png")
 
+if os.getenv("DISABLE_RATE_LIMIT") != "true":
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
+    app.add_exception_handler(429, _rate_limit_exceeded_handler)
+else:
+    limiter = None
+
+def limit(rate: str):
+    if limiter is not None:
+        return limiter.limit(rate)
+    return lambda func: func
+
 @app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
-def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+@limit("5/minute")
+def register(request: Request, user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    first_user = db.query(models.User).count() == 0
+
+    if not first_user:
+        auth = request.headers.get("Authorization") or ""
+        if not auth.startswith("Bearer "):
+            raise HTTPException(403, "Se requieren permisos de administrador")
+        try:
+            token_data = decode_token(auth.removeprefix("Bearer "))
+        except Exception:
+            raise HTTPException(403, "Se requieren permisos de administrador")
+        if token_data.type != "access":
+            raise HTTPException(403, "Se requieren permisos de administrador")
+        admin = db.query(models.User).filter(
+            models.User.username == token_data.username,
+            models.User.role == "admin",
+        ).first()
+        if not admin:
+            raise HTTPException(403, "Se requieren permisos de administrador")
+
     if db.query(models.User).filter(models.User.email == user_in.email).first():
         raise HTTPException(400, "El email ya está registrado")
     if db.query(models.User).filter(models.User.username == user_in.username).first():
         raise HTTPException(400, "El nombre de usuario ya existe")
+
+    role = "admin" if first_user else user_in.role
+
     user = models.User(
         email=user_in.email,
         username=user_in.username,
         name=user_in.name,
+        role=role,
         hashed_password=hash_password(user_in.password),
     )
     db.add(user)
@@ -108,7 +180,8 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     return user
 
 @app.post("/auth/login", response_model=schemas.Token)
-def login(user_in: schemas.UserLogin, db: Session = Depends(get_db)):
+@limit("5/minute")
+def login(request: Request, user_in: schemas.UserLogin, db: Session = Depends(get_db)):
     user = authenticate_user(db, user_in.username, user_in.password)
     if not user:
         raise HTTPException(
@@ -119,9 +192,17 @@ def login(user_in: schemas.UserLogin, db: Session = Depends(get_db)):
         data={"sub": user.username},
         expires_delta=timedelta(minutes=EXPIRE_MINS),
     )
+    jti = generate_jti()
     refresh_token = create_refresh_token(
         data={"sub": user.username},
         expires_delta=timedelta(days=REFRESH_EXPIRE_DAYS),
+        jti=jti,
+    )
+    store_refresh_token(
+        db,
+        user_id=user.id,
+        jti=jti,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_EXPIRE_DAYS),
     )
     return {
         "access_token": access_token,
@@ -129,8 +210,10 @@ def login(user_in: schemas.UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
     }
 
+
 @app.post("/auth/refresh", response_model=schemas.Token)
-def refresh(token_in: schemas.TokenRefresh, db: Session = Depends(get_db)):
+@limit("5/minute")
+def refresh(request: Request, token_in: schemas.TokenRefresh, db: Session = Depends(get_db)):
     try:
         token_data = decode_token(token_in.refresh_token)
     except Exception:
@@ -143,6 +226,12 @@ def refresh(token_in: schemas.TokenRefresh, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tipo de token incorrecto",
+        )
+
+    if not token_data.jti or not consume_refresh_token(db, token_data.jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token ya utilizado o inválido",
         )
 
     user = db.query(models.User).filter(
@@ -158,15 +247,24 @@ def refresh(token_in: schemas.TokenRefresh, db: Session = Depends(get_db)):
         data={"sub": user.username},
         expires_delta=timedelta(minutes=EXPIRE_MINS),
     )
+    jti = generate_jti()
     refresh_token = create_refresh_token(
         data={"sub": user.username},
         expires_delta=timedelta(days=REFRESH_EXPIRE_DAYS),
+        jti=jti,
+    )
+    store_refresh_token(
+        db,
+        user_id=user.id,
+        jti=jti,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_EXPIRE_DAYS),
     )
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
     }
+
 
 @app.get("/auth/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(get_current_user)):
