@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime, timezone
 
@@ -43,8 +44,15 @@ class SPAStaticFiles(StaticFiles):
                 return await super().get_response("index.html", scope)
             raise
 
-# Crea tablas al iniciar (en producción usar Alembic)
+# Crea tablas al iniciar + migraciones livianas
 Base.metadata.create_all(bind=engine)
+
+inspector = inspect(engine)
+if "users" in inspector.get_table_names():
+    cols = [c["name"] for c in inspector.get_columns("users")]
+    if "role" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'vendedor'"))
 
 app = FastAPI(title="Auth API")
 
