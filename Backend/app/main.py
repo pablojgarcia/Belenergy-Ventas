@@ -33,7 +33,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'"
+        csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://www.gstatic.com; connect-src 'self' https://www.gstatic.com https://fonts.gstatic.com"
         response.headers["Content-Security-Policy"] = csp
         return response
 
@@ -58,11 +58,49 @@ if os.path.isfile(_alembic_cfg_path):
 else:
     Base.metadata.create_all(bind=engine)
 
+# Migraciones livianas para columnas faltantes en DB existentes
+inspector = inspect(engine)
+if "users" in inspector.get_table_names():
+    cols = [c["name"] for c in inspector.get_columns("users")]
+    if "role" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'vendedor'"))
+
 app = FastAPI(title="Auth API")
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:8000", "http://localhost:3000", "https://belenergy-ventas.up.railway.app"]
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:8000", "http://localhost:3000", "https://belenergy-ventas.up.railway.app", "https://solarapp-production-e35a.up.railway.app"]
 
 VALID_HOSTS = os.getenv("VALID_HOSTS", "").split(",") if os.getenv("VALID_HOSTS") else ["*"]
+
+# Seed: asegurar que existe al menos un admin
+_seed_db = next(get_db())
+try:
+    _admin_exists = _seed_db.query(models.User).filter(models.User.role == "admin").count() > 0
+    if not _admin_exists:
+        _first = _seed_db.query(models.User).order_by(models.User.id).first()
+        if _first:
+            _first.role = "admin"
+            _first.hashed_password = hash_password("admin123")
+            _seed_db.commit()
+        _admin_user = _seed_db.query(models.User).filter(models.User.username == "admin").first()
+        if _admin_user:
+            _admin_user.role = "admin"
+            _admin_user.hashed_password = hash_password("admin123")
+            _seed_db.commit()
+        else:
+            _admin = models.User(
+                email="admin@belenergy.com",
+                username="admin",
+                name="Admin",
+                role="admin",
+                hashed_password=hash_password("admin123"),
+            )
+            _seed_db.add(_admin)
+            _seed_db.commit()
+except Exception as e:
+    print(f"Seed error: {e}")
+finally:
+    _seed_db.close()
 
 app.add_middleware(
     CORSMiddleware,
