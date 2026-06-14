@@ -5,21 +5,29 @@ def test_health_endpoint(api_request_context):
 
 
 def test_register_and_login(api_request_context):
-    email = "e2e@test.com"
-    username = "e2euser"
-    password = "test123"
+    e2e_email = "e2e@test.com"
+    e2e_user = "e2euser"
+    e2e_pass = "test123"
 
-    resp = api_request_context.post("/auth/register", data={
-        "email": email,
-        "username": username,
-        "name": "E2E User",
-        "password": password,
+    resp = api_request_context.post("/auth/login", data={
+        "username": "admin",
+        "password": "admin123",
     })
+    assert resp.status == 200
+    token = resp.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = api_request_context.post("/auth/register", data={
+        "email": e2e_email,
+        "username": e2e_user,
+        "name": "E2E User",
+        "password": e2e_pass,
+    }, headers=headers)
     assert resp.status == 201
 
     resp = api_request_context.post("/auth/login", data={
-        "username": username,
-        "password": password,
+        "username": e2e_user,
+        "password": e2e_pass,
     })
     assert resp.status == 200
     data = resp.json()
