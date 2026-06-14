@@ -1,1 +1,0 @@
- /Users/pablogarcia/Projects/solarapp/build/56a503fa09ae96c0bf311fc7788a5955/dart_build_result.json:  /Users/pablogarcia/Installers/flutter/bin/cache/dart-sdk/version /Users/pablogarcia/Projects/solarapp/.dart_tool/package_config.json /Users/pablogarcia/Projects/solarapp/pubspec.yaml
