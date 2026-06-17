@@ -2,73 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:dio/dio.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
-import '../widgets/menu_card.dart';
 import '../widgets/stat_card.dart';
+import '../services/api_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static final List<_MenuItem> _menuItems = [
-    const _MenuItem(
-      icon: Icons.people_alt_rounded,
-      label: 'Clientes',
-      subtitle: 'Cartera de clientes',
-      color: Color(0xFF2D9CDB),
-      route: '/customers',
-    ),
-    const _MenuItem(
-      icon: Icons.bolt_rounded,
-      label: 'Presupuestos',
-      subtitle: 'Crear y gestionar',
-      color: Color(0xFF5E60CE),
-      route: '/orders',
-    ),
-    const _MenuItem(
-      icon: Icons.solar_power_rounded,
-      label: 'Productos',
-      subtitle: 'Catálogo FV',
-      color: Color(0xFFF4A900),
-      route: '/products',
-    ),
-    const _MenuItem(
-      icon: Icons.receipt_long_rounded,
-      label: 'Pedidos',
-      subtitle: 'Órdenes activas',
-      color: Color(0xFF27AE60),
-      route: '/orders',
-    ),
-    /* const _MenuItem(
-      icon: Icons.bar_chart_rounded,
-      label: 'Reportes',
-      subtitle: 'Ventas y métricas',
-      color: Color(0xFFEB5757),
-      route: '/reportes',
-    ),
-    const _MenuItem(
-      icon: Icons.inventory_2_rounded,
-      label: 'Stock',
-      subtitle: 'Inventario Odoo',
-      color: Color(0xFF6FCF97),
-      route: '/stock',
-    ),
-    const _MenuItem(
-      icon: Icons.build_circle_rounded,
-      label: 'Instalaciones',
-      subtitle: 'Proyectos en curso',
-      color: Color(0xFFF2994A),
-      route: '/instalaciones',
-    ),
-    const _MenuItem(
-      icon: Icons.support_agent_rounded,
-      label: 'Soporte',
-      subtitle: 'Post-venta',
-      color: Color(0xFF9B51E0),
-      route: '/soporte',
-    ),*/
-  ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _clientCount = 0;
+  int _orderCount = 0;
+  int _productCount = 0;
+  bool _loadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final api = context.read<ApiService>();
+      final clients = await api.getCustomers();
+      final orders = await api.getOrders();
+      final products = await api.getProducts();
+      if (mounted) {
+        setState(() {
+          _clientCount = clients.length;
+          _orderCount = orders.length;
+          _productCount = products.length;
+          _loadingStats = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingStats = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +56,6 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // ── App Bar ──────────────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 140,
             floating: false,
@@ -87,8 +63,7 @@ class HomeScreen extends StatelessWidget {
             backgroundColor: AppColors.primary,
             actions: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined,
-                    color: Colors.white),
+                icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                 onPressed: () {},
               ),
               _UserAvatar(user: user, onLogout: () => _logout(context, auth)),
@@ -112,19 +87,12 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Text(
                         _greeting(),
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         user?.name ?? 'Usuario',
-                        style: GoogleFonts.inter(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                        style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                     ],
                   ),
@@ -132,68 +100,61 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // ── Stats ─────────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Resumen del mes',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _StatsSection(),
-                ],
+              child: Text(
+                'Resumen',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               ),
             ),
           ),
-
-          // ── Menu grid ────────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text(
-                'Módulos',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              child: _loadingStats
+                  ? const Center(child: CircularProgressIndicator())
+                  : _StatsSection(
+                      clientCount: _clientCount,
+                      orderCount: _orderCount,
+                      productCount: _productCount,
+                    ),
+            ),
+          ),
+          if (!context.isDesktop) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(
+                  'Acceso rápido',
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                 ),
               ),
             ),
-          ),
-
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: Responsive.gridColumns(context),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.15,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final item = _menuItems[index];
-                  return MenuCard(
-                    icon: item.icon,
-                    label: item.label,
-                    subtitle: item.subtitle,
-                    color: item.color,
-                    onTap: () => _navigateTo(context, item.route),
-                  );
-                },
-                childCount: _menuItems.length,
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: Responsive.gridColumns(context),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.15,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = _quickItems[index];
+                    return _QuickCard(
+                      icon: item.icon,
+                      label: item.label,
+                      color: item.color,
+                      onTap: () => _navigateTo(context, item.route),
+                    );
+                  },
+                  childCount: _quickItems.length,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -215,21 +176,13 @@ class HomeScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Cerrar sesión',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-        content: Text('¿Estás seguro que querés salir?',
-            style: GoogleFonts.inter()),
+        title: Text('Cerrar sesión', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        content: Text('¿Estás seguro que querés salir?', style: GoogleFonts.inter()),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(80, 40),
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 40), backgroundColor: AppColors.error),
             child: const Text('Salir'),
           ),
         ],
@@ -238,9 +191,7 @@ class HomeScreen extends StatelessWidget {
 
     if (confirm == true) {
       await auth.logout();
-      if (context.mounted) {
-        context.go('/login');
-      }
+      if (context.mounted) context.go('/login');
     }
   }
 }
@@ -248,19 +199,23 @@ class HomeScreen extends StatelessWidget {
 class _UserAvatar extends StatelessWidget {
   final dynamic user;
   final VoidCallback onLogout;
-
   const _UserAvatar({required this.user, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => showModalBottomSheet(
-        context: context,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (_) => _ProfileSheet(user: user, onLogout: onLogout),
-      ),
+      onTap: () => context.isDesktop
+          ? showDialog(
+              context: context,
+              builder: (_) => _ProfileDialog(user: user, onLogout: onLogout),
+            )
+          : showModalBottomSheet(
+              context: context,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (_) => _ProfileSheet(user: user, onLogout: onLogout),
+            ),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         width: 36,
@@ -273,11 +228,7 @@ class _UserAvatar extends StatelessWidget {
         child: Center(
           child: Text(
             user?.initials ?? '?',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ),
       ),
@@ -285,138 +236,377 @@ class _UserAvatar extends StatelessWidget {
   }
 }
 
-class _ProfileSheet extends StatelessWidget {
+class _ProfileDialog extends StatefulWidget {
   final dynamic user;
   final VoidCallback onLogout;
+  const _ProfileDialog({required this.user, required this.onLogout});
 
-  const _ProfileSheet({required this.user, required this.onLogout});
+  @override
+  State<_ProfileDialog> createState() => _ProfileDialogState();
+}
+
+class _ProfileDialogState extends State<_ProfileDialog> {
+  bool _syncingCustomers = false;
+  bool _syncingProducts = false;
+
+  Future<void> _syncCustomers() async {
+    setState(() => _syncingCustomers = true);
+    try {
+      await context.read<ApiService>().syncCustomers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Clientes sincronizados correctamente')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar clientes';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _syncingCustomers = false);
+    }
+  }
+
+  Future<void> _syncProducts() async {
+    setState(() => _syncingProducts = true);
+    try {
+      await context.read<ApiService>().syncProducts();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Productos sincronizados correctamente')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar productos';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _syncingProducts = false);
+    }
+  }
+
+  String _extractError(DioException e) {
+    try {
+      return e.response?.data?['detail'] ?? 'Error de conexión';
+    } catch (_) {
+      return 'Error de conexión';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.divider,
-              borderRadius: BorderRadius.circular(2),
+    final isAdmin = widget.user?.role == 'admin';
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 36,
+              backgroundColor: AppColors.primary,
+              child: Text(widget.user?.initials ?? '?', style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
-          ),
-          const SizedBox(height: 20),
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: AppColors.primary,
-            child: Text(
-              user?.initials ?? '?',
-              style: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white),
+            const SizedBox(height: 12),
+            Text(widget.user?.name ?? '', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600)),
+            Text(widget.user?.email ?? '', style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text(widget.user?.role ?? '', style: GoogleFonts.inter(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(user?.name ?? '',
-              style: GoogleFonts.inter(
-                  fontSize: 18, fontWeight: FontWeight.w600)),
-          Text(user?.email ?? '',
-              style: GoogleFonts.inter(
-                  fontSize: 14, color: AppColors.textSecondary)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
+            if (isAdmin) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              Text('Administración', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SyncButton(
+                      label: 'Sincronizar clientes',
+                      icon: Icons.sync_alt,
+                      loading: _syncingCustomers,
+                      onPressed: _syncCustomers,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SyncButton(
+                      label: 'Sincronizar productos',
+                      icon: Icons.sync,
+                      loading: _syncingProducts,
+                      onPressed: _syncProducts,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () { Navigator.pop(context); widget.onLogout(); },
+              icon: const Icon(Icons.logout, color: AppColors.error),
+              label: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-            child: Text(
-              user?.role ?? '',
-              style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500),
-            ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              onLogout();
-            },
-            icon: const Icon(Icons.logout, color: AppColors.error),
-            label: Text('Cerrar sesión',
-                style: GoogleFonts.inter(color: AppColors.error)),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-              side: BorderSide(color: AppColors.error.withOpacity(0.3)),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MenuItem {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final String route;
+class _ProfileSheet extends StatefulWidget {
+  final dynamic user;
+  final VoidCallback onLogout;
+  const _ProfileSheet({required this.user, required this.onLogout});
 
-  const _MenuItem({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.route,
-  });
+  @override
+  State<_ProfileSheet> createState() => _ProfileSheetState();
 }
 
-const _statCards = [
-  StatCard(
-    label: 'Presupuestos',
-    value: '12',
-    delta: '+3',
-    positive: true,
-    icon: Icons.bolt_rounded,
-    iconColor: Color(0xFF5E60CE),
-  ),
-  StatCard(
-    label: 'kWp vendidos',
-    value: '48.5',
-    delta: '+12%',
-    positive: true,
-    icon: Icons.solar_power_rounded,
-    iconColor: AppColors.accent,
-  ),
-  StatCard(
-    label: 'Pedidos pend.',
-    value: '5',
-    delta: '-2',
-    positive: false,
-    icon: Icons.receipt_long_rounded,
-    iconColor: Color(0xFFEB5757),
-  ),
-];
+class _ProfileSheetState extends State<_ProfileSheet> {
+  bool _syncingCustomers = false;
+  bool _syncingProducts = false;
 
-class _StatsSection extends StatelessWidget {
-  const _StatsSection();
+  Future<void> _syncCustomers() async {
+    setState(() => _syncingCustomers = true);
+    try {
+      await context.read<ApiService>().syncCustomers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Clientes sincronizados correctamente')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar clientes';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _syncingCustomers = false);
+    }
+  }
+
+  Future<void> _syncProducts() async {
+    setState(() => _syncingProducts = true);
+    try {
+      await context.read<ApiService>().syncProducts();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Productos sincronizados correctamente')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar productos';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _syncingProducts = false);
+    }
+  }
+
+  String _extractError(DioException e) {
+    try {
+      return e.response?.data?['detail'] ?? 'Error de conexión';
+    } catch (_) {
+      return 'Error de conexión';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = widget.user?.role == 'admin';
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            CircleAvatar(
+              radius: 36,
+              backgroundColor: AppColors.primary,
+              child: Text(widget.user?.initials ?? '?', style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+            const SizedBox(height: 12),
+            Text(widget.user?.name ?? '', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600)),
+            Text(widget.user?.email ?? '', style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text(widget.user?.role ?? '', style: GoogleFonts.inter(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+            ),
+            if (isAdmin) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              Text('Administración', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SyncButton(
+                      label: 'Sincronizar clientes',
+                      icon: Icons.sync_alt,
+                      loading: _syncingCustomers,
+                      onPressed: _syncCustomers,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SyncButton(
+                      label: 'Sincronizar productos',
+                      icon: Icons.sync,
+                      loading: _syncingProducts,
+                      onPressed: _syncProducts,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () { Navigator.pop(context); widget.onLogout(); },
+              icon: const Icon(Icons.logout, color: AppColors.error),
+              label: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SyncButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _SyncButton({
+    required this.label,
+    required this.icon,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 80,
+      child: OutlinedButton(
+        onPressed: loading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+        ),
+        child: loading
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppColors.primary, size: 22),
+                  const SizedBox(height: 6),
+                  Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _QuickItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String route;
+  const _QuickItem({required this.icon, required this.label, required this.color, required this.route});
+}
+
+final _quickItems = [
+  _QuickItem(icon: Icons.people_alt_rounded, label: 'Clientes', color: const Color(0xFF2D9CDB), route: '/customers'),
+  _QuickItem(icon: Icons.bolt_rounded, label: 'Presupuestos', color: const Color(0xFF5E60CE), route: '/orders'),
+  _QuickItem(icon: Icons.solar_power_rounded, label: 'Productos', color: const Color(0xFFF4A900), route: '/products'),
+  _QuickItem(icon: Icons.receipt_long_rounded, label: 'Pedidos', color: const Color(0xFF27AE60), route: '/orders'),
+];
+
+class _QuickCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickCard({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(height: 10),
+              Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsSection extends StatelessWidget {
+  final int clientCount;
+  final int orderCount;
+  final int productCount;
+
+  const _StatsSection({required this.clientCount, required this.orderCount, required this.productCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = <StatCard>[
+      StatCard(label: 'Clientes', value: clientCount.toString(), delta: '', positive: true, icon: Icons.people_alt_rounded, iconColor: const Color(0xFF2D9CDB)),
+      StatCard(label: 'Presupuestos', value: orderCount.toString(), delta: '', positive: true, icon: Icons.receipt_long_rounded, iconColor: const Color(0xFF5E60CE)),
+      StatCard(label: 'Productos', value: productCount.toString(), delta: '', positive: true, icon: Icons.solar_power_rounded, iconColor: AppColors.accent),
+    ];
+
     if (context.isPhone) {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
         child: Row(
-          children: _statCards
+          children: cards
               .map((card) => Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: SizedBox(width: 140, child: card),
@@ -430,7 +620,7 @@ class _StatsSection extends StatelessWidget {
       return Wrap(
         spacing: 12,
         runSpacing: 12,
-        children: _statCards
+        children: cards
             .map((card) => SizedBox(
                   width: (MediaQuery.of(context).size.width - 44) / 2,
                   child: card,
@@ -440,7 +630,7 @@ class _StatsSection extends StatelessWidget {
     }
 
     return Row(
-      children: _statCards
+      children: cards
           .map((card) => Expanded(child: Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: card,

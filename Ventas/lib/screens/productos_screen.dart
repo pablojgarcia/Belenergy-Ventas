@@ -17,6 +17,10 @@ class ProductosScreen extends StatefulWidget {
 
 class _ProductosScreenState extends State<ProductosScreen> {
   late Future<List<Product>> _productsFuture;
+  List<Product> _allProducts = [];
+  List<Product> _filteredProducts = [];
+  final _searchController = TextEditingController();
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -24,10 +28,39 @@ class _ProductosScreenState extends State<ProductosScreen> {
     _productsFuture = _fetchProducts();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<List<Product>> _fetchProducts() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
     final data = await apiService.getProducts();
-    return data.map((json) => Product.fromJson(json)).toList();
+    final products = data.map((json) => Product.fromJson(json)).toList();
+    if (mounted) {
+      setState(() {
+        _allProducts = products;
+        _filteredProducts = products;
+        _loaded = true;
+      });
+    }
+    return products;
+  }
+
+  void _filterProducts(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredProducts = _allProducts;
+      } else {
+        final q = query.toLowerCase();
+        _filteredProducts = _allProducts.where((p) =>
+          p.name.toLowerCase().contains(q) ||
+          p.defaultCode.toLowerCase().contains(q) ||
+          p.categId.toLowerCase().contains(q)
+        ).toList();
+      }
+    });
   }
 
   @override
@@ -44,6 +77,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() {
+                _loaded = false;
                 _productsFuture = _fetchProducts();
               });
             },
@@ -53,11 +87,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
       body: FutureBuilder<List<Product>>(
         future: _productsFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !_loaded) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (snapshot.hasError) {
+          if (snapshot.hasError && !_loaded) {
             return Center(
               child: Text(
                 'Error al cargar productos',
@@ -66,9 +100,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             );
           }
 
-          final products = snapshot.data ?? [];
-
-          if (products.isEmpty) {
+          if (_filteredProducts.isEmpty && _loaded) {
             return Center(
               child: Text(
                 'No se encontraron productos',
@@ -77,9 +109,81 @@ class _ProductosScreenState extends State<ProductosScreen> {
             );
           }
 
-          final columns = Responsive.value(context, mobile: 1, tablet: 2, desktop: 3);
+          if (context.isDesktop) {
+            return _buildDesktopTable();
+          }
 
-          return GridView.builder(
+          return _buildMobileGrid();
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopTable() {
+    return Column(
+      children: [
+        _buildSearchBar(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(AppColors.background),
+              columnSpacing: 24,
+              columns: const [
+                DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Precio', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Categoría', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Tipo', style: TextStyle(fontWeight: FontWeight.w600))),
+              ],
+              rows: _filteredProducts.map((p) => DataRow(cells: [
+                DataCell(_ProductThumbnail(productId: p.id)),
+                DataCell(Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                DataCell(Text(p.defaultCode)),
+                DataCell(Text(p.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w600))),
+                DataCell(Text(p.categId.isEmpty ? '—' : p.categId)),
+                DataCell(_buildTypeChip(p.type)),
+              ])).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _filterProducts,
+        decoration: InputDecoration(
+          hintText: 'Buscar productos...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    _filterProducts('');
+                  },
+                )
+              : null,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileGrid() {
+    final columns = Responsive.value(context, mobile: 1, tablet: 2, desktop: 3);
+    return Column(
+      children: [
+        _buildSearchBar(),
+        Expanded(
+          child: GridView.builder(
             padding: const EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
@@ -87,28 +191,36 @@ class _ProductosScreenState extends State<ProductosScreen> {
               mainAxisSpacing: 12,
               childAspectRatio: columns == 1 ? 2.6 : 1.3,
             ),
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              return _ProductCard(product: products[index]);
-            },
-          );
-        },
-      ),
+            itemCount: _filteredProducts.length,
+            itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index]),
+          ),
+        ),
+      ],
     );
   }
 
+  Widget _buildTypeChip(String type) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        _typeLabel(type),
+        style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
 }
 
 String _typeLabel(String type) {
   switch (type) {
-    case 'product':
-      return 'Producto';
-    case 'consu':
-      return 'Consumible';
-    case 'service':
-      return 'Servicio';
-    default:
-      return type;
+    case 'product': return 'Producto';
+    case 'consu': return 'Consumible';
+    case 'service': return 'Servicio';
+    default: return type;
   }
 }
 
@@ -138,6 +250,61 @@ Widget _infoChip(IconData icon, String label) {
   );
 }
 
+class _ProductThumbnail extends StatefulWidget {
+  final int productId;
+  const _ProductThumbnail({required this.productId});
+
+  @override
+  State<_ProductThumbnail> createState() => _ProductThumbnailState();
+}
+
+class _ProductThumbnailState extends State<_ProductThumbnail> {
+  Uint8List? _imageBytes;
+  bool _loadingImage = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+    try {
+      final api = context.read<ApiService>();
+      final response = await api.dio.get(
+        '/products/${widget.productId}/image',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      if (mounted) setState(() { _imageBytes = response.data; _loadingImage = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingImage = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: _imageBytes != null
+            ? Image.memory(_imageBytes!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder())
+            : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: AppColors.accent.withOpacity(0.12),
+      child: _loadingImage
+          ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
+          : const Icon(Icons.solar_power_rounded, color: AppColors.accent, size: 20),
+    );
+  }
+}
+
 class _ProductCard extends StatefulWidget {
   final Product product;
   const _ProductCard({required this.product});
@@ -163,10 +330,7 @@ class _ProductCardState extends State<_ProductCard> {
         '/products/${widget.product.id}/image',
         options: Options(responseType: ResponseType.bytes),
       );
-      setState(() {
-        _imageBytes = response.data;
-        _loadingImage = false;
-      });
+      setState(() { _imageBytes = response.data; _loadingImage = false; });
     } catch (_) {
       setState(() => _loadingImage = false);
     }
@@ -202,13 +366,8 @@ class _ProductCardState extends State<_ProductCard> {
                     width: 64,
                     height: 64,
                     child: _imageBytes != null
-                        ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-                        : Container(
-                            color: AppColors.accent.withOpacity(0.12),
-                            child: _loadingImage
-                                ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                                : const Icon(Icons.solar_power_rounded, color: AppColors.accent, size: 28),
-                          ),
+                        ? Image.memory(_imageBytes!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _cardPlaceholder())
+                        : _cardPlaceholder(),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -218,20 +377,13 @@ class _ProductCardState extends State<_ProductCard> {
                     children: [
                       Text(
                         product.name,
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
+                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                       ),
                       if (product.defaultCode.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           product.defaultCode,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
+                          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
                     ],
@@ -239,11 +391,7 @@ class _ProductCardState extends State<_ProductCard> {
                 ),
                 Text(
                   product.formattedPrice,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
               ],
             ),
@@ -262,6 +410,15 @@ class _ProductCardState extends State<_ProductCard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _cardPlaceholder() {
+    return Container(
+      color: AppColors.accent.withOpacity(0.12),
+      child: _loadingImage
+          ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+          : const Icon(Icons.solar_power_rounded, color: AppColors.accent, size: 28),
     );
   }
 }

@@ -14,7 +14,7 @@ class ApiService {
     if (overrideBaseUrl != null) return overrideBaseUrl!;
     final apiUrl = const String.fromEnvironment('API_URL', defaultValue: '');
     if (apiUrl.isNotEmpty) return apiUrl;
-    if (kIsWeb) return '';
+    if (kIsWeb) return 'http://localhost:8000';
     return 'http://10.0.2.2:8000';
   }
 
@@ -127,6 +127,14 @@ class ApiService {
       debugPrint('Error fetching order: $e');
       rethrow;
     }
+  }
+
+  Future<void> syncCustomers() async {
+    await _dio.post('/sync/customers');
+  }
+
+  Future<void> syncProducts() async {
+    await _dio.post('/sync/products');
   }
 
   Future<void> saveToken(String token) async {

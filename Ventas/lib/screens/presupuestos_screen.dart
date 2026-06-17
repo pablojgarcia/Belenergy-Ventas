@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
 
 class PresupuestosScreen extends StatefulWidget {
   const PresupuestosScreen({super.key});
@@ -83,17 +84,90 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
               ),
             );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
-            itemBuilder: (context, i) => _OrderCard(
-              order: orders[i],
-              onTap: () => context.push('/orders/${orders[i]['id']}'),
-            ),
-          );
+
+          if (context.isDesktop) {
+            return _buildDesktopTable(orders);
+          }
+
+          return _buildMobileList(orders);
         },
       ),
     );
+  }
+
+  Widget _buildDesktopTable(List<Map<String, dynamic>> orders) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      child: DataTable(
+        headingRowColor: WidgetStateProperty.all(AppColors.background),
+        columnSpacing: 24,
+        columns: const [
+          DataColumn(label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.w600))),
+          DataColumn(label: Text('Monto', style: TextStyle(fontWeight: FontWeight.w600))),
+          DataColumn(label: Text('Estado', style: TextStyle(fontWeight: FontWeight.w600))),
+          DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
+        ],
+        rows: orders.map((o) {
+          final state = o['state'] as String? ?? '';
+          return DataRow(cells: [
+            DataCell(Text(o['client_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w500))),
+            DataCell(Text('\$${(o['amount_total'] ?? 0.0).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600))),
+            DataCell(_buildStateChip(state)),
+            DataCell(
+              TextButton(
+                onPressed: () => context.push('/orders/${o['id']}'),
+                child: const Text('Ver detalle'),
+              ),
+            ),
+          ]);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildMobileList(List<Map<String, dynamic>> orders) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: orders.length,
+      itemBuilder: (context, i) => _OrderCard(
+        order: orders[i],
+        onTap: () => context.push('/orders/${orders[i]['id']}'),
+      ),
+    );
+  }
+
+  Widget _buildStateChip(String state) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _stateColor(state).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        _stateLabel(state),
+        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _stateColor(state)),
+      ),
+    );
+  }
+
+  String _stateLabel(String state) {
+    switch (state) {
+      case 'draft': return 'Borrador';
+      case 'sent': return 'Enviado';
+      case 'sale': return 'Vendido';
+      case 'cancel': return 'Cancelado';
+      default: return state;
+    }
+  }
+
+  Color _stateColor(String state) {
+    switch (state) {
+      case 'draft': return Colors.orange;
+      case 'sent': return AppColors.primary;
+      case 'sale': return Colors.green;
+      case 'cancel': return Colors.red;
+      default: return AppColors.textSecondary;
+    }
   }
 }
 
@@ -119,10 +193,7 @@ class _OrderCard extends StatelessWidget {
         ),
         subtitle: Text(
           '\$${(order['amount_total'] ?? 0.0).toStringAsFixed(2)}',
-          style: GoogleFonts.inter(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
+          style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -132,11 +203,7 @@ class _OrderCard extends StatelessWidget {
           ),
           child: Text(
             stateLabel,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: stateColor,
-            ),
+            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: stateColor),
           ),
         ),
       ),

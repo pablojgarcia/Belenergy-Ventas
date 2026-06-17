@@ -6,6 +6,7 @@ import '../models/client_model.dart';
 import '../models/product_model.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
 
 class CrearPresupuestoScreen extends StatefulWidget {
   final Client client;
@@ -85,19 +86,13 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Presupuesto creado correctamente'),
-          backgroundColor: AppColors.primary,
-        ),
+        SnackBar(content: const Text('Presupuesto creado correctamente'), backgroundColor: AppColors.primary),
       );
       context.go('/orders');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -106,6 +101,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _buildForm();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -114,86 +110,111 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
         foregroundColor: AppColors.textPrimary,
         elevation: 1,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              widget.client.name,
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              widget.client.company,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción',
-                hintText: 'Ej. instalación solar residencial',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Productos',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+      body: context.isDesktop
+          ? Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: content),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 1,
+                    child: _buildClientCard(),
                   ),
-                ),
-                TextButton.icon(
-                  onPressed: _addProduct,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Agregar'),
-                ),
-              ],
-            ),
-            if (_lineItems.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: Text(
-                    'No hay productos agregados',
-                    style: GoogleFonts.inter(color: AppColors.textSecondary),
-                  ),
-                ),
+                ],
               ),
-            ..._lineItems.asMap().entries.map((entry) =>
-              _ProductLineCard(
-                index: entry.key,
-                item: entry.value,
-                onRemove: () => setState(() => _lineItems.removeAt(entry.key)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildTotal(),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Generar presupuesto'),
-            ),
+            )
+          : content,
+    );
+  }
+
+  Widget _buildClientCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Cliente', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          Text(widget.client.name, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700)),
+          if (widget.client.company.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(widget.client.company, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
           ],
-        ),
+          if (widget.client.email.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(children: [const Icon(Icons.email_outlined, size: 16, color: AppColors.textSecondary), const SizedBox(width: 8), Text(widget.client.email, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary))]),
+          ],
+          if (widget.client.phone.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(children: [const Icon(Icons.phone_outlined, size: 16, color: AppColors.textSecondary), const SizedBox(width: 8), Text(widget.client.phone, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary))]),
+          ],
+          if (widget.client.address.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(children: [const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textSecondary), const SizedBox(width: 8), Expanded(child: Text(widget.client.address, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)))]),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          if (!context.isDesktop) ...[
+            Text(widget.client.name, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text(widget.client.company, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 24),
+          ],
+          TextFormField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(
+              labelText: 'Descripción',
+              hintText: 'Ej. instalación solar residencial',
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Productos', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              TextButton.icon(
+                onPressed: _addProduct,
+                icon: const Icon(Icons.add),
+                label: const Text('Agregar'),
+              ),
+            ],
+          ),
+          if (_lineItems.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text('No hay productos agregados', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+              ),
+            ),
+          ..._lineItems.asMap().entries.map((entry) =>
+            _ProductLineCard(index: entry.key, item: entry.value, onRemove: () => setState(() => _lineItems.removeAt(entry.key))),
+          ),
+          const SizedBox(height: 20),
+          _buildTotal(),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            child: _loading
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Generar presupuesto'),
+          ),
+        ],
       ),
     );
   }
@@ -205,22 +226,8 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
     );
     return Row(
       children: [
-        Text(
-          'Total: ',
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        Text(
-          '\$${total.toStringAsFixed(2)}',
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-          ),
-        ),
+        Text('Total: ', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        Text('\$${total.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
       ],
     );
   }
@@ -242,11 +249,7 @@ class _ProductLineCard extends StatelessWidget {
   final _LineItem item;
   final VoidCallback onRemove;
 
-  const _ProductLineCard({
-    required this.index,
-    required this.item,
-    required this.onRemove,
-  });
+  const _ProductLineCard({required this.index, required this.item, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -260,18 +263,9 @@ class _ProductLineCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    item.product.name,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
+                  child: Text(item.product.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  onPressed: onRemove,
-                ),
+                IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onRemove),
               ],
             ),
             const SizedBox(height: 8),
@@ -280,33 +274,22 @@ class _ProductLineCard extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: item.quantityController,
-                    decoration: const InputDecoration(
-                      labelText: 'Cantidad',
-                      isDense: true,
-                    ),
+                    decoration: const InputDecoration(labelText: 'Cantidad', isDense: true),
                     keyboardType: TextInputType.number,
                     validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Precio: \$${item.product.listPrice.toStringAsFixed(2)}',
-                    style: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
+                  child: Text('Precio: \$${item.product.listPrice.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13)),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: item.discountController,
-              decoration: const InputDecoration(
-                labelText: 'Descuento (%)',
-                isDense: true,
-              ),
+              decoration: const InputDecoration(labelText: 'Descuento (%)', isDense: true),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -318,7 +301,6 @@ class _ProductLineCard extends StatelessWidget {
 
 class _ProductPicker extends StatelessWidget {
   final List<Product> products;
-
   const _ProductPicker({required this.products});
 
   @override
@@ -329,13 +311,7 @@ class _ProductPicker extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Seleccionar producto',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text('Seleccionar producto', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
@@ -346,13 +322,8 @@ class _ProductPicker extends StatelessWidget {
                   final p = products[i];
                   return ListTile(
                     title: Text(p.name, style: GoogleFonts.inter(fontSize: 14)),
-                    subtitle: Text(
-                      '\$${p.listPrice.toStringAsFixed(2)}',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    subtitle: Text('\$${p.listPrice.toStringAsFixed(2)}',
+                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
                     onTap: () => Navigator.pop(context, p),
                   );
                 },

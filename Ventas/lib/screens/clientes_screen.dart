@@ -16,6 +16,10 @@ class ClientesScreen extends StatefulWidget {
 
 class _ClientesScreenState extends State<ClientesScreen> {
   late Future<List<Client>> _clientsFuture;
+  List<Client> _allClients = [];
+  List<Client> _filteredClients = [];
+  final _searchController = TextEditingController();
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -23,10 +27,40 @@ class _ClientesScreenState extends State<ClientesScreen> {
     _clientsFuture = _fetchClients();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<List<Client>> _fetchClients() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
     final data = await apiService.getCustomers();
-    return data.map((json) => Client.fromJson(json)).toList();
+    final clients = data.map((json) => Client.fromJson(json)).toList();
+    if (mounted) {
+      setState(() {
+        _allClients = clients;
+        _filteredClients = clients;
+        _loaded = true;
+      });
+    }
+    return clients;
+  }
+
+  void _filterClients(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredClients = _allClients;
+      } else {
+        final q = query.toLowerCase();
+        _filteredClients = _allClients.where((c) =>
+          c.name.toLowerCase().contains(q) ||
+          c.email.toLowerCase().contains(q) ||
+          c.phone.toLowerCase().contains(q) ||
+          c.address.toLowerCase().contains(q)
+        ).toList();
+      }
+    });
   }
 
   @override
@@ -43,6 +77,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() {
+                _loaded = false;
                 _clientsFuture = _fetchClients();
               });
             },
@@ -52,11 +87,11 @@ class _ClientesScreenState extends State<ClientesScreen> {
       body: FutureBuilder<List<Client>>(
         future: _clientsFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !_loaded) {
             return const Center(child: CircularProgressIndicator());
           }
-          
-          if (snapshot.hasError) {
+
+          if (snapshot.hasError && !_loaded) {
             return Center(
               child: Text(
                 'Error al cargar clientes',
@@ -65,37 +100,107 @@ class _ClientesScreenState extends State<ClientesScreen> {
             );
           }
 
-          final clients = snapshot.data ?? [];
+          final empty = _filteredClients.isEmpty && _loaded;
 
-          if (clients.isEmpty) {
-            return Center(
-              child: Text(
-                'No se encontraron clientes',
-                style: GoogleFonts.inter(color: AppColors.textSecondary),
-              ),
+          if (context.isDesktop) {
+            return Column(
+              children: [
+                _buildSearchBar(),
+                Expanded(
+                  child: empty
+                      ? Center(
+                          child: Text(
+                            'No se encontraron clientes',
+                            style: GoogleFonts.inter(color: AppColors.textSecondary),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                          child: DataTable(
+                            headingRowColor: WidgetStateProperty.all(AppColors.background),
+                            columnSpacing: 24,
+                            columns: const [
+                              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
+                              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
+                              DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
+                              DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
+                              DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
+                            ],
+                            rows: _filteredClients.map((c) => DataRow(cells: [
+                              DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                              DataCell(Text(c.email)),
+                              DataCell(Text(c.phone)),
+                              DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
+                              DataCell(
+                                FilledButton.tonal(
+                                  onPressed: () => context.push('/customers/budget/create', extra: c),
+                                  style: FilledButton.styleFrom(minimumSize: const Size(0, 32)),
+                                  child: const Text('Presupuesto', style: TextStyle(fontSize: 12)),
+                                ),
+                              ),
+                            ])).toList(),
+                          ),
+                        ),
+                ),
+              ],
             );
           }
 
-          final columns = Responsive.value(context, mobile: 1, tablet: 2, desktop: 3);
-
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: columns == 1 ? 2.6 : 1.5,
-            ),
-            itemCount: clients.length,
-            itemBuilder: (context, index) {
-              final client = clients[index];
-              return _ClientCard(client: client);
-            },
+          return Column(
+            children: [
+              _buildSearchBar(),
+              Expanded(
+                child: empty
+                    ? Center(
+                        child: Text(
+                          'No se encontraron clientes',
+                          style: GoogleFonts.inter(color: AppColors.textSecondary),
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: Responsive.value(context, mobile: 1, tablet: 2, desktop: 3),
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: Responsive.value(context, mobile: 1, tablet: 2, desktop: 3) == 1 ? 2.6 : 1.5,
+                        ),
+                        itemCount: _filteredClients.length,
+                        itemBuilder: (context, index) => _ClientCard(client: _filteredClients[index]),
+                      ),
+              ),
+            ],
           );
         },
       ),
     );
   }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _filterClients,
+        decoration: InputDecoration(
+          hintText: 'Buscar clientes...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    _filterClients('');
+                  },
+                )
+              : null,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+    );
+  }
+
 }
 
 class _ClientCard extends StatelessWidget {
@@ -221,7 +326,7 @@ class _ClientCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: ElevatedButton(
                 onPressed: () {
-                  context.go('/budget/create', extra: client);
+                  context.push('/customers/budget/create', extra: client);
                 },
                 child: const Text('Crear presupuesto'),
               ),

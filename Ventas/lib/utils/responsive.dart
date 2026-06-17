@@ -5,15 +5,15 @@ class Responsive {
   static const double _tabletBreakpoint = 1024;
 
   static bool isPhone(BuildContext context) =>
-      MediaQuery.of(context).size.shortestSide < _phoneBreakpoint;
+      MediaQuery.of(context).size.width < _phoneBreakpoint;
 
   static bool isTablet(BuildContext context) {
-    final width = MediaQuery.of(context).size.shortestSide;
+    final width = MediaQuery.of(context).size.width;
     return width >= _phoneBreakpoint && width < _tabletBreakpoint;
   }
 
   static bool isDesktop(BuildContext context) =>
-      MediaQuery.of(context).size.shortestSide >= _tabletBreakpoint;
+      MediaQuery.of(context).size.width >= _tabletBreakpoint;
 
   static T value<T>(BuildContext context,
       {required T mobile, T? tablet, T? desktop}) {

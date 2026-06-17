@@ -8,6 +8,7 @@ import '../screens/productos_screen.dart';
 import '../screens/crear_presupuesto_screen.dart';
 import '../screens/presupuestos_screen.dart';
 import '../screens/presupuesto_detalle_screen.dart';
+import '../widgets/responsive_shell.dart';
 import '../models/client_model.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
@@ -39,31 +40,59 @@ GoRouter createRouter(AuthProvider authProvider) {
         path: '/login',
         builder: (_, __) => const LoginScreen(),
       ),
-      GoRoute(
-        path: '/home',
-        builder: (_, __) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/customers',
-        builder: (_, __) => const ClientesScreen(),
-      ),
-      GoRoute(
-        path: '/products',
-        builder: (_, __) => const ProductosScreen(),
-      ),
-      GoRoute(
-        path: '/budget/create',
-        builder: (_, state) =>
-            CrearPresupuestoScreen(client: state.extra as Client),
-      ),
-      GoRoute(
-        path: '/orders',
-        builder: (_, __) => const PresupuestosScreen(),
-      ),
-      GoRoute(
-        path: '/orders/:id',
-        builder: (_, state) =>
-            PresupuestoDetalleScreen(orderId: int.parse(state.pathParameters['id']!)),
+      StatefulShellRoute.indexedStack(
+        builder: (_, __, navigationShell) =>
+            ResponsiveShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (_, __) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/customers',
+                builder: (_, __) => const ClientesScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'budget/create',
+                    builder: (_, state) => CrearPresupuestoScreen(
+                      client: state.extra as Client,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/products',
+                builder: (_, __) => const ProductosScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/orders',
+                builder: (_, __) => const PresupuestosScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (_, state) => PresupuestoDetalleScreen(
+                      orderId: int.parse(state.pathParameters['id']!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );

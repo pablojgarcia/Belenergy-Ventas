@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_provider.dart';
 import 'services/api_service.dart';
 import 'utils/theme.dart';
-import 'utils/responsive.dart';
 import 'config/router.dart';
 
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -44,28 +42,6 @@ class SolarApp extends StatefulWidget {
 }
 
 class _SolarAppState extends State<SolarApp> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateOrientation());
-  }
-
-  void _updateOrientation() {
-    if (Responsive.isPhone(context)) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(

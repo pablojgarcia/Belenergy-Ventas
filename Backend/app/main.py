@@ -68,7 +68,11 @@ if "users" in inspector.get_table_names():
 
 app = FastAPI(title="Auth API")
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["http://localhost:8000", "http://localhost:3000", "https://belenergy-ventas.up.railway.app", "https://solarapp-production-e35a.up.railway.app"]
+CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
+if CORS_ORIGINS_ENV:
+    CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS_ENV.split(",")]
+else:
+    CORS_ORIGINS = ["*"]
 
 VALID_HOSTS = os.getenv("VALID_HOSTS", "").split(",") if os.getenv("VALID_HOSTS") else ["*"]
 
@@ -105,7 +109,7 @@ finally:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=(CORS_ORIGINS != ["*"]),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -115,8 +119,11 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=VALID_HOSTS)
 
 @app.post("/sync/customers", status_code=200)
 def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    sync_customers(db)
-    return {"message": "Sincronización completada"}
+    try:
+        sync_customers(db)
+        return {"message": "Sincronización completada"}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al sincronizar clientes: {str(e)}")
 
 @app.get("/customers", response_model=list[schemas.CustomerOut])
 def get_customers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -126,8 +133,11 @@ def get_customers(db: Session = Depends(get_db), current_user: models.User = Dep
 
 @app.post("/sync/products", status_code=200)
 def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    sync_products(db)
-    return {"message": "Sincronización de productos completada"}
+    try:
+        sync_products(db)
+        return {"message": "Sincronización de productos completada"}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al sincronizar productos: {str(e)}")
 
 @app.get("/products", response_model=list[schemas.ProductOut])
 def get_products(
