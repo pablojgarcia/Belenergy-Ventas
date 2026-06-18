@@ -7,6 +7,7 @@ import '../models/product_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
+import '../widgets/app_table.dart';
 
 class ProductosScreen extends StatefulWidget {
   const ProductosScreen({super.key});
@@ -124,27 +125,33 @@ class _ProductosScreenState extends State<ProductosScreen> {
       children: [
         _buildSearchBar(),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(AppColors.background),
-              columnSpacing: 24,
-              columns: const [
-                DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Precio', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Categoría', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Tipo', style: TextStyle(fontWeight: FontWeight.w600))),
-              ],
-              rows: _filteredProducts.map((p) => DataRow(cells: [
-                DataCell(_ProductThumbnail(productId: p.id)),
-                DataCell(Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                DataCell(Text(p.defaultCode)),
-                DataCell(Text(p.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w600))),
-                DataCell(Text(p.categId.isEmpty ? '—' : p.categId)),
-                DataCell(_buildTypeChip(p.type)),
-              ])).toList(),
+          child: ClipRect(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: AppTable<Product>(
+                columns: const [
+                  AppColumn(title: '', width: 56),
+                  AppColumn(title: 'Nombre', flex: 4),
+                  AppColumn(title: 'Código', width: 120),
+                  AppColumn(title: 'Precio', width: 100),
+                  AppColumn(title: 'Categoría', flex: 3),
+                  AppColumn(title: 'Tipo', width: 110),
+                ],
+                items: _filteredProducts,
+                rowHeight: 48,
+                headerColor: AppColors.background,
+                cellBuilder: (context, p, col) {
+                  switch (col) {
+                    case 0: return _ProductThumbnail(productId: p.id);
+                    case 1: return Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500));
+                    case 2: return Text(p.defaultCode);
+                    case 3: return Text(p.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w600));
+                    case 4: return Text(p.categId.isEmpty ? '—' : p.categId);
+                    case 5: return _buildTypeChip(p.type);
+                    default: return const SizedBox();
+                  }
+                },
+              ),
             ),
           ),
         ),
