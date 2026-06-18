@@ -130,7 +130,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
               child: AppTable<Product>(
                 columns: const [
-                  AppColumn(title: '', width: 56),
+                  AppColumn(title: '', width: 88),
                   AppColumn(title: 'Título', flex: 4),
                   AppColumn(title: 'Código', width: 160),
                   AppColumn(title: 'Precio', width: 100),
