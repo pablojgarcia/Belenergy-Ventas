@@ -126,12 +126,12 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             headingRowColor: WidgetStateProperty.all(AppColors.background),
                             columnSpacing: 24,
                             columns: const [
-                              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
-                              DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600))),
-                              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
-                              DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
-                              DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
-                              DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
+                              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(200)),
+                              DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(130)),
+                              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(200)),
+                              DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(140)),
+                              DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(200)),
+                              DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(182)),
                             ],
                             rows: _filteredClients.map((c) => DataRow(cells: [
                               DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
