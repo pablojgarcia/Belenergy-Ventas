@@ -39,6 +39,8 @@ class CustomerBase(BaseModel):
     name: str
     email: Optional[str] = None
     phone: Optional[str] = None
+    mobile: Optional[str] = None
+    company_name: Optional[str] = None
     street: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None

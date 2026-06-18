@@ -143,9 +143,9 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
           Text('Cliente', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
           Text(widget.client.name, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700)),
-          if (widget.client.company.isNotEmpty) ...[
+          if (widget.client.companyName.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(widget.client.company, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+            Text(widget.client.companyName, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
           ],
           if (widget.client.email.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -172,7 +172,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
         children: [
           if (!context.isDesktop) ...[
             Text(widget.client.name, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            Text(widget.client.company, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+            Text(widget.client.companyName, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 24),
           ],
           TextFormField(

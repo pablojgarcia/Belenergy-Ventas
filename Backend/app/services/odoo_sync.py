@@ -12,8 +12,9 @@ def sync_customers(db: Session):
     odoo = get_odoo_connection()
     
     fields = [
-        'id', 'name', 'email', 'phone', 'street', 'city', 
-        'state_id', 'zip', 'country_id', 'vat', 
+        'id', 'name', 'email', 'phone', 'mobile', 'company_name',
+        'street', 'city',
+        'state_id', 'zip', 'country_id', 'vat',
         'x_studio_vendedor_externo', 'website'
     ]
     
@@ -45,6 +46,8 @@ def sync_customers(db: Session):
             "name": str(p.get('name') or ""),
             "email": str(p.get('email') or ""),
             "phone": str(p.get('phone') or ""),
+            "mobile": str(p.get('mobile') or ""),
+            "company_name": str(p.get('company_name') or ""),
             "street": str(p.get('street') or ""),
             "city": str(p.get('city') or ""),
             "state": str(p.get('state_id')[1] if p.get('state_id') else ""),

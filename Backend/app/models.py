@@ -22,6 +22,8 @@ class Customer(Base):
     name = Column(String, nullable=False)
     email = Column(String, index=True)
     phone = Column(String)
+    mobile = Column(String)
+    company_name = Column(String)
     street = Column(String)
     city = Column(String)
     state = Column(String)

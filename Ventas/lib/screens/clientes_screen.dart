@@ -254,10 +254,10 @@ class _ClientCard extends StatelessWidget {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      if (client.company.isNotEmpty) ...[
+                      if (client.companyName.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          client.company,
+                          client.companyName,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: AppColors.textSecondary,

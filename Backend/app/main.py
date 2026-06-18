@@ -55,6 +55,15 @@ if "users" in inspector.get_table_names():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'vendedor'"))
 
+if "customers" in inspector.get_table_names():
+    cust_cols = [c["name"] for c in inspector.get_columns("customers")]
+    if "mobile" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN mobile VARCHAR"))
+    if "company_name" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN company_name VARCHAR"))
+
 app = FastAPI(title="Auth API")
 
 CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")

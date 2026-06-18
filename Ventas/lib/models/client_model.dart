@@ -1,35 +1,54 @@
 class Client {
   final int id;
+  final int odooId;
   final String name;
-  final String company;
+  final String companyName;
+  final String vat;
   final String email;
   final String phone;
-  final String address;
+  final String mobile;
+  final String street;
+  final String city;
+  final String state;
+  final String zipCode;
+  final String country;
+  final String website;
   final String? salespersonEmail;
 
   Client({
     required this.id,
+    required this.odooId,
     required this.name,
-    this.company = '',
+    this.companyName = '',
+    this.vat = '',
     this.email = '',
     this.phone = '',
-    this.address = '',
+    this.mobile = '',
+    this.street = '',
+    this.city = '',
+    this.state = '',
+    this.zipCode = '',
+    this.country = '',
+    this.website = '',
     this.salespersonEmail,
   });
 
   factory Client.fromJson(Map<String, dynamic> json) {
     return Client(
-      id: json['odoo_id'] ?? 0,
+      id: json['id'] ?? 0,
+      odooId: json['odoo_id'] ?? 0,
       name: json['name'] ?? '',
-      company: json['vat'] ?? '',
+      companyName: json['company_name'] ?? '',
+      vat: json['vat'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
-      address: [
-        json['street'],
-        json['city'],
-        json['state'],
-        json['country']
-      ].where((e) => e != null && e.toString().isNotEmpty).join(', '),
+      mobile: json['mobile'] ?? '',
+      street: json['street'] ?? '',
+      city: json['city'] ?? '',
+      state: json['state'] ?? '',
+      zipCode: json['zip'] ?? '',
+      country: json['country'] ?? '',
+      website: json['website'] ?? '',
       salespersonEmail: json['salesperson_id'],
     );
   }
@@ -42,7 +61,12 @@ class Client {
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
-  int get odooId => id;
-
-  static List<Client> sampleClients() => [];
+  String get address {
+    return [
+      street,
+      city,
+      state,
+      country,
+    ].where((e) => e.isNotEmpty).join(', ');
+  }
 }
