@@ -19,6 +19,7 @@ class AppTable<T> extends StatelessWidget {
   final List<T> items;
   final Widget Function(BuildContext context, T item, int columnIndex) cellBuilder;
   final double rowHeight;
+  final double columnSpacing;
   final TextStyle? headerStyle;
   final TextStyle? cellStyle;
   final Color? headerColor;
@@ -31,6 +32,7 @@ class AppTable<T> extends StatelessWidget {
     required this.items,
     required this.cellBuilder,
     this.rowHeight = 48,
+    this.columnSpacing = 16,
     this.headerStyle,
     this.cellStyle,
     this.headerColor,
@@ -49,28 +51,38 @@ class AppTable<T> extends StatelessWidget {
     final hasFixedWidth = columns.any((c) => c.width != null);
     final hasFlex = columns.any((c) => c.flex != null);
     final totalFixed = columns.fold<double>(0, (s, c) => s + (c.width ?? 0));
+    final totalWidth = totalFixed + columnSpacing * (columns.length - 1);
     final flexSum = columns.fold<int>(0, (s, c) => s + (c.flex ?? 0));
 
     Widget buildHeader(double availW) {
       return Row(
-        children: columns.map((col) {
-          Widget cell = Text(col.title, style: hStyle, overflow: TextOverflow.ellipsis);
-          return _sizedCell(col, cell, availW, flexSum);
-        }).toList(),
+        children: [
+          for (int i = 0; i < columns.length; i++) ...[
+            if (i > 0) SizedBox(width: columnSpacing),
+            _sizedCell(columns[i], Text(columns[i].title, style: hStyle, overflow: TextOverflow.ellipsis), availW, flexSum),
+          ],
+        ],
       );
     }
 
     Widget buildRow(T item, double availW) {
       return Row(
-        children: List.generate(columns.length, (i) {
-          Widget cell = DefaultTextStyle(
-            style: cStyle,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            child: cellBuilder(context, item, i),
-          );
-          return _sizedCell(columns[i], cell, availW, flexSum);
-        }),
+        children: [
+          for (int i = 0; i < columns.length; i++) ...[
+            if (i > 0) SizedBox(width: columnSpacing),
+            _sizedCell(
+              columns[i],
+              DefaultTextStyle(
+                style: cStyle,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                child: cellBuilder(context, item, i),
+              ),
+              availW,
+              flexSum,
+            ),
+          ],
+        ],
       );
     }
 
@@ -114,8 +126,8 @@ class AppTable<T> extends StatelessWidget {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: totalFixed,
-          child: tableContent(totalFixed),
+          width: totalWidth,
+          child: tableContent(totalWidth),
         ),
       );
     }
