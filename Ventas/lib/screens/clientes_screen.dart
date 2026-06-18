@@ -380,21 +380,24 @@ class _ClientCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: () => onViewContact(client),
-                  child: const Text('Ver contacto'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    context.push('/customers/budget/create', extra: client);
-                  },
-                  child: const Text('Crear presupuesto'),
-                ),
-              ],
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => onViewContact(client),
+                    child: const Text('Ver contacto'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.push('/customers/budget/create', extra: client);
+                    },
+                    child: const Text('Crear presupuesto'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
