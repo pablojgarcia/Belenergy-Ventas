@@ -131,7 +131,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
                             DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
                             DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w600))),
                           ],
                           rows: _filteredClients.map((c) => DataRow(cells: [
                             DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
@@ -143,16 +143,26 @@ class _ClientesScreenState extends State<ClientesScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  FilledButton.tonal(
-                                    onPressed: () => context.push('/customers/budget/create', extra: c),
-                                    style: FilledButton.styleFrom(minimumSize: const Size(0, 32)),
-                                    child: const Text('Presupuesto', style: TextStyle(fontSize: 12)),
+                                  Tooltip(
+                                    message: 'Crear presupuesto',
+                                    child: InkWell(
+                                      onTap: () => context.push('/customers/budget/create', extra: c),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(6),
+                                        child: Icon(Icons.request_quote_outlined, size: 18, color: AppColors.primary),
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  OutlinedButton(
-                                    onPressed: () => _showContactDialog(c),
-                                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 32)),
-                                    child: const Text('Ver contacto', style: TextStyle(fontSize: 12)),
+                                  const SizedBox(width: 4),
+                                  Tooltip(
+                                    message: 'Ver contacto',
+                                    child: InkWell(
+                                      onTap: () => _showContactDialog(c),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(6),
+                                        child: Icon(Icons.contact_page_outlined, size: 18, color: AppColors.textSecondary),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
