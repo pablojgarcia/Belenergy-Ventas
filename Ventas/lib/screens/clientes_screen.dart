@@ -140,8 +140,10 @@ class _ClientesScreenState extends State<ClientesScreen> {
                               DataCell(Text(c.phone)),
                               DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
                               DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                   children: [
                                     FilledButton.tonal(
                                       onPressed: () => context.push('/customers/budget/create', extra: c),
@@ -165,6 +167,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                                   ],
                                 ),
                               ),
+                            ),
                             ])).toList(),
                           ),
                         ),
