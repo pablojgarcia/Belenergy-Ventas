@@ -130,7 +130,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
               child: AppTable<Product>(
                 columns: const [
-                  AppColumn(title: '', width: 88),
+                  AppColumn(title: '', width: 56),
                   AppColumn(title: 'Título', flex: 4),
                   AppColumn(title: 'Código', width: 160),
                   AppColumn(title: 'Precio', width: 100),
@@ -386,15 +386,13 @@ class _ProductCardState extends State<_ProductCard> {
               ],
             ),
             const SizedBox(height: 14),
-            Row(
+            OverflowBar(
+              spacing: 8,
               children: [
                 _infoChip(Icons.category_outlined, product.categId.isNotEmpty ? product.categId : 'Sin categoría'),
-                const SizedBox(width: 8),
                 _infoChip(Icons.inventory_2_outlined, _typeLabel(product.type)),
-                if (product.uomId.isNotEmpty) ...[
-                  const SizedBox(width: 8),
+                if (product.uomId.isNotEmpty)
                   _infoChip(Icons.straighten, product.uomId),
-                ],
               ],
             ),
           ],
