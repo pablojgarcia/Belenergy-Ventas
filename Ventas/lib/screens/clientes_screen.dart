@@ -121,10 +121,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           ),
                         )
                       : SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
+                          child: DataTable(
                             headingRowColor: WidgetStateProperty.all(AppColors.background),
                             columnSpacing: 24,
                             columns: const [
@@ -172,7 +171,6 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             ),
                             ])).toList(),
                           ),
-                        ),
                         ),
                 ),
               ],
