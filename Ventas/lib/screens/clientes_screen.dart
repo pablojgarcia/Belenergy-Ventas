@@ -173,18 +173,15 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           style: GoogleFonts.inter(color: AppColors.textSecondary),
                         ),
                       )
-                    : GridView.builder(
+                    : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: Responsive.value(context, mobile: 1, tablet: 2, desktop: 3),
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: Responsive.value(context, mobile: 1, tablet: 2, desktop: 3) == 1 ? 2.6 : 1.5,
-                        ),
                         itemCount: _filteredClients.length,
-                        itemBuilder: (context, index) => _ClientCard(
-                          client: _filteredClients[index],
-                          onViewContact: _showContactDialog,
+                        itemBuilder: (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _ClientCard(
+                            client: _filteredClients[index],
+                            onViewContact: _showContactDialog,
+                          ),
                         ),
                       ),
               ),
