@@ -58,7 +58,6 @@ class _ClientesScreenState extends State<ClientesScreen> {
           c.email.toLowerCase().contains(q) ||
           c.phone.toLowerCase().contains(q) ||
           c.cuit.toLowerCase().contains(q) ||
-          c.contactName.toLowerCase().contains(q) ||
           c.vendedorInterno.toLowerCase().contains(q) ||
           c.address.toLowerCase().contains(q)
         ).toList();

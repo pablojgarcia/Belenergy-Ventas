@@ -6,8 +6,6 @@ class Client {
   final String vat;
   final String cuit;
   final String vendedorInterno;
-  final String contactName;
-  final String contactEmail;
   final String email;
   final String phone;
   final String mobile;
@@ -27,8 +25,6 @@ class Client {
     this.vat = '',
     this.cuit = '',
     this.vendedorInterno = '',
-    this.contactName = '',
-    this.contactEmail = '',
     this.email = '',
     this.phone = '',
     this.mobile = '',
@@ -50,8 +46,6 @@ class Client {
       vat: json['vat'] ?? '',
       cuit: json['cuit'] ?? '',
       vendedorInterno: json['vendedor_interno'] ?? '',
-      contactName: json['contact_name'] ?? '',
-      contactEmail: json['contact_email'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       mobile: json['mobile'] ?? '',

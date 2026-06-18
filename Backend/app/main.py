@@ -69,12 +69,9 @@ if "customers" in inspector.get_table_names():
     if "vendedor_interno" not in cust_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE customers ADD COLUMN vendedor_interno VARCHAR"))
-    if "contact_name" not in cust_cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE customers ADD COLUMN contact_name VARCHAR"))
-    if "contact_email" not in cust_cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE customers ADD COLUMN contact_email VARCHAR"))
+
+if "contacts" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.Contact.__table__])
 
 app = FastAPI(title="Auth API")
 
@@ -140,6 +137,13 @@ def get_customers(db: Session = Depends(get_db), current_user: models.User = Dep
     return db.query(models.Customer).filter(
         models.Customer.salesperson_id.in_([current_user.email, current_user.name])
     ).all()
+
+@app.get("/customers/{customer_id}/contacts", response_model=list[schemas.ContactOut])
+def get_customer_contacts(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    return db.query(models.Contact).filter(models.Contact.customer_id == customer_id).all()
 
 @app.post("/sync/products", status_code=200)
 def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):

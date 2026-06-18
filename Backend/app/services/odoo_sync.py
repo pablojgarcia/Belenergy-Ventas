@@ -71,8 +71,6 @@ def sync_customers(db: Session):
             "vat": str(p.get('vat') or ""),
             "cuit": str(p.get('vat') or ""),
             "vendedor_interno": interno_val or "",
-            "contact_name": str(p.get('name') or ""),
-            "contact_email": str(p.get('email') or ""),
             "salesperson_id": salesperson_val,
             "website": str(p.get('website') or "")
         }
@@ -88,6 +86,56 @@ def sync_customers(db: Session):
     
     db.commit()
     print("Sincronización completada en la base de datos.")
+
+    # Sincronizar contactos (child_ids de cada partner)
+    print("Sincronizando contactos...")
+    partner_ids = [p['id'] for p in partners_data]
+    contact_fields = ['id', 'name', 'email', 'phone', 'parent_id']
+    contacts_data = odoo.env['res.partner'].search_read(
+        [('parent_id', 'in', partner_ids), ('type', '=', 'contact')],
+        contact_fields
+    )
+    print(f"Encontrados {len(contacts_data)} contactos.")
+
+    # Map odoo_id → local customer
+    odoo_to_customer = {c.odoo_id: c.id for c in db.query(models.Customer).all()}
+
+    for c in contacts_data:
+        parent = c.get('parent_id')
+        if not parent or not isinstance(parent, (list, tuple)):
+            continue
+        parent_odoo_id = parent[0]
+        local_customer_id = odoo_to_customer.get(parent_odoo_id)
+        if not local_customer_id:
+            continue
+
+        contact_data = {
+            "odoo_id": int(c['id']),
+            "customer_id": local_customer_id,
+            "name": str(c.get('name') or ""),
+            "email": str(c.get('email') or ""),
+            "phone": str(c.get('phone') or ""),
+        }
+
+        contact = db.query(models.Contact).filter(
+            models.Contact.odoo_id == c['id']
+        ).first()
+        if contact:
+            for key, value in contact_data.items():
+                setattr(contact, key, value)
+        else:
+            contact = models.Contact(**contact_data)
+            db.add(contact)
+
+    # Eliminar contactos locales que ya no existen en Odoo
+    synced_odoo_ids = {c['id'] for c in contacts_data if c.get('parent_id') and isinstance(c['parent_id'], (list, tuple))}
+    db.query(models.Contact).filter(
+        models.Contact.customer_id.in_(odoo_to_customer.values()),
+        ~models.Contact.odoo_id.in_(synced_odoo_ids),
+    ).delete(synchronize_session=False)
+
+    db.commit()
+    print("Sincronización de contactos completada.")
 
 def sync_products(db: Session):
     odoo = get_odoo_connection()

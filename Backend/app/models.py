@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text, ForeignKey
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -32,10 +32,19 @@ class Customer(Base):
     vat = Column(String)
     cuit = Column(String)
     vendedor_interno = Column(String)
-    contact_name = Column(String)
-    contact_email = Column(String)
     salesperson_id = Column(String)
     website = Column(String)
+
+
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    odoo_id = Column(Integer, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    name = Column(String, nullable=False)
+    email = Column(String)
+    phone = Column(String)
 
 class Product(Base):
     __tablename__ = "products"

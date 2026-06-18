@@ -87,6 +87,16 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getContacts(int customerId) async {
+    try {
+      final response = await _dio.get('/customers/$customerId/contacts');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching contacts: $e');
+      rethrow;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getProducts() async {
     try {
       final response = await _dio.get('/products');
