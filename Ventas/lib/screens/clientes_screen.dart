@@ -118,9 +118,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           ),
                         )
                       : SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                          scrollDirection: Axis.horizontal,
                           child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                             child: DataTable(
                             headingRowColor: WidgetStateProperty.all(AppColors.background),
                             columnSpacing: 24,
@@ -144,14 +144,22 @@ class _ClientesScreenState extends State<ClientesScreen> {
                                   children: [
                                     FilledButton.tonal(
                                       onPressed: () => context.push('/customers/budget/create', extra: c),
-                                      style: FilledButton.styleFrom(minimumSize: const Size(0, 32)),
-                                      child: const Text('Presupuesto', style: TextStyle(fontSize: 12)),
+                                      style: FilledButton.styleFrom(
+                                        minimumSize: const Size(0, 28),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        textStyle: const TextStyle(fontSize: 11),
+                                      ),
+                                      child: const Text('Presupuesto', style: TextStyle(fontSize: 11)),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 6),
                                     OutlinedButton(
                                       onPressed: () => _showContactDialog(c),
-                                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 32)),
-                                      child: const Text('Ver contacto', style: TextStyle(fontSize: 12)),
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size(0, 28),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        textStyle: const TextStyle(fontSize: 11),
+                                      ),
+                                      child: const Text('Ver contacto', style: TextStyle(fontSize: 11)),
                                     ),
                                   ],
                                 ),
