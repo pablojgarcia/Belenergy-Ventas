@@ -63,6 +63,18 @@ if "customers" in inspector.get_table_names():
     if "company_name" not in cust_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE customers ADD COLUMN company_name VARCHAR"))
+    if "cuit" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN cuit VARCHAR"))
+    if "vendedor_interno" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN vendedor_interno VARCHAR"))
+    if "contact_name" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN contact_name VARCHAR"))
+    if "contact_email" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN contact_email VARCHAR"))
 
 app = FastAPI(title="Auth API")
 

@@ -159,6 +159,14 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
             const SizedBox(height: 8),
             Row(children: [const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textSecondary), const SizedBox(width: 8), Expanded(child: Text(widget.client.address, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)))]),
           ],
+          if (widget.client.cuit.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(children: [const Icon(Icons.badge_outlined, size: 16, color: AppColors.textSecondary), const SizedBox(width: 8), Text('CUIT: ${widget.client.cuit}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary))]),
+          ],
+          if (widget.client.vendedorInterno.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(children: [const Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary), const SizedBox(width: 8), Expanded(child: Text('Vend. int.: ${widget.client.vendedorInterno}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)))]),
+          ],
         ],
       ),
     );

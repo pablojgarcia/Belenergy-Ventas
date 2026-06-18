@@ -57,6 +57,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
           c.name.toLowerCase().contains(q) ||
           c.email.toLowerCase().contains(q) ||
           c.phone.toLowerCase().contains(q) ||
+          c.cuit.toLowerCase().contains(q) ||
+          c.contactName.toLowerCase().contains(q) ||
+          c.vendedorInterno.toLowerCase().contains(q) ||
           c.address.toLowerCase().contains(q)
         ).toList();
       }
@@ -121,6 +124,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             columnSpacing: 24,
                             columns: const [
                               DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
+                              DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600))),
                               DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
                               DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
                               DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
@@ -128,6 +132,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             ],
                             rows: _filteredClients.map((c) => DataRow(cells: [
                               DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                              DataCell(Text(c.cuit)),
                               DataCell(Text(c.email)),
                               DataCell(Text(c.phone)),
                               DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
@@ -312,6 +317,40 @@ class _ClientCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       client.address,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (client.cuit.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.badge_outlined, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'CUIT: ${client.cuit}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (client.vendedorInterno.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Vend. int.: ${client.vendedorInterno}',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: AppColors.textSecondary,

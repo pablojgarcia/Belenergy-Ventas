@@ -30,6 +30,10 @@ class Customer(Base):
     zip = Column(String)
     country = Column(String)
     vat = Column(String)
+    cuit = Column(String)
+    vendedor_interno = Column(String)
+    contact_name = Column(String)
+    contact_email = Column(String)
     salesperson_id = Column(String)
     website = Column(String)
 

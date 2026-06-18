@@ -47,6 +47,10 @@ class CustomerBase(BaseModel):
     zip: Optional[str] = None
     country: Optional[str] = None
     vat: Optional[str] = None
+    cuit: Optional[str] = None
+    vendedor_interno: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
     salesperson_id: Optional[str] = None
     website: Optional[str] = None
 

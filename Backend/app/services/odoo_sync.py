@@ -14,7 +14,7 @@ def sync_customers(db: Session):
     fields = [
         'id', 'name', 'email', 'phone', 'mobile', 'company_name',
         'street', 'city',
-        'state_id', 'zip', 'country_id', 'vat',
+        'state_id', 'zip', 'country_id', 'vat', 'user_id',
         'x_studio_vendedor_externo', 'website'
     ]
     
@@ -23,10 +23,14 @@ def sync_customers(db: Session):
     print(f"Encontrados {len(partners_data)} clientes. Procesando...")
 
     vendedor_ids = set()
+    interno_ids = set()
     for p in partners_data:
         vendedor = p.get('x_studio_vendedor_externo')
         if vendedor and isinstance(vendedor, (list, tuple)):
             vendedor_ids.add(vendedor[0])
+        interno = p.get('user_id')
+        if interno and isinstance(interno, (list, tuple)):
+            interno_ids.add(interno[0])
 
     vendedores_map = {}
     if vendedor_ids:
@@ -34,11 +38,22 @@ def sync_customers(db: Session):
         for v in vendedores_info:
             vendedores_map[v['id']] = v['email'] or v['name'] or ""
 
+    internos_map = {}
+    if interno_ids:
+        internos_info = odoo.env['res.users'].read(list(interno_ids), ['name'])
+        for u in internos_info:
+            internos_map[u['id']] = u['name'] or ""
+
     for p in partners_data:
         vendedor = p.get('x_studio_vendedor_externo')
         salesperson_val = None
         if vendedor and isinstance(vendedor, (list, tuple)):
             salesperson_val = vendedores_map.get(vendedor[0])
+
+        interno = p.get('user_id')
+        interno_val = None
+        if interno and isinstance(interno, (list, tuple)):
+            interno_val = internos_map.get(interno[0])
         
         # Diccionario explícito
         customer_data = {
@@ -54,6 +69,10 @@ def sync_customers(db: Session):
             "zip": str(p.get('zip') or ""),
             "country": str(p.get('country_id')[1] if p.get('country_id') else ""),
             "vat": str(p.get('vat') or ""),
+            "cuit": str(p.get('vat') or ""),
+            "vendedor_interno": interno_val or "",
+            "contact_name": str(p.get('name') or ""),
+            "contact_email": str(p.get('email') or ""),
             "salesperson_id": salesperson_val,
             "website": str(p.get('website') or "")
         }
