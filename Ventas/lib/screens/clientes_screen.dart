@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/client_model.dart';
+import '../models/contact_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
@@ -136,10 +137,21 @@ class _ClientesScreenState extends State<ClientesScreen> {
                               DataCell(Text(c.phone)),
                               DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
                               DataCell(
-                                FilledButton.tonal(
-                                  onPressed: () => context.push('/customers/budget/create', extra: c),
-                                  style: FilledButton.styleFrom(minimumSize: const Size(0, 32)),
-                                  child: const Text('Presupuesto', style: TextStyle(fontSize: 12)),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FilledButton.tonal(
+                                      onPressed: () => context.push('/customers/budget/create', extra: c),
+                                      style: FilledButton.styleFrom(minimumSize: const Size(0, 32)),
+                                      child: const Text('Presupuesto', style: TextStyle(fontSize: 12)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    OutlinedButton(
+                                      onPressed: () => _showContactDialog(c),
+                                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 32)),
+                                      child: const Text('Ver contacto', style: TextStyle(fontSize: 12)),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ])).toList(),
@@ -170,7 +182,10 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           childAspectRatio: Responsive.value(context, mobile: 1, tablet: 2, desktop: 3) == 1 ? 2.6 : 1.5,
                         ),
                         itemCount: _filteredClients.length,
-                        itemBuilder: (context, index) => _ClientCard(client: _filteredClients[index]),
+                        itemBuilder: (context, index) => _ClientCard(
+                          client: _filteredClients[index],
+                          onViewContact: _showContactDialog,
+                        ),
                       ),
               ),
             ],
@@ -205,11 +220,19 @@ class _ClientesScreenState extends State<ClientesScreen> {
     );
   }
 
+  void _showContactDialog(Client client) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _ContactDialog(client: client),
+    );
+  }
+
 }
 
 class _ClientCard extends StatelessWidget {
   final Client client;
-  const _ClientCard({required this.client});
+  final void Function(Client) onViewContact;
+  const _ClientCard({required this.client, required this.onViewContact});
 
   @override
   Widget build(BuildContext context) {
@@ -360,17 +383,181 @@ class _ClientCard extends StatelessWidget {
               ),
             ],
             const Spacer(),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () {
-                  context.push('/customers/budget/create', extra: client);
-                },
-                child: const Text('Crear presupuesto'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => onViewContact(client),
+                  child: const Text('Ver contacto'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    context.push('/customers/budget/create', extra: client);
+                  },
+                  child: const Text('Crear presupuesto'),
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ContactDialog extends StatefulWidget {
+  final Client client;
+  const _ContactDialog({required this.client});
+
+  @override
+  State<_ContactDialog> createState() => _ContactDialogState();
+}
+
+class _ContactDialogState extends State<_ContactDialog> {
+  late Future<List<Contact>> _contactsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _contactsFuture = _fetchContacts();
+  }
+
+  Future<List<Contact>> _fetchContacts() async {
+    final api = context.read<ApiService>();
+    final data = await api.getContacts(widget.client.id);
+    return data.map((j) => Contact.fromJson(j)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.client;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Material(
+          borderRadius: BorderRadius.circular(18),
+          color: AppColors.surface,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.primary.withOpacity(0.12),
+                      child: Text(
+                        c.initials,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(c.name, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          if (c.companyName.isNotEmpty)
+                            Text(c.companyName, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                _infoRow(Icons.badge_outlined, 'CUIT', c.cuit),
+                _infoRow(Icons.email_outlined, 'Email', c.email),
+                _infoRow(Icons.phone_outlined, 'Teléfono', c.phone),
+                _infoRow(Icons.phone_android_outlined, 'Celular', c.mobile),
+                _infoRow(Icons.location_on_outlined, 'Dirección', c.address),
+                _infoRow(Icons.person_outline, 'Vendedor interno', c.vendedorInterno),
+                _infoRow(Icons.people_outline, 'Empresa', c.companyName),
+                _infoRow(Icons.language_outlined, 'Sitio web', c.website),
+                if (c.salespersonEmail != null)
+                  _infoRow(Icons.supervisor_account_outlined, 'Vendedor externo', c.salespersonEmail!),
+                const SizedBox(height: 16),
+                Text('Contactos', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                FutureBuilder<List<Contact>>(
+                  future: _contactsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+                    }
+                    if (snapshot.hasError) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text('Error al cargar contactos', style: GoogleFonts.inter(color: Colors.red, fontSize: 13)),
+                      );
+                    }
+                    final contacts = snapshot.data ?? [];
+                    if (contacts.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text('Sin contactos adicionales', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13)),
+                      );
+                    }
+                    return ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: contacts.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final contact = contacts[i];
+                          return ListTile(
+                            dense: true,
+                            leading: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.primary.withOpacity(0.08),
+                              child: Text(
+                                contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
+                                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                              ),
+                            ),
+                            title: Text(contact.name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+                            subtitle: contact.email.isNotEmpty || contact.phone.isNotEmpty
+                                ? Text([contact.email, contact.phone].where((e) => e.isNotEmpty).join(' · '), style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary))
+                                : null,
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Text('$label: ', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          Expanded(
+            child: Text(value, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          ),
+        ],
       ),
     );
   }
