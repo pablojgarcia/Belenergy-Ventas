@@ -8,6 +8,7 @@ import '../models/contact_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
+import '../widgets/app_table.dart';
 
 class ClientesScreen extends StatefulWidget {
   const ClientesScreen({super.key});
@@ -120,54 +121,58 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             style: GoogleFonts.inter(color: AppColors.textSecondary),
                           ),
                         )
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                          child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(AppColors.background),
-                          columnSpacing: 24,
-                          columns: const [
-                            DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w600))),
-                          ],
-                          rows: _filteredClients.map((c) => DataRow(cells: [
-                            DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                            DataCell(Text(c.cuit)),
-                            DataCell(Text(c.email)),
-                            DataCell(Text(c.phone)),
-                            DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
-                            DataCell(
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Tooltip(
-                                    message: 'Crear presupuesto',
-                                    child: InkWell(
-                                      onTap: () => context.push('/customers/budget/create', extra: c),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(6),
-                                        child: Icon(Icons.request_quote_outlined, size: 18, color: AppColors.primary),
+                      : ClipRect(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                            child: AppTable<Client>(
+                              columns: const [
+                                AppColumn(title: 'Nombre', flex: 3),
+                                AppColumn(title: 'CUIT', width: 130),
+                                AppColumn(title: 'Email', flex: 3),
+                                AppColumn(title: 'Teléfono', width: 140),
+                                AppColumn(title: 'Dirección', flex: 3),
+                                AppColumn(title: 'Acciones', width: 90),
+                              ],
+                              items: _filteredClients,
+                              rowHeight: 48,
+                              headerColor: AppColors.background,
+                              cellBuilder: (context, c, col) {
+                                switch (col) {
+                                  case 0: return Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500));
+                                  case 1: return Text(c.cuit);
+                                  case 2: return Text(c.email);
+                                  case 3: return Text(c.phone);
+                                  case 4: return Text(c.address, overflow: TextOverflow.ellipsis);
+                                  case 5: return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Tooltip(
+                                        message: 'Crear presupuesto',
+                                        child: InkWell(
+                                          onTap: () => context.push('/customers/budget/create', extra: c),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(6),
+                                            child: Icon(Icons.request_quote_outlined, size: 18, color: AppColors.primary),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Tooltip(
-                                    message: 'Ver contacto',
-                                    child: InkWell(
-                                      onTap: () => _showContactDialog(c),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(6),
-                                        child: Icon(Icons.contact_page_outlined, size: 18, color: AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Tooltip(
+                                        message: 'Ver contacto',
+                                        child: InkWell(
+                                          onTap: () => _showContactDialog(c),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(6),
+                                            child: Icon(Icons.contact_page_outlined, size: 18, color: AppColors.textSecondary),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                    ],
+                                  );
+                                  default: return const SizedBox();
+                                }
+                              },
                             ),
-                            ])).toList(),
                           ),
                         ),
                 ),
