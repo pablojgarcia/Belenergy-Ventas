@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -486,10 +487,10 @@ class _ContactDialogState extends State<_ContactDialog> {
                 ),
                 const Divider(height: 24),
                 _infoRow(Icons.badge_outlined, 'CUIT', c.cuit),
-                _infoRow(Icons.email_outlined, 'Email', c.email),
-                _infoRow(Icons.phone_outlined, 'Teléfono', c.phone),
-                _infoRow(Icons.phone_android_outlined, 'Celular', c.mobile),
-                _infoRow(Icons.location_on_outlined, 'Dirección', c.address),
+                _copyableRow(Icons.email_outlined, 'Email', c.email),
+                _copyableRow(Icons.phone_outlined, 'Teléfono', c.phone),
+                _copyableRow(Icons.phone_android_outlined, 'Celular', c.mobile),
+                _copyableRow(Icons.location_on_outlined, 'Dirección', c.address),
                 _infoRow(Icons.person_outline, 'Vendedor interno', c.vendedorInterno),
                 _infoRow(Icons.people_outline, 'Empresa', c.companyName),
                 _infoRow(Icons.language_outlined, 'Sitio web', c.website),
@@ -564,6 +565,35 @@ class _ContactDialogState extends State<_ContactDialog> {
           Text('$label: ', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
           Expanded(
             child: Text(value, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _copyableRow(IconData icon, String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Text('$label: ', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          Expanded(
+            child: Text(value, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          ),
+          InkWell(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: value));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('$label copiado: $value'), duration: const Duration(seconds: 2)),
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.copy, size: 14, color: AppColors.textSecondary),
+            ),
           ),
         ],
       ),
