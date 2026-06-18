@@ -131,11 +131,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               child: AppTable<Product>(
                 columns: const [
                   AppColumn(title: '', width: 56),
-                  AppColumn(title: 'Nombre', flex: 4),
-                  AppColumn(title: 'Código', width: 120),
+                  AppColumn(title: 'Título', flex: 4),
+                  AppColumn(title: 'Código', width: 160),
                   AppColumn(title: 'Precio', width: 100),
-                  AppColumn(title: 'Categoría', flex: 3),
-                  AppColumn(title: 'Tipo', width: 110),
+                  AppColumn(title: 'Categoría', width: 160),
                 ],
                 items: _filteredProducts,
                 rowHeight: 48,
@@ -147,7 +146,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     case 2: return Text(p.defaultCode);
                     case 3: return Text(p.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w600));
                     case 4: return Text(p.categId.isEmpty ? '—' : p.categId);
-                    case 5: return _buildTypeChip(p.type);
                     default: return const SizedBox();
                   }
                 },
@@ -203,21 +201,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildTypeChip(String type) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Text(
-        _typeLabel(type),
-        style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-      ),
     );
   }
 }
