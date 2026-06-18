@@ -59,8 +59,10 @@ class _ClientesScreenState extends State<ClientesScreen> {
           c.name.toLowerCase().contains(q) ||
           c.email.toLowerCase().contains(q) ||
           c.phone.toLowerCase().contains(q) ||
+          c.mobile.toLowerCase().contains(q) ||
           c.cuit.toLowerCase().contains(q) ||
           c.vendedorInterno.toLowerCase().contains(q) ||
+          c.companyName.toLowerCase().contains(q) ||
           c.address.toLowerCase().contains(q)
         ).toList();
       }
@@ -140,7 +142,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
                               DataCell(Text(c.phone)),
                               DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
                               DataCell(
-                                Row(
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                   children: [
                                     FilledButton.tonal(
@@ -165,6 +169,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                                   ],
                                 ),
                               ),
+                            ),
                             ])).toList(),
                           ),
                         ),
