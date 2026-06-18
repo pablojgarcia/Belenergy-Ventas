@@ -121,52 +121,40 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           ),
                         )
                       : SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                           child: DataTable(
-                            headingRowColor: WidgetStateProperty.all(AppColors.background),
-                            columnSpacing: 24,
-                            columns: const [
-                              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(3)),
-                              DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(2)),
-                              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(3)),
-                              DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(2)),
-                              DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(3)),
-                              DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(190)),
-                            ],
-                            rows: _filteredClients.map((c) => DataRow(cells: [
-                              DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                              DataCell(Text(c.cuit)),
-                              DataCell(Text(c.email)),
-                              DataCell(Text(c.phone)),
-                              DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
-                              DataCell(
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    FilledButton.tonal(
-                                      onPressed: () => context.push('/customers/budget/create', extra: c),
-                                      style: FilledButton.styleFrom(
-                                        minimumSize: const Size(0, 28),
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                        textStyle: const TextStyle(fontSize: 11),
-                                      ),
-                                      child: const Text('Presupuesto', style: TextStyle(fontSize: 11)),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    OutlinedButton(
-                                      onPressed: () => _showContactDialog(c),
-                                      style: OutlinedButton.styleFrom(
-                                        minimumSize: const Size(0, 28),
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                        textStyle: const TextStyle(fontSize: 11),
-                                      ),
-                                      child: const Text('Ver contacto', style: TextStyle(fontSize: 11)),
-                                    ),
-                                  ],
-                                ),
+                          headingRowColor: WidgetStateProperty.all(AppColors.background),
+                          columnSpacing: 24,
+                          columns: const [
+                            DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
+                          ],
+                          rows: _filteredClients.map((c) => DataRow(cells: [
+                            DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                            DataCell(Text(c.cuit)),
+                            DataCell(Text(c.email)),
+                            DataCell(Text(c.phone)),
+                            DataCell(Text(c.address, overflow: TextOverflow.ellipsis)),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  FilledButton.tonal(
+                                    onPressed: () => context.push('/customers/budget/create', extra: c),
+                                    style: FilledButton.styleFrom(minimumSize: const Size(0, 32)),
+                                    child: const Text('Presupuesto', style: TextStyle(fontSize: 12)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton(
+                                    onPressed: () => _showContactDialog(c),
+                                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 32)),
+                                    child: const Text('Ver contacto', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ],
                               ),
                             ),
                             ])).toList(),
