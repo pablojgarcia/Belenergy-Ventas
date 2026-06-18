@@ -3,7 +3,6 @@ from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -16,12 +15,12 @@ from .database import Base, engine, get_db
 from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, store_refresh_token, consume_refresh_token, generate_jti, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
 from .dependencies import get_current_user, get_current_admin
 from . import models, schemas
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from .services.odoo_sync import sync_customers, sync_products
 from .services.odoo_sale import create_quotation
 
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -36,16 +35,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://www.gstatic.com; connect-src 'self' https://www.gstatic.com https://fonts.gstatic.com"
         response.headers["Content-Security-Policy"] = csp
         return response
-
-
-class SPAStaticFiles(StaticFiles):
-    async def get_response(self, path: str, scope):
-        try:
-            return await super().get_response(path, scope)
-        except HTTPException as exc:
-            if exc.status_code == 404:
-                return await super().get_response("index.html", scope)
-            raise
 
 # Migraciones con Alembic (fallback a create_all si no hay alembic.cfg)
 _alembic_cfg_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
@@ -391,4 +380,11 @@ def health():
 
 
 if os.path.isdir(STATIC_DIR):
-    app.mount("/", SPAStaticFiles(directory=STATIC_DIR, html=True), name="spa")
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path or ""))
+        if file_path != STATIC_DIR and not file_path.startswith(STATIC_DIR + os.sep):
+            return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
