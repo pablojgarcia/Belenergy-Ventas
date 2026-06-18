@@ -248,9 +248,9 @@ class _ClientCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               children: [
                 CircleAvatar(
@@ -379,25 +379,22 @@ class _ClientCard extends StatelessWidget {
                 ],
               ),
             ],
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => onViewContact(client),
-                    child: const Text('Ver contacto'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.push('/customers/budget/create', extra: client);
-                    },
-                    child: const Text('Crear presupuesto'),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 12),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: () => onViewContact(client),
+                  child: const Text('Ver contacto'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    context.push('/customers/budget/create', extra: client);
+                  },
+                  child: const Text('Crear presupuesto'),
+                ),
+              ],
             ),
           ],
         ),
