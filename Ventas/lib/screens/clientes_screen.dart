@@ -120,21 +120,18 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             style: GoogleFonts.inter(color: AppColors.textSecondary),
                           ),
                         )
-                      : LayoutBuilder(
-                          builder: (context, constraints) => SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                              child: DataTable(
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                          child: DataTable(
                           headingRowColor: WidgetStateProperty.all(AppColors.background),
                           columnSpacing: 24,
                           columns: const [
-                            DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(204)),
-                            DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(130)),
-                            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(204)),
-                            DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(140)),
-                            DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(204)),
-                            DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(90)),
+                            DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w600))),
                           ],
                           rows: _filteredClients.map((c) => DataRow(cells: [
                             DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
@@ -173,8 +170,6 @@ class _ClientesScreenState extends State<ClientesScreen> {
                             ])).toList(),
                           ),
                         ),
-                      ),
-                    ),
                 ),
               ],
             );
