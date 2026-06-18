@@ -119,19 +119,19 @@ class _ClientesScreenState extends State<ClientesScreen> {
                           ),
                         )
                       : SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                            scrollDirection: Axis.horizontal,
                             child: DataTable(
                             headingRowColor: WidgetStateProperty.all(AppColors.background),
                             columnSpacing: 24,
                             columns: const [
-                              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(200)),
-                              DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(130)),
-                              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(200)),
-                              DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(140)),
-                              DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(200)),
-                              DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(182)),
+                              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(4)),
+                              DataColumn(label: Text('CUIT', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(2)),
+                              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(3)),
+                              DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(2)),
+                              DataColumn(label: Text('Dirección', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FlexColumnWidth(3)),
+                              DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600)), columnWidth: FixedColumnWidth(190)),
                             ],
                             rows: _filteredClients.map((c) => DataRow(cells: [
                               DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500))),
@@ -147,7 +147,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                                       onPressed: () => context.push('/customers/budget/create', extra: c),
                                       style: FilledButton.styleFrom(
                                         minimumSize: const Size(0, 28),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
                                         textStyle: const TextStyle(fontSize: 11),
                                       ),
                                       child: const Text('Presupuesto', style: TextStyle(fontSize: 11)),
@@ -157,7 +157,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                                       onPressed: () => _showContactDialog(c),
                                       style: OutlinedButton.styleFrom(
                                         minimumSize: const Size(0, 28),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
                                         textStyle: const TextStyle(fontSize: 11),
                                       ),
                                       child: const Text('Ver contacto', style: TextStyle(fontSize: 11)),
