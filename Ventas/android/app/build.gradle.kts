@@ -3,7 +3,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val androidMinSdkVersion = 21
+val androidMinSdkVersion = 23
 
 android {
     namespace = "com.example.solarapp"
