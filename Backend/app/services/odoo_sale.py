@@ -2,7 +2,7 @@ from .. import config
 from .odoo_sync import get_odoo_connection
 
 
-def create_quotation(partner_id: int, order_lines: list[dict], description: str = ""):
+def create_quotation(partner_id: int, order_lines: list[dict], description: str = "", vendedor_externo: str | None = None):
     odoo = get_odoo_connection()
 
     partner_count = odoo.env['res.partner'].search_count([('id', '=', partner_id)])
@@ -33,6 +33,19 @@ def create_quotation(partner_id: int, order_lines: list[dict], description: str 
     }
     if description:
         order_vals['note'] = description
+
+    if vendedor_externo:
+        partner_ids = odoo.env['res.users'].search([('login', '=', vendedor_externo)])
+        if partner_ids:
+            user = odoo.env['res.users'].read(partner_ids[0], ['partner_id'])
+            if user and user.get('partner_id'):
+                order_vals['x_studio_vendedor_externo_4'] = user['partner_id'][0]
+        else:
+            partner_ids = odoo.env['res.partner'].search([('email', '=', vendedor_externo)])
+            if not partner_ids:
+                partner_ids = odoo.env['res.partner'].search([('name', '=', vendedor_externo)])
+            if partner_ids:
+                order_vals['x_studio_vendedor_externo_4'] = partner_ids[0]
 
     order_id = odoo.env['sale.order'].create(order_vals)
     return order_id

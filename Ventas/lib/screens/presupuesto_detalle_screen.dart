@@ -76,7 +76,11 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
               const SizedBox(height: 16),
               _infoRow('Monto total', Text('\$${(order['amount_total'] ?? 0.0).toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
               const SizedBox(height: 12),
-              _infoRow('Estado', _buildStateChip(order['state'] as String? ?? '')),
+                _infoRow('Estado', _buildStateChip(order['state'] as String? ?? '')),
+                if (order['vendedor_externo'] != null && (order['vendedor_externo'] as String).isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _infoRow('Vendedor externo', Text(order['vendedor_externo'], style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary))),
+                ],
               if (order['description'] != null && (order['description'] as String).isNotEmpty) ...[
                 const SizedBox(height: 20),
                 Text('Descripción', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
@@ -104,6 +108,10 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
                 Text('ID: ${order['id']}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
                 Text('Fecha: ${order['date_order'] ?? '—'}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                if (order['vendedor_externo'] != null && (order['vendedor_externo'] as String).isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Vend. externo: ${order['vendedor_externo']}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                ],
               ],
             ),
           ),

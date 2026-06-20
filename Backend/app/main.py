@@ -73,6 +73,12 @@ if "customers" in inspector.get_table_names():
 if "contacts" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Contact.__table__])
 
+if "orders" in inspector.get_table_names():
+    ord_cols = [c["name"] for c in inspector.get_columns("orders")]
+    if "vendedor_externo" not in ord_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE orders ADD COLUMN vendedor_externo VARCHAR"))
+
 app = FastAPI(title="Auth API")
 
 CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
@@ -349,6 +355,7 @@ def create_quotation_endpoint(
             partner_id=order_in.partner_id,
             order_lines=[line.model_dump() for line in order_in.order_line],
             description=order_in.description,
+            vendedor_externo=customer.salesperson_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -368,6 +375,7 @@ def create_quotation_endpoint(
         state="draft",
         user_id=current_user.id,
         description=order_in.description,
+        vendedor_externo=customer.salesperson_id,
     )
     db.add(order)
     db.commit()

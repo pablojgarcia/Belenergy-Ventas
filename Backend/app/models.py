@@ -86,3 +86,4 @@ class Order(Base):
     date_order = Column(DateTime(timezone=True), server_default=func.now())
     user_id = Column(Integer, nullable=False)
     description = Column(Text, nullable=True)
+    vendedor_externo = Column(String, nullable=True)

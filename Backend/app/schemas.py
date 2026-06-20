@@ -118,6 +118,7 @@ class OrderOut(BaseModel):
     date_order: datetime
     user_id: int
     description: str | None = None
+    vendedor_externo: str | None = None
 
     class Config:
         from_attributes = True
