@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId = "com.example.solarapp"
         minSdk = androidMinSdkVersion
-        targetSdk = 34
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
