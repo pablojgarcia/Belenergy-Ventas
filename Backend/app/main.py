@@ -96,7 +96,10 @@ if os.path.isdir(STATIC_DIR):
             and "." not in request.url.path
             and request.url.path not in SPA_EXCLUDE
         ):
-            return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.headers["Vary"] = "Accept"
+            return resp
         return await call_next(request)
 
 CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
@@ -501,7 +504,14 @@ if os.path.isdir(STATIC_DIR):
     async def serve_spa(full_path: str):
         file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path or ""))
         if file_path != STATIC_DIR and not file_path.startswith(STATIC_DIR + os.sep):
-            return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
         if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            resp = FileResponse(file_path)
+            if full_path == "index.html":
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+        resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return resp
