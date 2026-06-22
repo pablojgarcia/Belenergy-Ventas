@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'storage_service.dart';
 
 class ApiService {
   static const String _accessTokenKey = 'access_token';
@@ -20,7 +20,7 @@ class ApiService {
   }
 
   late Dio _dio;
-  final _storage = const FlutterSecureStorage();
+  final _storage = StorageService();
   bool _isRefreshing = false;
 
   ApiService({this.overrideBaseUrl}) {
@@ -28,7 +28,7 @@ class ApiService {
     _dio = Dio(BaseOptions(baseUrl: baseUrl));
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: _accessTokenKey);
+        final token = await _storage.read(_accessTokenKey);
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -41,7 +41,7 @@ class ApiService {
 
         _isRefreshing = true;
         try {
-          final refreshToken = await _storage.read(key: _refreshTokenKey);
+          final refreshToken = await _storage.read(_refreshTokenKey);
           if (refreshToken == null) {
             _isRefreshing = false;
             return handler.next(error);
@@ -56,8 +56,8 @@ class ApiService {
           final newAccess = refreshResponse.data['access_token'] as String;
           final newRefresh = refreshResponse.data['refresh_token'] as String;
 
-          await _storage.write(key: _accessTokenKey, value: newAccess);
-          await _storage.write(key: _refreshTokenKey, value: newRefresh);
+          await _storage.write(_accessTokenKey, newAccess);
+          await _storage.write(_refreshTokenKey, newRefresh);
 
           final opts = error.requestOptions;
           opts.headers['Authorization'] = 'Bearer $newAccess';
@@ -66,8 +66,8 @@ class ApiService {
           _isRefreshing = false;
           return handler.resolve(response);
         } catch (_) {
-          await _storage.delete(key: _accessTokenKey);
-          await _storage.delete(key: _refreshTokenKey);
+          await _storage.delete(_accessTokenKey);
+          await _storage.delete(_refreshTokenKey);
           _isRefreshing = false;
           onAuthFailure?.call();
           return handler.next(error);
@@ -169,10 +169,10 @@ class ApiService {
   }
 
   Future<void> saveToken(String token) async {
-    await _storage.write(key: _accessTokenKey, value: token);
+    await _storage.write(_accessTokenKey, token);
   }
 
   Future<String?> getToken() async {
-    return await _storage.read(key: _accessTokenKey);
+    return await _storage.read(_accessTokenKey);
   }
 }

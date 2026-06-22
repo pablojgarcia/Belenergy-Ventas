@@ -1,19 +1,15 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../models/auth_model.dart';
 import 'api_service.dart';
+import 'storage_service.dart';
 
 class AuthService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
 
   final ApiService _apiService = ApiService();
-
-  final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-  );
+  final StorageService _storage = StorageService();
 
   Future<AuthToken> login(String email, String password) async {
     try {
@@ -31,7 +27,7 @@ class AuthService {
   }
 
   Future<AuthToken?> refreshToken() async {
-    final refresh = await _storage.read(key: _refreshTokenKey);
+    final refresh = await _storage.read(_refreshTokenKey);
     if (refresh == null) return null;
 
     try {
@@ -57,18 +53,18 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: _accessTokenKey);
+    final token = await _storage.read(_accessTokenKey);
     return token != null && !JwtDecoder.isExpired(token);
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: _accessTokenKey);
-    await _storage.delete(key: _refreshTokenKey);
+    await _storage.delete(_accessTokenKey);
+    await _storage.delete(_refreshTokenKey);
   }
 
   Future<void> _saveTokens(AuthToken token) async {
-    await _storage.write(key: _accessTokenKey, value: token.accessToken);
-    await _storage.write(key: _refreshTokenKey, value: token.refreshToken);
+    await _storage.write(_accessTokenKey, token.accessToken);
+    await _storage.write(_refreshTokenKey, token.refreshToken);
   }
 
   String _handleDioError(DioException e) {
