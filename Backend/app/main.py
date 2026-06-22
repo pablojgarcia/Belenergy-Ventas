@@ -84,6 +84,21 @@ if "order_statuses" not in inspector.get_table_names():
 
 app = FastAPI(title="Auth API")
 
+if os.path.isdir(STATIC_DIR):
+    SPA_EXCLUDE = {"/docs", "/openapi.json", "/redoc", "/health"}
+
+    @app.middleware("http")
+    async def spa_middleware(request: Request, call_next):
+        accept = request.headers.get("accept", "")
+        if (
+            request.method == "GET"
+            and "text/html" in accept
+            and "." not in request.url.path
+            and request.url.path not in SPA_EXCLUDE
+        ):
+            return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        return await call_next(request)
+
 CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
 if CORS_ORIGINS_ENV:
     CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS_ENV.split(",")]
