@@ -19,8 +19,12 @@ GoRouter createRouter(AuthProvider authProvider) {
       final isSplash = state.matchedLocation == '/splash';
       if (isSplash) return null;
 
-      if (authProvider.status == AuthStatus.initial ||
-          authProvider.status == AuthStatus.loading) {
+      if (authProvider.status == AuthStatus.initial) {
+        authProvider.checkAuthStatus();
+        return null;
+      }
+
+      if (authProvider.status == AuthStatus.loading) {
         return null;
       }
 

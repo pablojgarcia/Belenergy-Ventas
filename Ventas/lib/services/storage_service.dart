@@ -21,7 +21,16 @@ class StorageService {
   Future<String?> read(String key) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(key);
+      final value = prefs.getString(key);
+      // Migrate old flutter_secure_storage_web encoded values.
+      // Valid JWTs always start with "eyJ" (base64 of JSON header).
+      // If value exists but doesn't start with "eyJ", it's leftover from
+      // flutter_secure_storage_web encoding. Delete it.
+      if (value != null && value.isNotEmpty && !value.startsWith('eyJ')) {
+        await prefs.remove(key);
+        return null;
+      }
+      return value;
     }
     return await _native.read(key: key);
   }
