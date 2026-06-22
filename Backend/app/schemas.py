@@ -122,3 +122,13 @@ class OrderOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class OrderStatusOut(BaseModel):
+    id: int
+    order_id: int
+    status: str
+    changed_at: datetime
+    changed_by: int | None = None
+
+    class Config:
+        from_attributes = True

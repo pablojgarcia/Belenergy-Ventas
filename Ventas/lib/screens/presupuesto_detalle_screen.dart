@@ -16,16 +16,39 @@ class PresupuestoDetalleScreen extends StatefulWidget {
 
 class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
   late Future<Map<String, dynamic>> _orderFuture;
+  late Future<List<Map<String, dynamic>>> _statusesFuture;
 
   @override
   void initState() {
     super.initState();
     _orderFuture = _fetchOrder();
+    _statusesFuture = _fetchStatuses();
   }
 
   Future<Map<String, dynamic>> _fetchOrder() {
     final api = context.read<ApiService>();
     return api.getOrder(widget.orderId);
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchStatuses() {
+    final api = context.read<ApiService>();
+    return api.getOrderStatuses(widget.orderId);
+  }
+
+  Future<void> _syncStatus() async {
+    final api = context.read<ApiService>();
+    try {
+      await api.syncOrderStatus(widget.orderId);
+      setState(() {
+        _orderFuture = _fetchOrder();
+        _statusesFuture = _fetchStatuses();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al sincronizar'), backgroundColor: AppColors.error),
+      );
+    }
   }
 
   @override
@@ -37,6 +60,9 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 1,
+        actions: [
+          IconButton(icon: const Icon(Icons.sync), onPressed: _syncStatus),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _orderFuture,
@@ -112,6 +138,10 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
                   const SizedBox(height: 8),
                   Text('Vend. externo: ${order['vendedor_externo']}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
                 ],
+                const SizedBox(height: 16),
+                Text('Historial de estados', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                _buildStatusHistory(),
               ],
             ),
           ),
@@ -134,6 +164,10 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
           const SizedBox(height: 16),
           Text(order['description'], style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
         ],
+        const SizedBox(height: 20),
+        Text('Historial de estados', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        const SizedBox(height: 8),
+        _buildStatusHistory(),
       ],
     );
   }
@@ -152,7 +186,7 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _stateColor(state).withOpacity(0.15),
+        color: _stateColor(state).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -162,13 +196,56 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
     );
   }
 
+  Widget _buildStatusHistory() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _statusesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
+          return Text('Sin historial', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary));
+        }
+        final statuses = snapshot.data!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: statuses.map((s) {
+            final status = s['status'] as String? ?? '';
+            final changedAt = s['changed_at'] as String? ?? '';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  _buildStateChip(status),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(changedAt, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
   String _stateLabel(String state) {
     switch (state) {
-      case 'draft': return 'Borrador';
-      case 'sent': return 'Enviado';
-      case 'sale': return 'Vendido';
-      case 'cancel': return 'Cancelado';
-      default: return state;
+      case 'draft':
+      case 'creada':
+        return 'Creada';
+      case 'sent':
+      case 'cotizacion_enviada':
+        return 'Cotización enviada';
+      case 'sale':
+      case 'orden_de_venta':
+        return 'Orden de venta';
+      case 'cancel':
+      case 'cancelada':
+        return 'Cancelada';
+      default:
+        return state;
     }
   }
 

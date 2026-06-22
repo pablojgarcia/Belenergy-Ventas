@@ -16,7 +16,7 @@ from .auth import hash_password, authenticate_user, create_access_token, create_
 from .dependencies import get_current_user, get_current_admin
 from . import models, schemas
 from fastapi.responses import Response, FileResponse
-from .services.odoo_sync import sync_customers, sync_products
+from .services.odoo_sync import sync_customers, sync_products, get_odoo_connection
 from .services.odoo_sale import create_quotation
 
 
@@ -78,6 +78,9 @@ if "orders" in inspector.get_table_names():
     if "vendedor_externo" not in ord_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE orders ADD COLUMN vendedor_externo VARCHAR"))
+
+if "order_statuses" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.OrderStatus.__table__])
 
 app = FastAPI(title="Auth API")
 
@@ -378,6 +381,14 @@ def create_quotation_endpoint(
         vendedor_externo=customer.salesperson_id,
     )
     db.add(order)
+    db.flush()
+
+    status_entry = models.OrderStatus(
+        order_id=order.id,
+        status="creada",
+        changed_by=current_user.id,
+    )
+    db.add(status_entry)
     db.commit()
     db.refresh(order)
 
@@ -406,6 +417,64 @@ def get_order(
     if order.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tenés permiso para ver este presupuesto")
     return order
+
+@app.post("/orders/{order_id}/sync-status")
+def sync_order_status(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tenés permiso")
+
+    odoo = get_odoo_connection()
+    sales = odoo.env["sale.order"].read(order.odoo_id, ["state"])
+    if not sales:
+        raise HTTPException(status_code=502, detail="No se pudo leer la orden en Odoo")
+    odoo_state = sales[0]["state"]
+
+    app_status_map = {
+        "sent": "cotizacion_enviada",
+        "sale": "orden_de_venta",
+        "cancel": "cancelada",
+    }
+    app_status = app_status_map.get(odoo_state, odoo_state)
+
+    last_status = (
+        db.query(models.OrderStatus)
+        .filter(models.OrderStatus.order_id == order.id)
+        .order_by(models.OrderStatus.changed_at.desc())
+        .first()
+    )
+
+    if last_status is None or last_status.status != app_status:
+        entry = models.OrderStatus(
+            order_id=order.id,
+            status=app_status,
+            changed_by=current_user.id,
+        )
+        db.add(entry)
+        order.state = odoo_state
+        db.commit()
+        return {"synced": True, "previous": last_status.status if last_status else None, "current": app_status}
+
+    return {"synced": False, "current": app_status}
+
+@app.get("/orders/{order_id}/statuses", response_model=list[schemas.OrderStatusOut])
+def get_order_statuses(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tenés permiso")
+    return db.query(models.OrderStatus).filter(models.OrderStatus.order_id == order.id).order_by(models.OrderStatus.changed_at.desc()).all()
 
 @app.get("/health")
 def health():

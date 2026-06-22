@@ -28,8 +28,31 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
     return api.getOrders(state: _selectedState);
   }
 
-  void _refresh() {
+  Future<void> _refresh() async {
     setState(() => _ordersFuture = _fetchOrders());
+    await _ordersFuture;
+  }
+
+  Future<void> _syncAllStatuses() async {
+    final api = context.read<ApiService>();
+    try {
+      final data = await api.getOrders();
+      for (final order in data) {
+        try {
+          await api.syncOrderStatus(order['id'] as int);
+        } catch (_) {}
+      }
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Estados sincronizados')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al sincronizar'), backgroundColor: AppColors.error),
+      );
+    }
   }
 
   @override
@@ -50,15 +73,15 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
                 _ordersFuture = _fetchOrders();
               });
             },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: null, child: const Text('Todos')),
-              PopupMenuItem(value: 'draft', child: const Text('Borrador')),
-              PopupMenuItem(value: 'sent', child: const Text('Enviado')),
-              PopupMenuItem(value: 'sale', child: const Text('Vendido')),
-              PopupMenuItem(value: 'cancel', child: const Text('Cancelado')),
-            ],
+              itemBuilder: (_) => [
+                PopupMenuItem(value: null, child: const Text('Todos')),
+                PopupMenuItem(value: 'draft', child: const Text('Creada')),
+                PopupMenuItem(value: 'sent', child: const Text('Cotización enviada')),
+                PopupMenuItem(value: 'sale', child: const Text('Orden de venta')),
+                PopupMenuItem(value: 'cancel', child: const Text('Cancelada')),
+              ],
           ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+          IconButton(icon: const Icon(Icons.sync), onPressed: _syncAllStatuses),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -140,7 +163,7 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _stateColor(state).withOpacity(0.15),
+        color: _stateColor(state).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -152,21 +175,39 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
 
   String _stateLabel(String state) {
     switch (state) {
-      case 'draft': return 'Borrador';
-      case 'sent': return 'Enviado';
-      case 'sale': return 'Vendido';
-      case 'cancel': return 'Cancelado';
-      default: return state;
+      case 'draft':
+      case 'creada':
+        return 'Creada';
+      case 'sent':
+      case 'cotizacion_enviada':
+        return 'Cotización enviada';
+      case 'sale':
+      case 'orden_de_venta':
+        return 'Orden de venta';
+      case 'cancel':
+      case 'cancelada':
+        return 'Cancelada';
+      default:
+        return state;
     }
   }
 
   Color _stateColor(String state) {
     switch (state) {
-      case 'draft': return Colors.orange;
-      case 'sent': return AppColors.primary;
-      case 'sale': return Colors.green;
-      case 'cancel': return Colors.red;
-      default: return AppColors.textSecondary;
+      case 'draft':
+      case 'creada':
+        return Colors.orange;
+      case 'sent':
+      case 'cotizacion_enviada':
+        return AppColors.primary;
+      case 'sale':
+      case 'orden_de_venta':
+        return Colors.green;
+      case 'cancel':
+      case 'cancelada':
+        return Colors.red;
+      default:
+        return AppColors.textSecondary;
     }
   }
 }
@@ -198,7 +239,7 @@ class _OrderCard extends StatelessWidget {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: stateColor.withOpacity(0.15),
+            color: stateColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -212,21 +253,39 @@ class _OrderCard extends StatelessWidget {
 
   String _stateLabel(String state) {
     switch (state) {
-      case 'draft': return 'Borrador';
-      case 'sent': return 'Enviado';
-      case 'sale': return 'Vendido';
-      case 'cancel': return 'Cancelado';
-      default: return state;
+      case 'draft':
+      case 'creada':
+        return 'Creada';
+      case 'sent':
+      case 'cotizacion_enviada':
+        return 'Cotización enviada';
+      case 'sale':
+      case 'orden_de_venta':
+        return 'Orden de venta';
+      case 'cancel':
+      case 'cancelada':
+        return 'Cancelada';
+      default:
+        return state;
     }
   }
 
   Color _stateColor(String state) {
     switch (state) {
-      case 'draft': return Colors.orange;
-      case 'sent': return AppColors.primary;
-      case 'sale': return Colors.green;
-      case 'cancel': return Colors.red;
-      default: return AppColors.textSecondary;
+      case 'draft':
+      case 'creada':
+        return Colors.orange;
+      case 'sent':
+      case 'cotizacion_enviada':
+        return AppColors.primary;
+      case 'sale':
+      case 'orden_de_venta':
+        return Colors.green;
+      case 'cancel':
+      case 'cancelada':
+        return Colors.red;
+      default:
+        return AppColors.textSecondary;
     }
   }
 }

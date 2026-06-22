@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -87,3 +88,17 @@ class Order(Base):
     user_id = Column(Integer, nullable=False)
     description = Column(Text, nullable=True)
     vendedor_externo = Column(String, nullable=True)
+
+    statuses = relationship("OrderStatus", back_populates="order", order_by="OrderStatus.changed_at.desc()")
+
+
+class OrderStatus(Base):
+    __tablename__ = "order_statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    status = Column(String, nullable=False)
+    changed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    changed_by = Column(Integer, nullable=True)
+
+    order = relationship("Order", back_populates="statuses")

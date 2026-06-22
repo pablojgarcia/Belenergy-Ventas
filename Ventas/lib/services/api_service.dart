@@ -139,6 +139,26 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> syncOrderStatus(int orderId) async {
+    try {
+      final response = await _dio.post('/orders/$orderId/sync-status');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error syncing order status: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getOrderStatuses(int orderId) async {
+    try {
+      final response = await _dio.get('/orders/$orderId/statuses');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching order statuses: $e');
+      rethrow;
+    }
+  }
+
   Future<void> syncCustomers() async {
     await _dio.post('/sync/customers');
   }
