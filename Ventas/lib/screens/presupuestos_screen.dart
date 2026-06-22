@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
+import '../utils/route_observer.dart';
 
 class PresupuestosScreen extends StatefulWidget {
   const PresupuestosScreen({super.key});
@@ -13,7 +14,7 @@ class PresupuestosScreen extends StatefulWidget {
   State<PresupuestosScreen> createState() => _PresupuestosScreenState();
 }
 
-class _PresupuestosScreenState extends State<PresupuestosScreen> {
+class _PresupuestosScreenState extends State<PresupuestosScreen> with RouteAware {
   late Future<List<Map<String, dynamic>>> _ordersFuture;
   String? _selectedState;
 
@@ -21,6 +22,23 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
   void initState() {
     super.initState();
     _ordersFuture = _fetchOrders();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _refresh();
   }
 
   Future<List<Map<String, dynamic>>> _fetchOrders() {

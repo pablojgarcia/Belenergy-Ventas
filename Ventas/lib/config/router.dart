@@ -10,11 +10,13 @@ import '../screens/presupuestos_screen.dart';
 import '../screens/presupuesto_detalle_screen.dart';
 import '../widgets/responsive_shell.dart';
 import '../models/client_model.dart';
+import '../utils/route_observer.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
     refreshListenable: authProvider,
     initialLocation: '/splash',
+    observers: [routeObserver],
     redirect: (context, state) {
       final isSplash = state.matchedLocation == '/splash';
       if (isSplash) return null;
