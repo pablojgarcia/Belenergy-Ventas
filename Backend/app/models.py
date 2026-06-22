@@ -63,6 +63,7 @@ class Product(Base):
     description_sale = Column(String)
     active = Column(Boolean, default=True)
     sale_ok = Column(Boolean, default=True)
+    taxes_id = Column(Text, nullable=True)
     image = Column(LargeBinary, nullable=True)
 
 class RefreshToken(Base):

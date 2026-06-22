@@ -84,6 +84,7 @@ class ProductBase(BaseModel):
     uom_id: Optional[str] = None
     description_sale: Optional[str] = None
     active: Optional[bool] = True
+    taxes_id: Optional[str] = None
     sale_ok: Optional[bool] = True
 
 class ProductCreate(ProductBase):

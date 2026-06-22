@@ -1,3 +1,4 @@
+import json
 import base64
 import odoorpc
 from sqlalchemy.orm import Session
@@ -142,7 +143,8 @@ def sync_products(db: Session):
     fields = [
         'id', 'name', 'default_code', 'barcode', 'list_price',
         'standard_price', 'type', 'categ_id', 'uom_id',
-        'description_sale', 'active', 'sale_ok', 'image_1920'
+        'description_sale', 'active', 'sale_ok', 'image_1920',
+        'taxes_id'
     ]
 
     print("Buscando productos en Odoo...")
@@ -166,6 +168,7 @@ def sync_products(db: Session):
             "description_sale": str(p.get('description_sale') or ""),
             "active": bool(p.get('active', True)),
             "sale_ok": bool(p.get('sale_ok', True)),
+            "taxes_id": json.dumps([t[0] for t in p.get('taxes_id') or []]),
             "image": image_bytes,
         }
 

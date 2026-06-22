@@ -82,6 +82,12 @@ if "orders" in inspector.get_table_names():
 if "order_statuses" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.OrderStatus.__table__])
 
+if "products" in inspector.get_table_names():
+    prod_cols = [c["name"] for c in inspector.get_columns("products")]
+    if "taxes_id" not in prod_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE products ADD COLUMN taxes_id TEXT"))
+
 app = FastAPI(title="Auth API")
 
 if os.path.isdir(STATIC_DIR):
