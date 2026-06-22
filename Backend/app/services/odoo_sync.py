@@ -168,7 +168,10 @@ def sync_products(db: Session):
             "description_sale": str(p.get('description_sale') or ""),
             "active": bool(p.get('active', True)),
             "sale_ok": bool(p.get('sale_ok', True)),
-            "taxes_id": json.dumps([t[0] for t in p.get('taxes_id') or []]),
+            "taxes_id": json.dumps([
+                t[0] if isinstance(t, (list, tuple)) else t
+                for t in p.get('taxes_id') or []
+            ]),
             "image": image_bytes,
         }
 
