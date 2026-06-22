@@ -7,6 +7,7 @@ class ApiService {
   static const String _refreshTokenKey = 'refresh_token';
 
   VoidCallback? onAuthFailure;
+  final ordersRefreshNotifier = ValueNotifier<int>(0);
 
   final String? overrideBaseUrl;
 

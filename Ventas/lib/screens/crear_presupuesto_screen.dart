@@ -95,6 +95,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Presupuesto creado correctamente'), backgroundColor: AppColors.primary),
       );
+      context.read<ApiService>().ordersRefreshNotifier.value++;
       context.go('/orders');
     } catch (e) {
       if (!mounted) return;
