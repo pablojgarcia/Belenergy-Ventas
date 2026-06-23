@@ -64,7 +64,12 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       final data = await api.getTaxes();
       if (mounted) {
         setState(() {
-          _taxMap = {for (final t in data) t['odoo_id'] as int: Tax.fromJson(t)};
+          _taxMap = <int, Tax>{};
+          for (final t in data) {
+            final tax = Tax.fromJson(t);
+            _taxMap[t['id'] as int] = tax;
+            _taxMap[t['odoo_id'] as int] = tax;
+          }
         });
       }
     } catch (_) {}

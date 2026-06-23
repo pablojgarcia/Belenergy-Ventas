@@ -45,7 +45,12 @@ class _ProductsPageState extends State<ProductsPage> {
     ]);
     final data = results[0] as List<Map<String, dynamic>>;
     final taxData = results[1] as List<Map<String, dynamic>>;
-    final taxMap = {for (final t in taxData) t['odoo_id'] as int: Tax.fromJson(t)};
+    final taxMap = <int, Tax>{};
+    for (final t in taxData) {
+      final tax = Tax.fromJson(t);
+      taxMap[t['id'] as int] = tax;
+      taxMap[t['odoo_id'] as int] = tax;
+    }
     final products = data.map((json) => Product.fromJson(json)).toList();
     if (mounted) {
       setState(() {
