@@ -137,6 +137,30 @@ def sync_customers(db: Session):
     db.commit()
     print("Sincronización de contactos completada.")
 
+def sync_taxes(db: Session):
+    odoo = get_odoo_connection()
+
+    tax_fields = ['id', 'name', 'amount', 'type_tax_use']
+    taxes_data = odoo.env['account.tax'].search_read([], tax_fields)
+    print(f"Sincronizando {len(taxes_data)} impuestos...")
+
+    for t in taxes_data:
+        tax_data = {
+            "odoo_id": int(t['id']),
+            "name": str(t.get('name') or f"Impuesto {t['id']}"),
+            "amount": float(t.get('amount') or 0.0),
+            "type_tax_use": str(t.get('type_tax_use') or 'sale'),
+        }
+        tax = db.query(models.Tax).filter(models.Tax.odoo_id == t['id']).first()
+        if tax:
+            for k, v in tax_data.items():
+                setattr(tax, k, v)
+        else:
+            db.add(models.Tax(**tax_data))
+
+    db.commit()
+    print("Sincronización de impuestos completada.")
+
 def sync_products(db: Session):
     odoo = get_odoo_connection()
 
@@ -155,6 +179,12 @@ def sync_products(db: Session):
         raw_image = p.get('image_1920')
         image_bytes = base64.b64decode(raw_image) if raw_image else None
 
+        raw_taxes = p.get('taxes_id') or []
+        taxes_ids = [
+            t[0] if isinstance(t, (list, tuple)) else t
+            for t in raw_taxes
+        ]
+
         product_data = {
             "odoo_id": int(p['id']),
             "name": str(p.get('name') or ""),
@@ -168,10 +198,7 @@ def sync_products(db: Session):
             "description_sale": str(p.get('description_sale') or ""),
             "active": bool(p.get('active', True)),
             "sale_ok": bool(p.get('sale_ok', True)),
-            "taxes_id": json.dumps([
-                t[0] if isinstance(t, (list, tuple)) else t
-                for t in p.get('taxes_id') or []
-            ]),
+            "taxes_id": json.dumps(taxes_ids),
             "image": image_bytes,
         }
 

@@ -4,24 +4,26 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../models/product_model.dart';
+import '../models/tax_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
 import '../widgets/app_table.dart';
 
-class ProductosScreen extends StatefulWidget {
-  const ProductosScreen({super.key});
+class ProductsPage extends StatefulWidget {
+  const ProductsPage({super.key});
 
   @override
-  State<ProductosScreen> createState() => _ProductosScreenState();
+  State<ProductsPage> createState() => _ProductsPageState();
 }
 
-class _ProductosScreenState extends State<ProductosScreen> {
+class _ProductsPageState extends State<ProductsPage> {
   late Future<List<Product>> _productsFuture;
   List<Product> _allProducts = [];
   List<Product> _filteredProducts = [];
   final _searchController = TextEditingController();
   bool _loaded = false;
+  Map<int, Tax> _taxMap = {};
 
   @override
   void initState() {
@@ -37,12 +39,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   Future<List<Product>> _fetchProducts() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
-    final data = await apiService.getProducts();
+    final results = await Future.wait([
+      apiService.getProducts(),
+      apiService.getTaxes().catchError((_) => <Map<String, dynamic>>[]),
+    ]);
+    final data = results[0] as List<Map<String, dynamic>>;
+    final taxData = results[1] as List<Map<String, dynamic>>;
+    final taxMap = {for (final t in taxData) t['odoo_id'] as int: Tax.fromJson(t)};
     final products = data.map((json) => Product.fromJson(json)).toList();
     if (mounted) {
       setState(() {
         _allProducts = products;
         _filteredProducts = products;
+        _taxMap = taxMap;
         _loaded = true;
       });
     }
@@ -134,7 +143,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   AppColumn(title: 'Título', flex: 4),
                   AppColumn(title: 'Código', width: 160),
                   AppColumn(title: 'Precio', width: 100),
-                  AppColumn(title: 'Categoría', width: 160),
+                  AppColumn(title: 'Categoría', width: 140),
+                  AppColumn(title: 'IVA', width: 80),
                 ],
                 items: _filteredProducts,
                 rowHeight: 48,
@@ -146,6 +156,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     case 2: return Text(p.defaultCode);
                     case 3: return Text(p.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w600));
                     case 4: return Text(p.categId.isEmpty ? '—' : p.categId);
+                    case 5: return _TaxBadge(taxesId: p.taxesId, taxMap: _taxMap);
                     default: return const SizedBox();
                   }
                 },
@@ -197,12 +208,21 @@ class _ProductosScreenState extends State<ProductosScreen> {
               childAspectRatio: columns == 1 ? 2.6 : 1.3,
             ),
             itemCount: _filteredProducts.length,
-            itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index]),
+            itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index], taxMap: _taxMap),
           ),
         ),
       ],
     );
   }
+}
+
+String _resolveTaxLabel(List<int> taxIds, Map<int, Tax> taxMap) {
+  if (taxIds.isEmpty) return 'Exento';
+  return taxIds.map((id) {
+    final tax = taxMap[id];
+    if (tax != null) return tax.displayLabel;
+    return 'ID $id';
+  }).join(', ');
 }
 
 String _typeLabel(String type) {
@@ -238,6 +258,47 @@ Widget _infoChip(IconData icon, String label) {
       ],
     ),
   );
+}
+
+class _TaxBadge extends StatelessWidget {
+  final List<int> taxesId;
+  final Map<int, Tax> taxMap;
+  const _TaxBadge({required this.taxesId, required this.taxMap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (taxesId.isEmpty) {
+      return _badge('Exento', Colors.green);
+    }
+    final labels = taxesId.map((id) {
+      final tax = taxMap[id];
+      return tax?.displayLabel ?? 'ID $id';
+    }).toList();
+    if (labels.length == 1) {
+      return _badge(labels[0], AppColors.primary);
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: labels.map((l) => Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: _badge(l, AppColors.primary),
+      )).toList(),
+    );
+  }
+
+  Widget _badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        color: color.withValues(alpha: 0.1),
+      ),
+      child: Text(text, style: TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
 }
 
 class _ProductThumbnail extends StatefulWidget {
@@ -287,7 +348,7 @@ class _ProductThumbnailState extends State<_ProductThumbnail> {
 
   Widget _placeholder() {
     return Container(
-      color: AppColors.accent.withOpacity(0.12),
+      color: AppColors.accent.withValues(alpha: 0.12),
       child: _loadingImage
           ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
           : const Icon(Icons.solar_power_rounded, color: AppColors.accent, size: 20),
@@ -297,7 +358,8 @@ class _ProductThumbnailState extends State<_ProductThumbnail> {
 
 class _ProductCard extends StatefulWidget {
   final Product product;
-  const _ProductCard({required this.product});
+  final Map<int, Tax> taxMap;
+  const _ProductCard({required this.product, required this.taxMap});
 
   @override
   State<_ProductCard> createState() => _ProductCardState();
@@ -393,6 +455,7 @@ class _ProductCardState extends State<_ProductCard> {
                 _infoChip(Icons.inventory_2_outlined, _typeLabel(product.type)),
                 if (product.uomId.isNotEmpty)
                   _infoChip(Icons.straighten, product.uomId),
+                _infoChip(Icons.receipt_long_outlined, _resolveTaxLabel(product.taxesId, widget.taxMap)),
               ],
             ),
           ],
@@ -403,7 +466,7 @@ class _ProductCardState extends State<_ProductCard> {
 
   Widget _cardPlaceholder() {
     return Container(
-      color: AppColors.accent.withOpacity(0.12),
+      color: AppColors.accent.withValues(alpha: 0.12),
       child: _loadingImage
           ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
           : const Icon(Icons.solar_power_rounded, color: AppColors.accent, size: 28),

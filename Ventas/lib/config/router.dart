@@ -1,15 +1,14 @@
 import 'package:go_router/go_router.dart';
 import '../services/auth_provider.dart';
-import '../screens/splash_screen.dart';
-import '../screens/login_screen.dart';
-import '../screens/home_screen.dart';
-import '../screens/clientes_screen.dart';
-import '../screens/productos_screen.dart';
-import '../screens/crear_presupuesto_screen.dart';
-import '../screens/presupuestos_screen.dart';
-import '../screens/presupuesto_detalle_screen.dart';
+import '../screens/splash_page.dart';
+import '../screens/login_page.dart';
+import '../screens/home_page.dart';
+import '../screens/customers_page.dart';
+import '../screens/products_page.dart';
+import '../screens/create_quotation_page.dart';
+import '../screens/quotations_page.dart';
+import '../screens/quotation_detail_page.dart';
 import '../widgets/responsive_shell.dart';
-import '../models/client_model.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
@@ -32,67 +31,49 @@ GoRouter createRouter(AuthProvider authProvider) {
       final isLogin = state.matchedLocation == '/login';
 
       if (!isLoggedIn && !isLogin) return '/login';
-      if (isLoggedIn && isLogin) return '/home';
+      if (isLoggedIn && isLogin) return '/';
       return null;
     },
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (_, __) => const SplashScreen(),
+        builder: (_, __) => const SplashPage(),
       ),
       GoRoute(
         path: '/login',
-        builder: (_, __) => const LoginScreen(),
+        builder: (_, __) => const LoginPage(),
       ),
-      StatefulShellRoute.indexedStack(
-        builder: (_, __, navigationShell) =>
-            ResponsiveShell(navigationShell: navigationShell),
-        branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/home',
-                builder: (_, __) => const HomeScreen(),
-              ),
-            ],
+      ShellRoute(
+        builder: (_, __, child) => ResponsiveShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => const HomePage(),
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/customers',
-                builder: (_, __) => const ClientesScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'budget/create',
-                    builder: (_, state) => CrearPresupuestoScreen(
-                      client: state.extra as Client,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          GoRoute(
+            path: '/customers',
+            builder: (_, __) => const CustomersPage(),
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/products',
-                builder: (_, __) => const ProductosScreen(),
-              ),
-            ],
+          GoRoute(
+            path: '/products',
+            builder: (_, __) => const ProductsPage(),
           ),
-          StatefulShellBranch(
+          GoRoute(
+            path: '/quotations',
+            builder: (_, __) => const QuotationsPage(),
             routes: [
               GoRoute(
-                path: '/orders',
-                builder: (_, __) => const PresupuestosScreen(),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    builder: (_, state) => PresupuestoDetalleScreen(
-                      orderId: int.parse(state.pathParameters['id']!),
-                    ),
-                  ),
-                ],
+                path: 'new',
+                builder: (_, state) {
+                  final customerId = state.uri.queryParameters['customer'];
+                  return CreateQuotationPage(customerId: customerId);
+                },
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, state) => QuotationDetailPage(
+                  orderId: int.parse(state.pathParameters['id']!),
+                ),
               ),
             ],
           ),

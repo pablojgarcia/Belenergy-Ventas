@@ -6,14 +6,14 @@ import '../services/auth_provider.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     if (success && mounted) {
-      context.go('/home');
+      context.go('/');
     }
   }
 

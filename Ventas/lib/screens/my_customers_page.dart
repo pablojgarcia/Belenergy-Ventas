@@ -3,14 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 
-class MyCustomersScreen extends StatefulWidget {
-  const MyCustomersScreen({super.key});
+class MyCustomersPage extends StatefulWidget {
+  const MyCustomersPage({super.key});
 
   @override
-  State<MyCustomersScreen> createState() => _MyCustomersScreenState();
+  State<MyCustomersPage> createState() => _MyCustomersPageState();
 }
 
-class _MyCustomersScreenState extends State<MyCustomersScreen> {
+class _MyCustomersPageState extends State<MyCustomersPage> {
   final ApiService _apiService = ApiService();
   List<dynamic> _customers = [];
   bool _isLoading = true;

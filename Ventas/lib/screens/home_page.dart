@@ -9,14 +9,14 @@ import '../utils/responsive.dart';
 import '../widgets/stat_card.dart';
 import '../services/api_service.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomePageState extends State<HomePage> {
   int _clientCount = 0;
   int _orderCount = 0;
   int _productCount = 0;
@@ -541,9 +541,8 @@ class _QuickItem {
 
 final _quickItems = [
   _QuickItem(icon: Icons.people_alt_rounded, label: 'Clientes', color: const Color(0xFF2D9CDB), route: '/customers'),
-  _QuickItem(icon: Icons.bolt_rounded, label: 'Presupuestos', color: const Color(0xFF5E60CE), route: '/orders'),
+  _QuickItem(icon: Icons.receipt_long_rounded, label: 'Cotizaciones', color: const Color(0xFF5E60CE), route: '/quotations'),
   _QuickItem(icon: Icons.solar_power_rounded, label: 'Productos', color: const Color(0xFFF4A900), route: '/products'),
-  _QuickItem(icon: Icons.receipt_long_rounded, label: 'Pedidos', color: const Color(0xFF27AE60), route: '/orders'),
 ];
 
 class _QuickCard extends StatelessWidget {

@@ -5,17 +5,22 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
+import '../widgets/app_table.dart';
 
-class PresupuestosScreen extends StatefulWidget {
-  const PresupuestosScreen({super.key});
+class QuotationsPage extends StatefulWidget {
+  const QuotationsPage({super.key});
 
   @override
-  State<PresupuestosScreen> createState() => _PresupuestosScreenState();
+  State<QuotationsPage> createState() => _QuotationsPageState();
 }
 
-class _PresupuestosScreenState extends State<PresupuestosScreen> {
+class _QuotationsPageState extends State<QuotationsPage> {
   late Future<List<Map<String, dynamic>>> _ordersFuture;
+  List<Map<String, dynamic>> _allOrders = [];
+  List<Map<String, dynamic>> _filteredOrders = [];
+  bool _loaded = false;
   String? _selectedState;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -46,7 +51,10 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _ordersFuture = _fetchOrders());
+    setState(() {
+      _loaded = false;
+      _ordersFuture = _fetchOrders();
+    });
     await _ordersFuture;
   }
 
@@ -72,106 +80,175 @@ class _PresupuestosScreenState extends State<PresupuestosScreen> {
     }
   }
 
+  void _filterOrders(String query) {
+    _searchQuery = query.toLowerCase();
+    setState(() {
+      _filteredOrders = _allOrders.where((o) {
+        final name = (o['client_name'] as String? ?? '').toLowerCase();
+        return name.contains(_searchQuery);
+      }).toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Presupuestos', style: GoogleFonts.inter()),
+        title: Text('Cotizaciones', style: GoogleFonts.inter()),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 1,
         actions: [
+          FilledButton.icon(
+            onPressed: () => context.push('/quotations/new'),
+            icon: const Icon(Icons.add, size: 20),
+            label: const Text('Nueva cotización'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 8),
           PopupMenuButton<String?>(
             icon: const Icon(Icons.filter_list),
             onSelected: (state) {
               setState(() {
                 _selectedState = state;
+                _loaded = false;
                 _ordersFuture = _fetchOrders();
               });
             },
-              itemBuilder: (_) => [
-                PopupMenuItem(value: null, child: const Text('Todos')),
-                PopupMenuItem(value: 'draft', child: const Text('Creada')),
-                PopupMenuItem(value: 'sent', child: const Text('Cotización enviada')),
-                PopupMenuItem(value: 'sale', child: const Text('Orden de venta')),
-                PopupMenuItem(value: 'cancel', child: const Text('Cancelada')),
-              ],
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: null, child: Text('Todos')),
+              const PopupMenuItem(value: 'draft', child: Text('Creada')),
+              const PopupMenuItem(value: 'sent', child: Text('Cotización enviada')),
+              const PopupMenuItem(value: 'sale', child: Text('Orden de venta')),
+              const PopupMenuItem(value: 'cancel', child: Text('Cancelada')),
+            ],
           ),
-          IconButton(icon: const Icon(Icons.sync), onPressed: _syncAllStatuses),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _ordersFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+          if (!_loaded) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error al cargar cotizaciones',
+                  style: GoogleFonts.inter(color: Colors.red),
+                ),
+              );
+            }
+            final orders = snapshot.data ?? [];
+            _allOrders = orders;
+            _filteredOrders = orders;
+            _loaded = true;
           }
-          if (snapshot.hasError) {
+
+          if (_allOrders.isEmpty) {
             return Center(
               child: Text(
-                'Error al cargar presupuestos',
-                style: GoogleFonts.inter(color: Colors.red),
-              ),
-            );
-          }
-          final orders = snapshot.data ?? [];
-          if (orders.isEmpty) {
-            return Center(
-              child: Text(
-                'No hay presupuestos',
+                'No hay cotizaciones',
                 style: GoogleFonts.inter(color: AppColors.textSecondary),
               ),
             );
           }
 
           if (context.isDesktop) {
-            return _buildDesktopTable(orders);
+            return _buildDesktopTable();
           }
 
-          return _buildMobileList(orders);
+          return _buildMobileList();
         },
       ),
     );
   }
 
-  Widget _buildDesktopTable(List<Map<String, dynamic>> orders) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.all(AppColors.background),
-        columnSpacing: 24,
-        columns: const [
-          DataColumn(label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.w600))),
-          DataColumn(label: Text('Monto', style: TextStyle(fontWeight: FontWeight.w600))),
-          DataColumn(label: Text('Estado', style: TextStyle(fontWeight: FontWeight.w600))),
-          DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.w600))),
-        ],
-        rows: orders.map((o) {
-          final state = o['state'] as String? ?? '';
-          return DataRow(cells: [
-            DataCell(Text(o['client_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w500))),
-            DataCell(Text('\$${(o['amount_total'] ?? 0.0).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600))),
-            DataCell(_buildStateChip(state)),
-            DataCell(
-              TextButton(
-                onPressed: () => context.push('/orders/${o['id']}'),
-                child: const Text('Ver detalle'),
-              ),
-            ),
-          ]);
-        }).toList(),
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: TextField(
+        onChanged: _filterOrders,
+        decoration: InputDecoration(
+          hintText: 'Buscar por cliente...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _filterOrders(''),
+                )
+              : null,
+          isDense: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
       ),
     );
   }
 
-  Widget _buildMobileList(List<Map<String, dynamic>> orders) {
+  Widget _buildDesktopTable() {
+    return Column(
+      children: [
+        _buildSearchBar(),
+        Expanded(
+          child: ClipRect(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: AppTable<Map<String, dynamic>>(
+                columns: const [
+                  AppColumn(title: 'Cliente', flex: 3),
+                  AppColumn(title: 'Monto', flex: 1),
+                  AppColumn(title: 'Estado', flex: 1),
+                  AppColumn(title: '', flex: 1),
+                ],
+                items: _filteredOrders,
+                cellBuilder: (_, order, col) {
+                  switch (col) {
+                    case 0:
+                      return Text(
+                        order['client_name'] as String? ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    case 1:
+                      return Text(
+                        '\$${(order['amount_total'] ?? 0.0).toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      );
+                    case 2:
+                      return _buildStateChip(order['state'] as String? ?? '');
+                    case 3:
+                      return TextButton(
+                        onPressed: () => context.push('/quotations/${order['id']}'),
+                        child: const Text('Ver detalle'),
+                      );
+                    default:
+                      return const SizedBox();
+                  }
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
+      itemCount: _filteredOrders.length,
       itemBuilder: (context, i) => _OrderCard(
-        order: orders[i],
-        onTap: () => context.push('/orders/${orders[i]['id']}'),
+        order: _filteredOrders[i],
+        onTap: () => context.push('/quotations/${_filteredOrders[i]['id']}'),
       ),
     );
   }

@@ -3,21 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../models/client_model.dart';
+import '../models/customer_model.dart';
 import '../models/contact_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
 import '../widgets/app_table.dart';
 
-class ClientesScreen extends StatefulWidget {
-  const ClientesScreen({super.key});
+class CustomersPage extends StatefulWidget {
+  const CustomersPage({super.key});
 
   @override
-  State<ClientesScreen> createState() => _ClientesScreenState();
+  State<CustomersPage> createState() => _CustomersPageState();
 }
 
-class _ClientesScreenState extends State<ClientesScreen> {
+class _CustomersPageState extends State<CustomersPage> {
   late Future<List<Client>> _clientsFuture;
   List<Client> _allClients = [];
   List<Client> _filteredClients = [];
@@ -147,9 +147,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Tooltip(
-                                        message: 'Crear presupuesto',
+                                        message: 'Nueva cotización',
                                         child: InkWell(
-                                          onTap: () => context.push('/customers/budget/create', extra: c),
+                                          onTap: () => context.push('/quotations/new?customer=${c.odooId}'),
                                           child: const Padding(
                                             padding: EdgeInsets.all(6),
                                             child: Icon(Icons.request_quote_outlined, size: 18, color: AppColors.primary),
@@ -408,9 +408,9 @@ class _ClientCard extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    context.push('/customers/budget/create', extra: client);
+                    context.push('/quotations/new?customer=${client.odooId}');
                   },
-                  child: const Text('Crear presupuesto'),
+                  child: const Text('Nueva cotización'),
                 ),
               ],
             ),

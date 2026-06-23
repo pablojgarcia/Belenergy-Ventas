@@ -5,30 +5,47 @@ import '../utils/theme.dart';
 import '../utils/responsive.dart';
 
 class ResponsiveShell extends StatelessWidget {
-  final StatefulNavigationShell navigationShell;
+  final Widget child;
 
-  const ResponsiveShell({super.key, required this.navigationShell});
+  const ResponsiveShell({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return context.isDesktop
-        ? _DesktopShell(navigationShell: navigationShell)
-        : _MobileShell(navigationShell: navigationShell);
+        ? _DesktopShell(child: child)
+        : _MobileShell(child: child);
   }
 }
 
-class _DesktopShell extends StatelessWidget {
-  final StatefulNavigationShell navigationShell;
+int _currentTab(String location) {
+  if (location == '/') return 0;
+  if (location == '/customers') return 1;
+  if (location == '/products') return 2;
+  if (location.startsWith('/quotations')) return 3;
+  return 0;
+}
 
-  const _DesktopShell({required this.navigationShell});
+class _DesktopShell extends StatelessWidget {
+  final Widget child;
+
+  const _DesktopShell({required this.child});
 
   @override
   Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    final selectedIndex = _currentTab(location);
     return Row(
       children: [
         NavigationRail(
-          selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: (i) => navigationShell.goBranch(i),
+          selectedIndex: selectedIndex,
+          onDestinationSelected: (i) {
+            switch (i) {
+              case 0: context.go('/');
+              case 1: context.go('/customers');
+              case 2: context.go('/products');
+              case 3: context.go('/quotations');
+            }
+          },
           labelType: NavigationRailLabelType.all,
           minWidth: 80,
           groupAlignment: -1,
@@ -60,36 +77,45 @@ class _DesktopShell extends StatelessWidget {
             NavigationRailDestination(
               icon: Icon(Icons.receipt_long_rounded),
               selectedIcon: Icon(Icons.receipt_long_rounded),
-              label: Text('Presupuestos'),
+              label: Text('Cotizaciones'),
             ),
           ],
         ),
         const VerticalDivider(width: 1, thickness: 1),
-        Expanded(child: navigationShell),
+        Expanded(child: child),
       ],
     );
   }
 }
 
 class _MobileShell extends StatelessWidget {
-  final StatefulNavigationShell navigationShell;
+  final Widget child;
 
-  const _MobileShell({required this.navigationShell});
+  const _MobileShell({required this.child});
 
   @override
   Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    final selectedIndex = _currentTab(location);
     return Scaffold(
-      body: navigationShell,
+      body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (i) => navigationShell.goBranch(i),
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (i) {
+          switch (i) {
+            case 0: context.go('/');
+            case 1: context.go('/customers');
+            case 2: context.go('/products');
+            case 3: context.go('/quotations');
+          }
+        },
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.primary.withOpacity(0.12),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
           NavigationDestination(icon: Icon(Icons.people_alt_rounded), label: 'Clientes'),
           NavigationDestination(icon: Icon(Icons.solar_power_rounded), label: 'Productos'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_rounded), label: 'Presupuestos'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_rounded), label: 'Cotizaciones'),
         ],
       ),
     );

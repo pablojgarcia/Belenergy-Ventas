@@ -73,6 +73,16 @@ class ContactOut(BaseModel):
     class Config:
         from_attributes = True
 
+class TaxOut(BaseModel):
+    id: int
+    odoo_id: int
+    name: str
+    amount: float
+    type_tax_use: str = "sale"
+
+    class Config:
+        from_attributes = True
+
 class ProductBase(BaseModel):
     name: str
     default_code: Optional[str] = None

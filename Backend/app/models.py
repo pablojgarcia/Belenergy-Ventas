@@ -47,6 +47,15 @@ class Contact(Base):
     email = Column(String)
     phone = Column(String)
 
+class Tax(Base):
+    __tablename__ = "taxes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    odoo_id = Column(Integer, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    amount = Column(Float, default=0.0)
+    type_tax_use = Column(String, default="sale")
+
 class Product(Base):
     __tablename__ = "products"
 

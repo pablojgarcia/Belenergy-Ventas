@@ -21,8 +21,6 @@ def create_quotation(partner_id: int, order_lines: list[dict], description: str 
             'price_unit': line['price_unit'],
             'discount': line.get('discount', 0.0),
         }
-        if line.get('tax_id'):
-            line_vals['tax_id'] = [(6, 0, line['tax_id'])]
 
         lines.append((0, 0, line_vals))
 

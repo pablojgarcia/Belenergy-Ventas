@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Product {
   final int id;
   final int odooId;
@@ -12,6 +14,7 @@ class Product {
   final String descriptionSale;
   final bool active;
   final bool saleOk;
+  final List<int> taxesId;
 
   Product({
     required this.id,
@@ -27,9 +30,24 @@ class Product {
     this.descriptionSale = '',
     this.active = true,
     this.saleOk = true,
+    this.taxesId = const [],
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    List<int> parseTaxes(dynamic raw) {
+      if (raw == null) return [];
+      if (raw is List) return raw.cast<int>();
+      if (raw is String && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw) as List;
+          return decoded.cast<int>();
+        } catch (_) {
+          return [];
+        }
+      }
+      return [];
+    }
+
     return Product(
       id: json['id'] ?? 0,
       odooId: json['odoo_id'] ?? 0,
@@ -44,10 +62,13 @@ class Product {
       descriptionSale: json['description_sale'] ?? '',
       active: json['active'] ?? true,
       saleOk: json['sale_ok'] ?? true,
+      taxesId: parseTaxes(json['taxes_id']),
     );
   }
 
   String get formattedPrice {
     return '\$${listPrice.toStringAsFixed(2)}';
   }
+
+
 }

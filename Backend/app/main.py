@@ -16,7 +16,7 @@ from .auth import hash_password, authenticate_user, create_access_token, create_
 from .dependencies import get_current_user, get_current_admin
 from . import models, schemas
 from fastapi.responses import Response, FileResponse
-from .services.odoo_sync import sync_customers, sync_products, get_odoo_connection
+from .services.odoo_sync import sync_customers, sync_products, sync_taxes, get_odoo_connection
 from .services.odoo_sale import create_quotation
 
 
@@ -87,6 +87,9 @@ if "products" in inspector.get_table_names():
     if "taxes_id" not in prod_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE products ADD COLUMN taxes_id TEXT"))
+
+if "taxes" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.Tax.__table__])
 
 app = FastAPI(title="Auth API")
 
@@ -181,10 +184,23 @@ def get_customer_contacts(customer_id: int, db: Session = Depends(get_db), curre
 @app.post("/sync/products", status_code=200)
 def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
     try:
+        sync_taxes(db)
         sync_products(db)
-        return {"message": "Sincronización de productos completada"}
+        return {"message": "Sincronización de impuestos y productos completada"}
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Error al sincronizar productos: {str(e)}")
+
+@app.post("/sync/taxes", status_code=200)
+def trigger_sync_taxes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
+    try:
+        sync_taxes(db)
+        return {"message": "Sincronización de impuestos completada"}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al sincronizar impuestos: {str(e)}")
+
+@app.get("/taxes", response_model=list[schemas.TaxOut])
+def get_taxes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.Tax).all()
 
 @app.get("/products", response_model=list[schemas.ProductOut])
 def get_products(
@@ -386,8 +402,9 @@ def create_quotation_endpoint(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=502, detail="Error al comunicarse con Odoo")
+    except Exception as e:
+        print(f"ERROR creating Odoo quotation: {e}")
+        raise HTTPException(status_code=502, detail=f"Error al comunicarse con Odoo: {e}")
 
     total = sum(
         line.quantity * line.price_unit * (1 - line.discount / 100)

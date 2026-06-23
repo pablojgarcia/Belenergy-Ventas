@@ -2,32 +2,72 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../models/client_model.dart';
+import '../models/customer_model.dart';
 import '../models/product_model.dart';
+import '../models/tax_model.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 
-class CrearPresupuestoScreen extends StatefulWidget {
-  final Client client;
+class CreateQuotationPage extends StatefulWidget {
+  final String? customerId;
 
-  const CrearPresupuestoScreen({super.key, required this.client});
+  const CreateQuotationPage({super.key, this.customerId});
 
   @override
-  State<CrearPresupuestoScreen> createState() => _CrearPresupuestoScreenState();
+  State<CreateQuotationPage> createState() => _CreateQuotationPageState();
 }
 
-class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
+class _CreateQuotationPageState extends State<CreateQuotationPage> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _lineItems = <_LineItem>[];
   bool _loading = false;
-  late Client _selectedClient;
+  Client? _selectedClient;
+  bool _pickingClient = false;
+  bool _loadingClient = false;
+  Map<int, Tax> _taxMap = {};
 
   @override
   void initState() {
     super.initState();
-    _selectedClient = widget.client;
+    _loadTaxes();
+    if (widget.customerId != null) {
+      _loadCustomer();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _pickClient());
+    }
+  }
+
+  Future<void> _loadCustomer() async {
+    setState(() => _loadingClient = true);
+    final api = context.read<ApiService>();
+    try {
+      final customerOdooId = int.parse(widget.customerId!);
+      final data = await api.getCustomers();
+      final match = data.map((j) => Client.fromJson(j)).firstWhere(
+        (c) => c.odooId == customerOdooId,
+      );
+      if (mounted) setState(() {
+        _selectedClient = match;
+        _loadingClient = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingClient = false);
+      if (mounted) _pickClient();
+    }
+  }
+
+  Future<void> _loadTaxes() async {
+    final api = context.read<ApiService>();
+    try {
+      final data = await api.getTaxes();
+      if (mounted) {
+        setState(() {
+          _taxMap = {for (final t in data) t['odoo_id'] as int: Tax.fromJson(t)};
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -55,7 +95,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
 
       if (selected != null) {
         setState(() {
-          _lineItems.add(_LineItem(product: selected));
+          _lineItems.add(_LineItem(product: selected, taxMap: _taxMap));
         });
       }
     } catch (_) {
@@ -74,29 +114,31 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
       );
       return;
     }
+    if (_selectedClient == null) return;
 
     setState(() => _loading = true);
 
     final api = context.read<ApiService>();
     try {
       await api.createQuotation({
-        'partner_id': _selectedClient.odooId,
+        'partner_id': _selectedClient!.odooId,
         'description': _descriptionController.text,
         'order_line': _lineItems.map((item) => {
           'product_id': item.product.odooId,
           'quantity': item.quantity,
           'price_unit': item.product.listPrice,
           'discount': item.discount,
-          'tax_id': [],
+          'tax_id': item.product.taxesId,
         }).toList(),
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Presupuesto creado correctamente'), backgroundColor: AppColors.primary),
-      );
       context.read<ApiService>().ordersRefreshNotifier.value++;
-      context.go('/orders');
+      context.go('/quotations');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Cotización creada correctamente'), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +161,15 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
     );
   }
 
-  void _showCustomerPicker() async {
+  Future<void> _pickClient() async {
+    setState(() => _pickingClient = true);
+    await _showCustomerPicker();
+    if (mounted && _selectedClient == null) {
+      context.go('/quotations');
+    }
+  }
+
+  Future<void> _showCustomerPicker() async {
     final api = context.read<ApiService>();
     try {
       final data = await api.getCustomers();
@@ -131,7 +181,10 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
         builder: (ctx) => _CustomerPickerDialog(clients: clients),
       );
       if (selected != null) {
-        setState(() => _selectedClient = selected);
+        setState(() {
+          _selectedClient = selected;
+          _pickingClient = false;
+        });
       }
     } catch (_) {
       if (!mounted) return;
@@ -150,7 +203,11 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Crear presupuesto', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => context.go('/quotations'),
+        ),
+        title: Text('Nueva cotización', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -166,24 +223,28 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
             icon: _loading
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.description_outlined),
-            label: const Text('Generar presupuesto'),
+            label: const Text('Generar cotización'),
           ),
           const SizedBox(width: 16),
         ],
       ),
-      body: context.isDesktop
-          ? Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: _buildLeftPanel()),
-                  const SizedBox(width: 24),
-                  SizedBox(width: 350, child: _buildClientCard()),
-                ],
-              ),
+      body: _selectedClient == null || _loadingClient
+          ? Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             )
-          : _buildMobileBody(),
+          : context.isDesktop
+              ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildLeftPanel()),
+                      const SizedBox(width: 24),
+                      SizedBox(width: 350, child: _buildClientCard()),
+                    ],
+                  ),
+                )
+              : _buildMobileBody(),
     );
   }
 
@@ -235,7 +296,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
               controller: _descriptionController,
               maxLines: 2,
               decoration: const InputDecoration(
-                hintText: 'Descripción del presupuesto',
+                hintText: 'Descripción de la cotización',
               ),
             ),
           ],
@@ -292,10 +353,12 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
           child: Row(
             children: [
               Expanded(flex: 3, child: Text('Producto', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 100, child: Text('Cantidad', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 100, child: Text('Precio', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 100, child: Text('Descuento', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 100, child: Text('Total', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+              SizedBox(width: 90, child: Text('Cantidad', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+              SizedBox(width: 90, child: Text('Precio', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+              SizedBox(width: 90, child: Text('Dto', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+              SizedBox(width: 90, child: Text('Subtotal', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+              SizedBox(width: 90, child: Text('IVA', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+              SizedBox(width: 90, child: Text('Total', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
               const SizedBox(width: 40),
             ],
           ),
@@ -306,7 +369,6 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
   }
 
   Widget _buildProductRow(int index, _LineItem item) {
-    final total = item.quantity * item.product.listPrice * (1 - item.discount / 100);
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
@@ -319,7 +381,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
             child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
           ),
           SizedBox(
-            width: 100,
+            width: 90,
             child: TextFormField(
               controller: item.quantityController,
               decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
@@ -328,14 +390,14 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
             ),
           ),
           SizedBox(
-            width: 100,
+            width: 90,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
             ),
           ),
           SizedBox(
-            width: 100,
+            width: 90,
             child: TextFormField(
               controller: item.discountController,
               decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
@@ -343,10 +405,26 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
             ),
           ),
           SizedBox(
-            width: 100,
+            width: 90,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text('\$${total.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+              child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+            ),
+          ),
+          SizedBox(
+            width: 90,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: item.taxRate > 0
+                  ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
+                  : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+            ),
+          ),
+          SizedBox(
+            width: 90,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
             ),
           ),
           SizedBox(
@@ -362,10 +440,9 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
   }
 
   Widget _buildTotalsCard() {
-    final subtotal = _lineItems.fold<double>(
-      0.0,
-      (sum, item) => sum + item.quantity * item.product.listPrice * (1 - item.discount / 100),
-    );
+    final subtotal = _lineItems.fold<double>(0.0, (s, i) => s + i.lineSubtotal);
+    final iva = _lineItems.fold<double>(0.0, (s, i) => s + i.lineTax);
+    final total = subtotal + iva;
 
     return Card(
       elevation: 0,
@@ -376,12 +453,12 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
           children: [
             _totalRow('Subtotal', subtotal),
             const SizedBox(height: 6),
-            _totalRow('IVA', 0),
+            _totalRow('IVA', iva),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Divider(height: 1),
             ),
-            _totalRow('TOTAL', subtotal, big: true),
+            _totalRow('TOTAL', total, big: true),
           ],
         ),
       ),
@@ -416,7 +493,7 @@ class _CrearPresupuestoScreenState extends State<CrearPresupuestoScreen> {
   }
 
   Widget _buildClientCard() {
-    final c = _selectedClient;
+    final c = _selectedClient!;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -506,11 +583,26 @@ class _LineItem {
   final Product product;
   final quantityController = TextEditingController(text: '1');
   final discountController = TextEditingController(text: '0');
+  Map<int, Tax> taxMap;
 
-  _LineItem({required this.product});
+  _LineItem({required this.product, this.taxMap = const {}});
 
   double get quantity => double.tryParse(quantityController.text.replaceAll(',', '.')) ?? 1;
   double get discount => double.tryParse(discountController.text.replaceAll(',', '.')) ?? 0;
+
+  double get taxRate {
+    if (product.taxesId.isEmpty) return 0;
+    double rate = 0;
+    for (final id in product.taxesId) {
+      final tax = taxMap[id];
+      if (tax != null) rate += tax.amount;
+    }
+    return rate;
+  }
+
+  double get lineSubtotal => quantity * product.listPrice * (1 - discount / 100);
+  double get lineTax => lineSubtotal * taxRate / 100;
+  double get lineTotal => lineSubtotal + lineTax;
 }
 
 class _ProductDialog extends StatefulWidget {

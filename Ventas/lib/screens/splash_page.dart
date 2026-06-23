@@ -5,14 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _scaleAnim;
@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final isAuth = auth.status == AuthStatus.authenticated;
-    context.go(isAuth ? '/home' : '/login');
+    context.go(isAuth ? '/' : '/login');
   }
 
   @override

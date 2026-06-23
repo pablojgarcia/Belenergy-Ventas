@@ -5,16 +5,16 @@ import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 
-class PresupuestoDetalleScreen extends StatefulWidget {
+class QuotationDetailPage extends StatefulWidget {
   final int orderId;
 
-  const PresupuestoDetalleScreen({super.key, required this.orderId});
+  const QuotationDetailPage({super.key, required this.orderId});
 
   @override
-  State<PresupuestoDetalleScreen> createState() => _PresupuestoDetalleScreenState();
+  State<QuotationDetailPage> createState() => _QuotationDetailPageState();
 }
 
-class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
+class _QuotationDetailPageState extends State<QuotationDetailPage> {
   late Future<Map<String, dynamic>> _orderFuture;
   late Future<List<Map<String, dynamic>>> _statusesFuture;
 
@@ -72,7 +72,7 @@ class _PresupuestoDetalleScreenState extends State<PresupuestoDetalleScreen> {
           }
           if (snapshot.hasError) {
             return Center(
-              child: Text('Error al cargar presupuesto', style: GoogleFonts.inter(color: Colors.red)),
+              child: Text('Error al cargar cotización', style: GoogleFonts.inter(color: Colors.red)),
             );
           }
           final order = snapshot.data!;

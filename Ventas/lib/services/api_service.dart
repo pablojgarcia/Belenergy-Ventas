@@ -168,6 +168,16 @@ class ApiService {
     await _dio.post('/sync/products');
   }
 
+  Future<List<Map<String, dynamic>>> getTaxes() async {
+    try {
+      final response = await _dio.get('/taxes');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching taxes: $e');
+      rethrow;
+    }
+  }
+
   Future<void> saveToken(String token) async {
     await _storage.write(_accessTokenKey, token);
   }
