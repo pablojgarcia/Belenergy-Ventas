@@ -160,6 +160,11 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getOrderLines(int orderId) async {
+    final response = await _dio.get('/orders/$orderId/lines');
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
   Future<void> syncCustomers() async {
     await _dio.post('/sync/customers');
   }

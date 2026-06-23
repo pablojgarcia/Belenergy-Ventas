@@ -517,6 +517,43 @@ def get_order_statuses(
         raise HTTPException(status_code=403, detail="No tenés permiso")
     return db.query(models.OrderStatus).filter(models.OrderStatus.order_id == order.id).order_by(models.OrderStatus.changed_at.desc()).all()
 
+@app.get("/orders/{order_id}/lines")
+def get_order_lines(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tenés permiso")
+
+    odoo = get_odoo_connection()
+    lines = odoo.env["sale.order.line"].search_read(
+        [("order_id", "=", order.odoo_id)],
+        ["product_id", "name", "product_uom_qty", "price_unit", "discount", "price_subtotal", "price_total"],
+    )
+    result = []
+    for line in lines:
+        product_name = ""
+        product_id_val = line.get("product_id")
+        if isinstance(product_id_val, (list, tuple)) and len(product_id_val) > 1:
+            product_name = product_id_val[1]
+            product_id_val = product_id_val[0]
+        result.append({
+            "product_id": product_id_val,
+            "product_name": product_name,
+            "description": line.get("name", ""),
+            "quantity": float(line.get("product_uom_qty", 1)),
+            "price_unit": float(line.get("price_unit", 0)),
+            "discount": float(line.get("discount", 0)),
+            "subtotal": float(line.get("price_subtotal", 0)),
+            "total": float(line.get("price_total", 0)),
+        })
+    return result
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
