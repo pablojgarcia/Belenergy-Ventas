@@ -1,24 +1,20 @@
 import os
-import json
-from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy import inspect, text
-from sqlalchemy.orm import Session
-from datetime import timedelta, datetime, timezone
 
 from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_command
 
 from .database import Base, engine, get_db
-from .auth import hash_password, authenticate_user, create_access_token, create_refresh_token, decode_token, store_refresh_token, consume_refresh_token, generate_jti, EXPIRE_MINS, REFRESH_EXPIRE_DAYS
-from .dependencies import get_current_user, get_current_admin
-from . import models, schemas
-from fastapi.responses import Response, FileResponse
-from .services.odoo_sync import sync_customers, sync_products, sync_taxes, get_odoo_connection
-from .services.odoo_sale import create_quotation
+from .auth import hash_password
+from . import models
+from .api import auth, products, customers, quotations, taxes, sync, health
+from .api.quotations import drafts_router, quotations_router
+from .rate_limit import limit, setup_rate_limiter
 
 
 STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
@@ -95,33 +91,19 @@ if "taxes" not in inspector.get_table_names():
 if "order_lines" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.OrderLine.__table__])
 
+if "quotation_drafts" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.QuotationDraft.__table__])
+
+if "quotation_draft_lines" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.QuotationDraftLine.__table__])
+
+if "quotations" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.Quotation.__table__])
+
 app = FastAPI(title="Auth API")
 
-if os.path.isdir(STATIC_DIR):
-    SPA_EXCLUDE = {"/docs", "/openapi.json", "/redoc", "/health"}
+setup_rate_limiter(app)
 
-    @app.middleware("http")
-    async def spa_middleware(request: Request, call_next):
-        accept = request.headers.get("accept", "")
-        if (
-            request.method == "GET"
-            and "text/html" in accept
-            and "." not in request.url.path
-            and request.url.path not in SPA_EXCLUDE
-        ):
-            resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
-            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            resp.headers["Vary"] = "Accept"
-            return resp
-        return await call_next(request)
-
-CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
-if CORS_ORIGINS_ENV:
-    CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS_ENV.split(",")]
-else:
-    CORS_ORIGINS = ["*"]
-
-VALID_HOSTS = os.getenv("VALID_HOSTS", "").split(",") if os.getenv("VALID_HOSTS") else ["*"]
 
 # Seed: asegurar que existe al menos un admin
 _seed_db = next(get_db())
@@ -153,6 +135,33 @@ except Exception as e:
 finally:
     _seed_db.close()
 
+# SPA middleware
+if os.path.isdir(STATIC_DIR):
+    SPA_EXCLUDE = {"/docs", "/openapi.json", "/redoc", "/health"}
+
+    @app.middleware("http")
+    async def spa_middleware(request: Request, call_next):
+        accept = request.headers.get("accept", "")
+        if (
+            request.method == "GET"
+            and "text/html" in accept
+            and "." not in request.url.path
+            and request.url.path not in SPA_EXCLUDE
+        ):
+            resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.headers["Vary"] = "Accept"
+            return resp
+        return await call_next(request)
+
+CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
+if CORS_ORIGINS_ENV:
+    CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS_ENV.split(",")]
+else:
+    CORS_ORIGINS = ["*"]
+
+VALID_HOSTS = os.getenv("VALID_HOSTS", "").split(",") if os.getenv("VALID_HOSTS") else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -164,481 +173,17 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=VALID_HOSTS)
 
-@app.post("/sync/customers", status_code=200)
-def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    try:
-        sync_customers(db)
-        return {"message": "Sincronización completada"}
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al sincronizar clientes: {str(e)}")
+# Routers
+app.include_router(auth.router)
+app.include_router(products.router)
+app.include_router(customers.router)
+app.include_router(taxes.router)
+app.include_router(sync.router)
+app.include_router(health.router)
+app.include_router(drafts_router)
+app.include_router(quotations_router)
 
-@app.get("/customers", response_model=list[schemas.CustomerOut])
-def get_customers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    return db.query(models.Customer).filter(
-        models.Customer.salesperson_id.in_([current_user.email, current_user.name])
-    ).all()
-
-@app.get("/customers/{customer_id}/contacts", response_model=list[schemas.ContactOut])
-def get_customer_contacts(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
-    if not customer:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    return db.query(models.Contact).filter(models.Contact.customer_id == customer_id).all()
-
-@app.post("/sync/products", status_code=200)
-def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    try:
-        sync_taxes(db)
-        sync_products(db)
-        return {"message": "Sincronización de impuestos y productos completada"}
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al sincronizar productos: {str(e)}")
-
-@app.post("/sync/taxes", status_code=200)
-def trigger_sync_taxes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    try:
-        sync_taxes(db)
-        return {"message": "Sincronización de impuestos completada"}
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al sincronizar impuestos: {str(e)}")
-
-@app.get("/taxes", response_model=list[schemas.TaxOut])
-def get_taxes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    return db.query(models.Tax).all()
-
-@app.get("/products", response_model=list[schemas.ProductOut])
-def get_products(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-    search: Optional[str] = None,
-    categ_id: Optional[str] = None,
-    active: Optional[bool] = True,
-    sale_ok: Optional[bool] = True,
-):
-    q = db.query(models.Product).filter(
-        models.Product.active == active,
-        models.Product.sale_ok == sale_ok,
-    )
-    if search:
-        q = q.filter(models.Product.name.ilike(f"%{search}%"))
-    if categ_id:
-        q = q.filter(models.Product.categ_id == categ_id)
-    products = q.all()
-
-    tax_ids = set()
-    for p in products:
-        if p.taxes_id:
-            try:
-                for tid in json.loads(p.taxes_id):
-                    tax_ids.add(tid)
-            except Exception:
-                pass
-    tax_map = {}
-    if tax_ids:
-        taxes = db.query(models.Tax).filter(models.Tax.odoo_id.in_(tax_ids)).all()
-        tax_map = {t.odoo_id: {"name": t.name, "amount": t.amount} for t in taxes}
-
-    result = []
-    for p in products:
-        labels = []
-        rate = 0.0
-        if p.taxes_id:
-            try:
-                for tid in json.loads(p.taxes_id):
-                    entry = tax_map.get(tid)
-                    if entry:
-                        labels.append(entry["name"])
-                        rate += entry["amount"]
-                    else:
-                        labels.append(f"ID {tid}")
-            except Exception:
-                pass
-        p.taxes_display = ", ".join(labels) if labels else "Exento"
-        p.taxes_rate = rate
-        result.append(p)
-    return result
-
-@app.get("/products/{product_id}", response_model=schemas.ProductOut)
-def get_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return product
-
-@app.get("/products/{product_id}/image")
-def get_product_image_endpoint(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not product or not product.image:
-        raise HTTPException(status_code=404, detail="Imagen no disponible")
-    return Response(content=product.image, media_type="image/png")
-
-if os.getenv("DISABLE_RATE_LIMIT") != "true":
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
-    limiter = Limiter(key_func=get_remote_address)
-    app.state.limiter = limiter
-    app.add_exception_handler(429, _rate_limit_exceeded_handler)
-else:
-    limiter = None
-
-def limit(rate: str):
-    if limiter is not None:
-        return limiter.limit(rate)
-    return lambda func: func
-
-@app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
-@limit("5/minute")
-def register(request: Request, user_in: schemas.UserCreate, db: Session = Depends(get_db)):
-    first_user = db.query(models.User).count() == 0
-
-    if not first_user:
-        auth = request.headers.get("Authorization") or ""
-        if not auth.startswith("Bearer "):
-            raise HTTPException(403, "Se requieren permisos de administrador")
-        try:
-            token_data = decode_token(auth.removeprefix("Bearer "))
-        except Exception:
-            raise HTTPException(403, "Se requieren permisos de administrador")
-        if token_data.type != "access":
-            raise HTTPException(403, "Se requieren permisos de administrador")
-        admin = db.query(models.User).filter(
-            models.User.username == token_data.username,
-            models.User.role == "admin",
-        ).first()
-        if not admin:
-            raise HTTPException(403, "Se requieren permisos de administrador")
-
-    if db.query(models.User).filter(models.User.email == user_in.email).first():
-        raise HTTPException(400, "El email ya está registrado")
-    if db.query(models.User).filter(models.User.username == user_in.username).first():
-        raise HTTPException(400, "El nombre de usuario ya existe")
-
-    role = "admin" if first_user else user_in.role
-
-    user = models.User(
-        email=user_in.email,
-        username=user_in.username,
-        name=user_in.name,
-        role=role,
-        hashed_password=hash_password(user_in.password),
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-@app.post("/auth/login", response_model=schemas.Token)
-@limit("5/minute")
-def login(request: Request, user_in: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = authenticate_user(db, user_in.username, user_in.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales incorrectas",
-        )
-    access_token = create_access_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(minutes=EXPIRE_MINS),
-    )
-    jti = generate_jti()
-    refresh_token = create_refresh_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(days=REFRESH_EXPIRE_DAYS),
-        jti=jti,
-    )
-    store_refresh_token(
-        db,
-        user_id=user.id,
-        jti=jti,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_EXPIRE_DAYS),
-    )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
-
-
-@app.post("/auth/refresh", response_model=schemas.Token)
-@limit("5/minute")
-def refresh(request: Request, token_in: schemas.TokenRefresh, db: Session = Depends(get_db)):
-    try:
-        token_data = decode_token(token_in.refresh_token)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token inválido o expirado",
-        )
-
-    if token_data.type != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tipo de token incorrecto",
-        )
-
-    if not token_data.jti or not consume_refresh_token(db, token_data.jti):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token ya utilizado o inválido",
-        )
-
-    user = db.query(models.User).filter(
-        models.User.username == token_data.username
-    ).first()
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario no encontrado o inactivo",
-        )
-
-    access_token = create_access_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(minutes=EXPIRE_MINS),
-    )
-    jti = generate_jti()
-    refresh_token = create_refresh_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(days=REFRESH_EXPIRE_DAYS),
-        jti=jti,
-    )
-    store_refresh_token(
-        db,
-        user_id=user.id,
-        jti=jti,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_EXPIRE_DAYS),
-    )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
-
-
-@app.get("/auth/me", response_model=schemas.UserOut)
-def me(current_user: models.User = Depends(get_current_user)):
-    return current_user
-
-@app.post("/orders/quotation", status_code=201)
-def create_quotation_endpoint(
-    order_in: schemas.OrderCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    customer = db.query(models.Customer).filter(models.Customer.odoo_id == order_in.partner_id).first()
-    if not customer:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    if customer.salesperson_id not in [current_user.email, current_user.name]:
-        raise HTTPException(status_code=403, detail="No tenés permiso para crear presupuestos para este cliente")
-
-    try:
-        odoo_id = create_quotation(
-            partner_id=order_in.partner_id,
-            order_lines=[line.model_dump() for line in order_in.order_line],
-            description=order_in.description,
-            vendedor_externo=customer.salesperson_id,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"ERROR creating Odoo quotation: {e}")
-        raise HTTPException(status_code=502, detail=f"Error al comunicarse con Odoo: {e}")
-
-    total = 0.0
-    total_tax = 0.0
-    for line in order_in.order_line:
-        subtotal = line.quantity * line.price_unit * (1 - line.discount / 100)
-        total += subtotal
-        tax_rate = 0.0
-        if line.tax_id:
-            taxes = db.query(models.Tax).filter(models.Tax.odoo_id.in_(line.tax_id)).all()
-            for t in taxes:
-                tax_rate += t.amount
-        total_tax += subtotal * tax_rate / 100
-
-    order = models.Order(
-        odoo_id=odoo_id,
-        client_id=customer.id,
-        client_name=customer.name,
-        amount_total=total,
-        amount_tax=total_tax,
-        state="draft",
-        user_id=current_user.id,
-        description=order_in.description,
-        vendedor_externo=customer.salesperson_id,
-    )
-    db.add(order)
-    db.flush()
-
-    for line in order_in.order_line:
-        subtotal = line.quantity * line.price_unit * (1 - line.discount / 100)
-        product_name = ""
-        product = db.query(models.Product).filter(models.Product.odoo_id == line.product_id).first()
-        if product:
-            product_name = product.name
-        db.add(models.OrderLine(
-            order_id=order.id,
-            product_id=line.product_id,
-            product_name=product_name,
-            description="",
-            quantity=line.quantity,
-            price_unit=line.price_unit,
-            discount=line.discount,
-            subtotal=subtotal,
-        ))
-
-    status_entry = models.OrderStatus(
-        order_id=order.id,
-        status="creada",
-        changed_by=current_user.id,
-    )
-    db.add(status_entry)
-    db.commit()
-    db.refresh(order)
-
-    return order
-
-@app.get("/orders", response_model=list[schemas.OrderOut])
-def list_orders(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-    state: Optional[str] = None,
-):
-    q = db.query(models.Order).filter(models.Order.user_id == current_user.id)
-    if state:
-        q = q.filter(models.Order.state == state)
-    return q.all()
-
-@app.get("/orders/{order_id}", response_model=schemas.OrderOut)
-def get_order(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
-    if order.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tenés permiso para ver este presupuesto")
-    return order
-
-@app.post("/orders/{order_id}/sync-status")
-def sync_order_status(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
-    if order.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tenés permiso")
-
-    odoo = get_odoo_connection()
-    sales = odoo.env["sale.order"].read(order.odoo_id, ["state"])
-    if not sales:
-        raise HTTPException(status_code=502, detail="No se pudo leer la orden en Odoo")
-    odoo_state = sales[0]["state"]
-
-    app_status_map = {
-        "sent": "cotizacion_enviada",
-        "sale": "orden_de_venta",
-        "cancel": "cancelada",
-    }
-    app_status = app_status_map.get(odoo_state, odoo_state)
-
-    last_status = (
-        db.query(models.OrderStatus)
-        .filter(models.OrderStatus.order_id == order.id)
-        .order_by(models.OrderStatus.changed_at.desc())
-        .first()
-    )
-
-    if last_status is None or last_status.status != app_status:
-        entry = models.OrderStatus(
-            order_id=order.id,
-            status=app_status,
-            changed_by=current_user.id,
-        )
-        db.add(entry)
-        order.state = odoo_state
-        db.commit()
-        return {"synced": True, "previous": last_status.status if last_status else None, "current": app_status}
-
-    return {"synced": False, "current": app_status}
-
-@app.get("/orders/{order_id}/statuses", response_model=list[schemas.OrderStatusOut])
-def get_order_statuses(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
-    if order.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tenés permiso")
-    return db.query(models.OrderStatus).filter(models.OrderStatus.order_id == order.id).order_by(models.OrderStatus.changed_at.desc()).all()
-
-@app.get("/orders/{order_id}/lines", response_model=list[schemas.OrderLineOut])
-def get_order_lines(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
-    if order.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tenés permiso")
-    return db.query(models.OrderLine).filter(models.OrderLine.order_id == order.id).order_by(models.OrderLine.id).all()
-
-
-@app.post("/orders/{order_id}/sync-lines")
-def sync_order_lines(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
-    if order.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tenés permiso")
-
-    existing = db.query(models.OrderLine).filter(models.OrderLine.order_id == order.id).count()
-    if existing > 0:
-        return {"synced": False, "reason": "Las líneas ya existen en la base local"}
-
-    odoo = get_odoo_connection()
-    lines = odoo.env["sale.order.line"].search_read(
-        [("order_id", "=", order.odoo_id)],
-        ["product_id", "name", "product_uom_qty", "price_unit", "discount", "price_subtotal"],
-    )
-    for line in lines:
-        product_name = ""
-        product_id_val = line.get("product_id")
-        if isinstance(product_id_val, (list, tuple)) and len(product_id_val) > 1:
-            product_name = product_id_val[1]
-            product_id_val = product_id_val[0]
-        db.add(models.OrderLine(
-            order_id=order.id,
-            product_id=product_id_val,
-            product_name=product_name,
-            description=line.get("name", ""),
-            quantity=float(line.get("product_uom_qty", 1)),
-            price_unit=float(line.get("price_unit", 0)),
-            discount=float(line.get("discount", 0)),
-            subtotal=float(line.get("price_subtotal", 0)),
-        ))
-    db.commit()
-    return {"synced": True, "lines_count": len(lines)}
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
+# SPA catch-all (must be last)
 if os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):

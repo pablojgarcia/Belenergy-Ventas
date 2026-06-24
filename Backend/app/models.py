@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text, ForeignKey
+import uuid
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text, ForeignKey, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -130,3 +131,51 @@ class OrderLine(Base):
     subtotal = Column(Float, default=0.0)
 
     order = relationship("Order", back_populates="lines")
+
+
+class QuotationDraft(Base):
+    __tablename__ = "quotation_drafts"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True, index=True)
+    status = Column(String(20), default="draft", index=True)
+    notes = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    version = Column(Integer, default=1)
+
+    lines = relationship("QuotationDraftLine", back_populates="draft", cascade="all, delete-orphan", order_by="QuotationDraftLine.created_at")
+
+
+class QuotationDraftLine(Base):
+    __tablename__ = "quotation_draft_lines"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    draft_id = Column(Uuid, ForeignKey("quotation_drafts.id"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_odoo_id = Column(Integer, nullable=True)
+    quantity = Column(Float, default=1.0)
+    unit_price = Column(Float, default=0.0)
+    discount = Column(Float, default=0.0)
+    tax_id = Column(Text, nullable=True)
+    tax_rate = Column(Float, default=0.0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    draft = relationship("QuotationDraft", back_populates="lines")
+
+
+class Quotation(Base):
+    __tablename__ = "quotations"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    draft_id = Column(Uuid, ForeignKey("quotation_drafts.id"), unique=True, nullable=False, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False, index=True)
+    amount_untaxed = Column(Float, default=0.0)
+    amount_tax = Column(Float, default=0.0)
+    amount_total = Column(Float, default=0.0)
+    odoo_sale_order_id = Column(Integer, nullable=False)
+    odoo_sale_order_name = Column(String(100), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

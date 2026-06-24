@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
@@ -108,66 +109,95 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> createQuotation(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> createDraft(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('/orders/quotation', data: data);
+      final response = await _dio.post('/quotation-drafts', data: data);
       return Map<String, dynamic>.from(response.data);
     } catch (e) {
-      debugPrint('Error creating quotation: $e');
+      debugPrint('Error creating draft: $e');
       rethrow;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getOrders({String? state}) async {
+  Future<List<Map<String, dynamic>>> getDrafts({
+    String? status, String? q, String? dateFrom, String? dateTo,
+  }) async {
     try {
       final params = <String, dynamic>{};
-      if (state != null) params['state'] = state;
-      final response = await _dio.get('/orders', queryParameters: params);
+      if (status != null) params['status'] = status;
+      if (q != null) params['q'] = q;
+      if (dateFrom != null) params['date_from'] = dateFrom;
+      if (dateTo != null) params['date_to'] = dateTo;
+      final response = await _dio.get('/quotation-drafts', queryParameters: params);
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
-      debugPrint('Error fetching orders: $e');
+      debugPrint('Error fetching drafts: $e');
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> getOrder(int id) async {
+  Future<Map<String, dynamic>?> getDraft(String id) async {
     try {
-      final response = await _dio.get('/orders/$id');
+      final response = await _dio.get(
+        '/quotation-drafts/$id',
+        options: Options(validateStatus: (s) => s == 200 || s == 404),
+      );
+      if (response.statusCode == 404) return null;
       return Map<String, dynamic>.from(response.data);
     } catch (e) {
-      debugPrint('Error fetching order: $e');
-      rethrow;
+      debugPrint('Error fetching draft: $e');
+      return null;
     }
   }
 
-  Future<Map<String, dynamic>> syncOrderStatus(int orderId) async {
+  Future<Map<String, dynamic>> updateDraft(String id, Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('/orders/$orderId/sync-status');
+      final response = await _dio.put('/quotation-drafts/$id', data: data);
       return Map<String, dynamic>.from(response.data);
     } catch (e) {
-      debugPrint('Error syncing order status: $e');
+      debugPrint('Error updating draft: $e');
       rethrow;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getOrderStatuses(int orderId) async {
+  Future<Map<String, dynamic>> generateQuotation(String draftId) async {
     try {
-      final response = await _dio.get('/orders/$orderId/statuses');
+      final response = await _dio.post('/quotation-drafts/$draftId/generate');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error generating quotation: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getQuotations({
+    int? customerId, String? dateFrom, String? dateTo,
+  }) async {
+    try {
+      final params = <String, dynamic>{};
+      if (customerId != null) params['customer_id'] = customerId;
+      if (dateFrom != null) params['date_from'] = dateFrom;
+      if (dateTo != null) params['date_to'] = dateTo;
+      final response = await _dio.get('/quotations', queryParameters: params);
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
-      debugPrint('Error fetching order statuses: $e');
+      debugPrint('Error fetching quotations: $e');
       rethrow;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getOrderLines(int orderId) async {
-    final response = await _dio.get('/orders/$orderId/lines');
-    return List<Map<String, dynamic>>.from(response.data);
-  }
-
-  Future<Map<String, dynamic>> syncOrderLines(int orderId) async {
-    final response = await _dio.post('/orders/$orderId/sync-lines');
-    return Map<String, dynamic>.from(response.data);
+  Future<Map<String, dynamic>?> getQuotation(String id) async {
+    try {
+      final response = await _dio.get(
+        '/quotations/$id',
+        options: Options(validateStatus: (s) => s == 200 || s == 404),
+      );
+      if (response.statusCode == 404) return null;
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching quotation: $e');
+      return null;
+    }
   }
 
   Future<void> syncCustomers() async {
@@ -186,6 +216,14 @@ class ApiService {
       debugPrint('Error fetching taxes: $e');
       rethrow;
     }
+  }
+
+  Future<Uint8List> downloadPdf(String quotationId) async {
+    final response = await _dio.get(
+      '/quotations/$quotationId/pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(response.data);
   }
 
   Future<void> saveToken(String token) async {

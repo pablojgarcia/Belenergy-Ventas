@@ -10,8 +10,9 @@ import '../utils/responsive.dart';
 
 class CreateQuotationPage extends StatefulWidget {
   final String? customerId;
+  final String? draftId;
 
-  const CreateQuotationPage({super.key, this.customerId});
+  const CreateQuotationPage({super.key, this.customerId, this.draftId});
 
   @override
   State<CreateQuotationPage> createState() => _CreateQuotationPageState();
@@ -22,6 +23,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   final _descriptionController = TextEditingController();
   final _lineItems = <_LineItem>[];
   bool _loading = false;
+  bool _isEditing = false;
+  String? _draftId;
   Client? _selectedClient;
   bool _pickingClient = false;
   bool _loadingClient = false;
@@ -29,7 +32,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.customerId != null) {
+    if (widget.draftId != null) {
+      _loadDraft();
+    } else if (widget.customerId != null) {
       _loadCustomer();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _pickClient());
@@ -52,6 +57,50 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     } catch (_) {
       if (mounted) setState(() => _loadingClient = false);
       if (mounted) _pickClient();
+    }
+  }
+
+  Future<void> _loadDraft() async {
+    setState(() => _loadingClient = true);
+    final api = context.read<ApiService>();
+    try {
+      final draft = await api.getDraft(widget.draftId!);
+      if (draft == null || !mounted) return;
+      _isEditing = true;
+      _draftId = widget.draftId;
+      _version = draft['version'] as int? ?? 1;
+      _descriptionController.text = draft['notes'] as String? ?? '';
+
+      if (draft['customer_id'] != null) {
+        final customers = await api.getCustomers();
+        final match = customers
+            .map((j) => Client.fromJson(j))
+            .firstWhere((c) => c.id == draft['customer_id'],
+                orElse: () => Client(id: 0, name: '', odooId: 0));
+        if (mounted) _selectedClient = match;
+      }
+
+      final lines = draft['lines'] as List<dynamic>? ?? [];
+      for (final line in lines) {
+        final productId = line['product_id'] as int;
+        final products = await api.getProducts();
+        final product = products
+            .map((j) => Product.fromJson(j))
+            .firstWhere((p) => p.id == productId,
+                orElse: () => Product(
+                    id: productId,
+                    odooId: line['product_odoo_id'] as int? ?? 0,
+                    name: line['product_name'] as String? ?? 'Producto #$productId',
+                    listPrice: (line['unit_price'] as num).toDouble()));
+        _lineItems.add(_LineItem(
+          product: product,
+          quantity: (line['quantity'] as num).toDouble(),
+          discount: (line['discount'] as num).toDouble(),
+        ));
+      }
+      if (mounted) setState(() => _loadingClient = false);
+    } catch (_) {
+      if (mounted) setState(() => _loadingClient = false);
     }
   }
 
@@ -91,6 +140,26 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     }
   }
 
+  int _version = 1;
+
+  Map<String, dynamic> _buildPayload() {
+    final payload = <String, dynamic>{
+      'customer_id': _selectedClient!.id,
+      'notes': _descriptionController.text,
+      'lines': _lineItems.map((item) => {
+        'product_id': item.product.id,
+        'quantity': item.quantity,
+        'unit_price': item.product.listPrice,
+        'discount': item.discount,
+        'tax_id': item.product.taxesId,
+      }).toList(),
+    };
+    if (_isEditing) {
+      payload['version'] = _version;
+    }
+    return payload;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_lineItems.isEmpty) {
@@ -105,24 +174,60 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
     final api = context.read<ApiService>();
     try {
-      await api.createQuotation({
-        'partner_id': _selectedClient!.odooId,
-        'description': _descriptionController.text,
-        'order_line': _lineItems.map((item) => {
-          'product_id': item.product.odooId,
-          'quantity': item.quantity,
-          'price_unit': item.product.listPrice,
-          'discount': item.discount,
-          'tax_id': item.product.taxesId,
-        }).toList(),
-      });
+      if (_isEditing) {
+        await api.updateDraft(_draftId!, _buildPayload());
+      } else {
+        final draft = await api.createDraft(_buildPayload());
+        _draftId = draft['id'] as String;
+        _isEditing = true;
+      }
+
+      if (!mounted) return;
+      context.read<ApiService>().ordersRefreshNotifier.value++;
+      context.go('/quotations/$_draftId');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Borrador guardado correctamente'), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submitAndGenerate() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_lineItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agregá al menos un producto')),
+      );
+      return;
+    }
+    if (_selectedClient == null) return;
+
+    setState(() => _loading = true);
+
+    final api = context.read<ApiService>();
+    try {
+      if (_isEditing) {
+        await api.updateDraft(_draftId!, _buildPayload());
+        await api.generateQuotation(_draftId!);
+      } else {
+        final draft = await api.createDraft(_buildPayload());
+        final draftId = draft['id'] as String;
+        await api.generateQuotation(draftId);
+      }
 
       if (!mounted) return;
       context.read<ApiService>().ordersRefreshNotifier.value++;
       context.go('/quotations');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Cotización creada correctamente'), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
+        SnackBar(content: const Text('Cotización generada correctamente'), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
       );
     } catch (e) {
       if (!mounted) return;
@@ -192,22 +297,24 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           icon: const Icon(Icons.close),
           onPressed: () => context.go('/quotations'),
         ),
-        title: Text('Nueva cotización', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(_isEditing ? 'Editar cotización' : 'Nueva cotización', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         actions: [
           OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.save_outlined),
+            onPressed: _loading ? null : _submit,
+            icon: _loading
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.save_outlined),
             label: const Text('Guardar'),
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
-            onPressed: _loading ? null : _submit,
+            onPressed: _loading ? null : _submitAndGenerate,
             icon: _loading
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.description_outlined),
+                : const Icon(Icons.rocket_launch),
             label: const Text('Generar cotización'),
           ),
           const SizedBox(width: 16),
@@ -569,7 +676,10 @@ class _LineItem {
   final quantityController = TextEditingController(text: '1');
   final discountController = TextEditingController(text: '0');
 
-  _LineItem({required this.product});
+  _LineItem({required this.product, double? quantity, double? discount}) {
+    if (quantity != null) quantityController.text = quantity.toStringAsFixed(0);
+    if (discount != null) discountController.text = discount.toStringAsFixed(0);
+  }
 
   double get quantity => double.tryParse(quantityController.text.replaceAll(',', '.')) ?? 1;
   double get discount => double.tryParse(discountController.text.replaceAll(',', '.')) ?? 0;

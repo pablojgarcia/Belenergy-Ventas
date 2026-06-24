@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+import json
+import uuid
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -161,3 +163,86 @@ class OrderLineOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class QuotationDraftLineInput(BaseModel):
+    product_id: int
+    quantity: float
+    unit_price: float
+    discount: float = 0.0
+    tax_id: list[int] = []
+
+
+class QuotationDraftCreate(BaseModel):
+    customer_id: int | None = None
+    notes: str | None = None
+    lines: list[QuotationDraftLineInput] = []
+
+
+class QuotationDraftUpdate(BaseModel):
+    customer_id: int | None = None
+    notes: str | None = None
+    lines: list[QuotationDraftLineInput] = []
+    version: int
+
+
+class QuotationDraftLineOut(BaseModel):
+    id: uuid.UUID
+    draft_id: uuid.UUID
+    product_id: int
+    product_odoo_id: int | None = None
+    product_name: str | None = None
+    quantity: float
+    unit_price: float
+    discount: float
+    tax_id: list[int] = []
+    tax_rate: float = 0.0
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("tax_id", mode="before")
+    @classmethod
+    def parse_tax_id(cls, v):
+        if isinstance(v, str):
+            return json.loads(v) if v else []
+        return v or []
+
+
+class QuotationDraftOut(BaseModel):
+    id: uuid.UUID
+    customer_id: int | None = None
+    customer_name: str | None = None
+    status: str = "draft"
+    notes: str | None = None
+    created_by: int
+    updated_by: int | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+    version: int = 1
+    lines: list[QuotationDraftLineOut] = []
+
+    model_config = {"from_attributes": True}
+
+
+class QuotationOut(BaseModel):
+    id: uuid.UUID
+    draft_id: uuid.UUID
+    customer_id: int
+    customer_name: str | None = None
+    amount_untaxed: float
+    amount_tax: float
+    amount_total: float
+    odoo_sale_order_id: int
+    odoo_sale_order_name: str | None = None
+    lines: list[QuotationDraftLineOut] = []
+    created_by: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class QuotationGenerateResponse(BaseModel):
+    quotation_id: uuid.UUID
+    odoo_sale_order_id: int
+    odoo_sale_order_name: str | None = None

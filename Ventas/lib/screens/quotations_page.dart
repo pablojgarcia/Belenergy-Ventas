@@ -15,17 +15,17 @@ class QuotationsPage extends StatefulWidget {
 }
 
 class _QuotationsPageState extends State<QuotationsPage> {
-  late Future<List<Map<String, dynamic>>> _ordersFuture;
-  List<Map<String, dynamic>> _allOrders = [];
-  List<Map<String, dynamic>> _filteredOrders = [];
+  late Future<List<Map<String, dynamic>>> _itemsFuture;
+  List<Map<String, dynamic>> _allItems = [];
+  List<Map<String, dynamic>> _filteredItems = [];
   bool _loaded = false;
-  String? _selectedState;
+  String? _selectedTab;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _ordersFuture = _fetchOrders();
+    _itemsFuture = _fetchItems();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ApiService>().ordersRefreshNotifier.addListener(_onRefresh);
@@ -45,45 +45,51 @@ class _QuotationsPageState extends State<QuotationsPage> {
     _refresh();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchOrders() {
+  Future<List<Map<String, dynamic>>> _fetchItems() async {
     final api = context.read<ApiService>();
-    return api.getOrders(state: _selectedState);
+    final drafts = await api.getDrafts();
+    final quotations = await api.getQuotations();
+    final merged = <Map<String, dynamic>>[];
+
+    for (final d in drafts) {
+      if (d['status'] == 'generated') continue;
+      merged.add({
+        ...d,
+        '_type': 'draft',
+        '_sort_date': d['created_at'] as String? ?? '',
+      });
+    }
+    for (final q in quotations) {
+      merged.add({
+        ...q,
+        '_type': 'quotation',
+        '_sort_date': q['created_at'] as String? ?? '',
+      });
+    }
+    merged.sort((a, b) => (b['_sort_date'] as String).compareTo(a['_sort_date'] as String));
+
+    if (_selectedTab != null) {
+      if (_selectedTab == 'draft') {
+        merged.removeWhere((i) => i['_type'] != 'draft');
+      } else if (_selectedTab == 'generated') {
+        merged.removeWhere((i) => i['_type'] != 'quotation');
+      }
+    }
+    return merged;
   }
 
   Future<void> _refresh() async {
     setState(() {
       _loaded = false;
-      _ordersFuture = _fetchOrders();
+      _itemsFuture = _fetchItems();
     });
-    await _ordersFuture;
+    await _itemsFuture;
   }
 
-  Future<void> _syncAllStatuses() async {
-    final api = context.read<ApiService>();
-    try {
-      final data = await api.getOrders();
-      for (final order in data) {
-        try {
-          await api.syncOrderStatus(order['id'] as int);
-        } catch (_) {}
-      }
-      await _refresh();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Estados sincronizados')),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al sincronizar'), backgroundColor: AppColors.error),
-      );
-    }
-  }
-
-  void _filterOrders(String query) {
+  void _filterItems(String query) {
     _searchQuery = query.toLowerCase();
     setState(() {
-      _filteredOrders = _allOrders.where((o) {
+      _filteredItems = _allItems.where((o) {
         final name = (o['client_name'] as String? ?? '').toLowerCase();
         return name.contains(_searchQuery);
       }).toList();
@@ -114,26 +120,24 @@ class _QuotationsPageState extends State<QuotationsPage> {
           const SizedBox(width: 8),
           PopupMenuButton<String?>(
             icon: const Icon(Icons.filter_list),
-            onSelected: (state) {
+            onSelected: (tab) {
               setState(() {
-                _selectedState = state;
+                _selectedTab = tab;
                 _loaded = false;
-                _ordersFuture = _fetchOrders();
+                _itemsFuture = _fetchItems();
               });
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: null, child: Text('Todos')),
-              const PopupMenuItem(value: 'draft', child: Text('Creada')),
-              const PopupMenuItem(value: 'sent', child: Text('Cotización enviada')),
-              const PopupMenuItem(value: 'sale', child: Text('Orden de venta')),
-              const PopupMenuItem(value: 'cancel', child: Text('Cancelada')),
+              const PopupMenuItem(value: 'draft', child: Text('Borradores')),
+              const PopupMenuItem(value: 'generated', child: Text('Generadas')),
             ],
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _ordersFuture,
+        future: _itemsFuture,
         builder: (context, snapshot) {
           if (!_loaded) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -147,13 +151,13 @@ class _QuotationsPageState extends State<QuotationsPage> {
                 ),
               );
             }
-            final orders = snapshot.data ?? [];
-            _allOrders = orders;
-            _filteredOrders = orders;
+            final items = snapshot.data ?? [];
+            _allItems = items;
+            _filteredItems = items;
             _loaded = true;
           }
 
-          if (_allOrders.isEmpty) {
+          if (_allItems.isEmpty) {
             return Center(
               child: Text(
                 'No hay cotizaciones',
@@ -176,14 +180,14 @@ class _QuotationsPageState extends State<QuotationsPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       child: TextField(
-        onChanged: _filterOrders,
+        onChanged: _filterItems,
         decoration: InputDecoration(
           hintText: 'Buscar por cliente...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear),
-                  onPressed: () => _filterOrders(''),
+                  onPressed: () => _filterItems(''),
                 )
               : null,
           isDense: true,
@@ -205,21 +209,19 @@ class _QuotationsPageState extends State<QuotationsPage> {
               child: AppTable<Map<String, dynamic>>(
                 columns: const [
                   AppColumn(title: 'Cliente', flex: 3),
-                  AppColumn(title: 'Monto sin IVA', flex: 1),
-                  AppColumn(title: 'IVA', flex: 1),
-                  AppColumn(title: 'Monto Total', flex: 1),
+                  AppColumn(title: 'Monto', flex: 1),
+                  AppColumn(title: 'Tipo', flex: 1),
                   AppColumn(title: 'Estado', flex: 1),
                   AppColumn(title: '', flex: 1),
                 ],
-                items: _filteredOrders,
-                cellBuilder: (_, order, col) {
-                  final amountTotal = (order['amount_total'] ?? 0.0).toDouble();
-                  final amountTax = (order['amount_tax'] ?? 0.0).toDouble();
-                  final amountGrandTotal = amountTotal + amountTax;
+                items: _filteredItems,
+                cellBuilder: (_, item, col) {
+                  final isDraft = item['_type'] == 'draft';
+                  final amountTotal = (item['amount_total'] ?? 0.0).toDouble();
                   switch (col) {
                     case 0:
                       return Text(
-                        order['client_name'] as String? ?? '',
+                        _clientName(item),
                         style: const TextStyle(fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       );
@@ -230,19 +232,17 @@ class _QuotationsPageState extends State<QuotationsPage> {
                       );
                     case 2:
                       return Text(
-                        '\$${amountTax.toStringAsFixed(2)}',
-                        style: TextStyle(fontWeight: FontWeight.w500, color: amountTax > 0 ? null : AppColors.textSecondary),
+                        isDraft ? 'Borrador' : 'Cotización',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: isDraft ? Colors.orange : AppColors.primary,
+                        ),
                       );
                     case 3:
-                      return Text(
-                        '\$${amountGrandTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      );
+                      return _buildStateChip(isDraft ? (item['status'] as String? ?? 'draft') : 'generated');
                     case 4:
-                      return _buildStateChip(order['state'] as String? ?? '');
-                    case 5:
                       return TextButton(
-                        onPressed: () => context.push('/quotations/${order['id']}'),
+                        onPressed: () => context.push('/quotations/${isDraft ? item['id'] : item['id']}'),
                         child: const Text('Ver detalle'),
                       );
                     default:
@@ -260,12 +260,22 @@ class _QuotationsPageState extends State<QuotationsPage> {
   Widget _buildMobileList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _filteredOrders.length,
+      itemCount: _filteredItems.length,
       itemBuilder: (context, i) => _OrderCard(
-        order: _filteredOrders[i],
-        onTap: () => context.push('/quotations/${_filteredOrders[i]['id']}'),
+        item: _filteredItems[i],
+        onTap: () => context.push('/quotations/${_filteredItems[i]['id']}'),
       ),
     );
+  }
+
+  String _clientName(Map<String, dynamic> item) {
+    final name = item['customer_name'] as String?;
+    if (name != null && name.isNotEmpty) return name;
+    final notes = item['notes'] as String?;
+    if (item['_type'] == 'draft') {
+      return notes != null && notes.isNotEmpty ? notes : 'Borrador';
+    }
+    return notes ?? 'Cotización';
   }
 
   Widget _buildStateChip(String state) {
@@ -285,17 +295,11 @@ class _QuotationsPageState extends State<QuotationsPage> {
   String _stateLabel(String state) {
     switch (state) {
       case 'draft':
-      case 'creada':
-        return 'Creada';
-      case 'sent':
-      case 'cotizacion_enviada':
-        return 'Cotización enviada';
-      case 'sale':
-      case 'orden_de_venta':
-        return 'Orden de venta';
-      case 'cancel':
-      case 'cancelada':
-        return 'Cancelada';
+        return 'Borrador';
+      case 'generated':
+        return 'Generada';
+      case 'failed':
+        return 'Error';
       default:
         return state;
     }
@@ -304,16 +308,10 @@ class _QuotationsPageState extends State<QuotationsPage> {
   Color _stateColor(String state) {
     switch (state) {
       case 'draft':
-      case 'creada':
         return Colors.orange;
-      case 'sent':
-      case 'cotizacion_enviada':
-        return AppColors.primary;
-      case 'sale':
-      case 'orden_de_venta':
+      case 'generated':
         return Colors.green;
-      case 'cancel':
-      case 'cancelada':
+      case 'failed':
         return Colors.red;
       default:
         return AppColors.textSecondary;
@@ -322,59 +320,56 @@ class _QuotationsPageState extends State<QuotationsPage> {
 }
 
 class _OrderCard extends StatelessWidget {
-  final Map<String, dynamic> order;
+  final Map<String, dynamic> item;
   final VoidCallback onTap;
 
-  const _OrderCard({required this.order, required this.onTap});
+  const _OrderCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final state = order['state'] as String? ?? '';
-    final stateLabel = _stateLabel(state);
-    final stateColor = _stateColor(state);
-    final amountTotal = (order['amount_total'] ?? 0.0).toDouble();
-    final amountTax = (order['amount_tax'] ?? 0.0).toDouble();
-    final amountGrandTotal = amountTotal + amountTax;
+    final isDraft = item['_type'] == 'draft';
+    final state = isDraft ? (item['status'] as String? ?? 'draft') : 'generated';
+    final amountTotal = (item['amount_total'] ?? 0.0).toDouble();
 
+    final clientName = item['customer_name'] as String? ?? '';
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         onTap: onTap,
-        title: Text(
-          order['client_name'] ?? '',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                clientName.isNotEmpty ? clientName : (isDraft ? 'Borrador' : 'Cotización'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text('Sin IVA: ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                Text('\$${amountTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                const SizedBox(width: 12),
-                Text('IVA: ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                Text('\$${amountTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-              ],
+            Text(
+              isDraft ? 'Borrador · \$${amountTotal.toStringAsFixed(2)}' : 'Cotización · \$${amountTotal.toStringAsFixed(2)}',
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Text('Total: ', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-                Text('\$${amountGrandTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              ],
-            ),
+            if (!isDraft && item['odoo_sale_order_name'] != null)
+              Text(
+                item['odoo_sale_order_name'] as String,
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
+              ),
           ],
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: stateColor.withValues(alpha: 0.15),
+            color: _stateColor(state).withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            stateLabel,
-            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: stateColor),
+            _stateLabel(state),
+            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _stateColor(state)),
           ),
         ),
       ),
@@ -384,17 +379,11 @@ class _OrderCard extends StatelessWidget {
   String _stateLabel(String state) {
     switch (state) {
       case 'draft':
-      case 'creada':
-        return 'Creada';
-      case 'sent':
-      case 'cotizacion_enviada':
-        return 'Cotización enviada';
-      case 'sale':
-      case 'orden_de_venta':
-        return 'Orden de venta';
-      case 'cancel':
-      case 'cancelada':
-        return 'Cancelada';
+        return 'Borrador';
+      case 'generated':
+        return 'Generada';
+      case 'failed':
+        return 'Error';
       default:
         return state;
     }
@@ -403,16 +392,10 @@ class _OrderCard extends StatelessWidget {
   Color _stateColor(String state) {
     switch (state) {
       case 'draft':
-      case 'creada':
         return Colors.orange;
-      case 'sent':
-      case 'cotizacion_enviada':
-        return AppColors.primary;
-      case 'sale':
-      case 'orden_de_venta':
+      case 'generated':
         return Colors.green;
-      case 'cancel':
-      case 'cancelada':
+      case 'failed':
         return Colors.red;
       default:
         return AppColors.textSecondary;

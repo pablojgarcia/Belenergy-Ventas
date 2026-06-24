@@ -72,8 +72,16 @@ GoRouter createRouter(AuthProvider authProvider) {
               GoRoute(
                 path: ':id',
                 builder: (_, state) => QuotationDetailPage(
-                  orderId: int.parse(state.pathParameters['id']!),
+                  itemId: state.pathParameters['id']!,
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    builder: (_, state) => CreateQuotationPage(
+                      draftId: state.pathParameters['id'],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

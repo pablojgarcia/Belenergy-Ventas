@@ -32,12 +32,13 @@ class _HomePageState extends State<HomePage> {
     try {
       final api = context.read<ApiService>();
       final clients = await api.getCustomers();
-      final orders = await api.getOrders();
+      final drafts = await api.getDrafts();
+      final quotations = await api.getQuotations();
       final products = await api.getProducts();
       if (mounted) {
         setState(() {
           _clientCount = clients.length;
-          _orderCount = orders.length;
+          _orderCount = drafts.length + quotations.length;
           _productCount = products.length;
           _loadingStats = false;
         });

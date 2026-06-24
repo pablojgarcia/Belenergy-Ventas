@@ -1,8 +1,8 @@
 import json
 import base64
 from sqlalchemy.orm import Session
-from .. import models
-from ..integrations.odoo.client import get_odoo_connection
+from ... import models
+from .client import get_odoo_connection
 
 
 def sync_customers(db: Session):

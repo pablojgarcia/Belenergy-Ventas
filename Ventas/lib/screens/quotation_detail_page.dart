@@ -1,69 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
+import '../utils/download.dart' as download;
 
 class QuotationDetailPage extends StatefulWidget {
-  final int orderId;
+  final String itemId;
 
-  const QuotationDetailPage({super.key, required this.orderId});
+  const QuotationDetailPage({super.key, required this.itemId});
 
   @override
   State<QuotationDetailPage> createState() => _QuotationDetailPageState();
 }
 
 class _QuotationDetailPageState extends State<QuotationDetailPage> {
-  late Future<Map<String, dynamic>> _orderFuture;
-  late Future<List<Map<String, dynamic>>> _statusesFuture;
-  late Future<List<Map<String, dynamic>>> _linesFuture;
+  Map<String, dynamic>? _item;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _orderFuture = _fetchOrder();
-    _statusesFuture = _fetchStatuses();
-    _linesFuture = _fetchLines();
+    _load();
   }
 
-  Future<Map<String, dynamic>> _fetchOrder() {
+  Future<void> _load() async {
+    setState(() => _loading = true);
     final api = context.read<ApiService>();
-    return api.getOrder(widget.orderId);
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchStatuses() {
-    final api = context.read<ApiService>();
-    return api.getOrderStatuses(widget.orderId);
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchLines() async {
-    final api = context.read<ApiService>();
-    var lines = await api.getOrderLines(widget.orderId);
-    if (lines.isEmpty) {
-      try {
-        await api.syncOrderLines(widget.orderId);
-        lines = await api.getOrderLines(widget.orderId);
-      } catch (_) {}
-    }
-    return lines;
-  }
-
-  Future<void> _syncStatus() async {
-    final api = context.read<ApiService>();
-    try {
-      await api.syncOrderStatus(widget.orderId);
+    final draft = await api.getDraft(widget.itemId);
+    if (draft != null && mounted) {
       setState(() {
-        _orderFuture = _fetchOrder();
-        _statusesFuture = _fetchStatuses();
+        _item = draft;
+        _item!['_type'] = 'draft';
+        _loading = false;
       });
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al sincronizar'), backgroundColor: AppColors.error),
-      );
+      return;
     }
+    final quotation = await api.getQuotation(widget.itemId);
+    if (quotation != null && mounted) {
+      setState(() {
+        _item = quotation;
+        _item!['_type'] = 'quotation';
+        _loading = false;
+      });
+      return;
+    }
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -75,36 +60,29 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 1,
-        actions: [
-          IconButton(icon: const Icon(Icons.sync), onPressed: _syncStatus),
-        ],
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _orderFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error al cargar cotización', style: GoogleFonts.inter(color: Colors.red)),
-            );
-          }
-          final order = snapshot.data!;
-          final padding = context.isDesktop ? 48.0 : 20.0;
-
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: context.isDesktop
-                ? _buildDesktopDetail(order)
-                : _buildMobileDetail(order),
-          );
-        },
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _item == null
+              ? Center(child: Text('No encontrado', style: GoogleFonts.inter(color: Colors.red)))
+              : _buildContent(),
     );
   }
 
-  Widget _buildDesktopDetail(Map<String, dynamic> order) {
+  Widget _buildContent() {
+    final item = _item!;
+    final isDraft = item['_type'] == 'draft';
+    final padding = context.isDesktop ? 48.0 : 20.0;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(padding),
+      child: context.isDesktop
+          ? _buildDesktopDetail(item, isDraft)
+          : _buildMobileDetail(item, isDraft),
+    );
+  }
+
+  Widget _buildDesktopDetail(Map<String, dynamic> item, bool isDraft) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -113,53 +91,40 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(order),
+              _buildHeader(item, isDraft),
               const SizedBox(height: 24),
-              _buildLinesCard(),
+              _buildLinesCard(item),
               const SizedBox(height: 24),
-              _buildTotalsCard(order),
+              _buildTotalsCard(item, isDraft),
             ],
           ),
         ),
         const SizedBox(width: 24),
         SizedBox(
           width: 320,
-          child: Column(
-            children: [
-              _buildDetailsCard(order),
-              const SizedBox(height: 16),
-              _buildStatusHistoryCard(),
-            ],
-          ),
+          child: _buildDetailsCard(item, isDraft),
         ),
       ],
     );
   }
 
-  Widget _buildMobileDetail(Map<String, dynamic> order) {
+  Widget _buildMobileDetail(Map<String, dynamic> item, bool isDraft) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(order),
+        _buildHeader(item, isDraft),
         const SizedBox(height: 20),
-        _buildLinesCard(),
+        _buildLinesCard(item),
         const SizedBox(height: 16),
-        _buildTotalsCard(order),
+        _buildTotalsCard(item, isDraft),
         const SizedBox(height: 16),
-        _buildDetailsCard(order),
-        const SizedBox(height: 16),
-        _buildStatusHistoryCard(),
+        _buildDetailsCard(item, isDraft),
       ],
     );
   }
 
-  Widget _card({
-    required Widget child,
-    double? width,
-    EdgeInsetsGeometry? padding,
-  }) {
+  Widget _card({required Widget child, EdgeInsetsGeometry? padding}) {
     return Container(
-      width: width,
       padding: padding ?? const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -182,39 +147,138 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     );
   }
 
-  Widget _buildHeader(Map<String, dynamic> order) {
+  bool _downloadingPdf = false;
+  bool _generating = false;
+
+  Future<void> _generate() async {
+    setState(() => _generating = true);
+    final api = context.read<ApiService>();
+    try {
+      await api.generateQuotation(widget.itemId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cotización generada correctamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al generar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _generating = false);
+        _load();
+      }
+    }
+  }
+
+  Future<void> _downloadPdf() async {
+    setState(() => _downloadingPdf = true);
+    final api = context.read<ApiService>();
+    try {
+      final bytes = await api.downloadPdf(widget.itemId);
+      final name = 'cotizacion_${widget.itemId.substring(0, 8)}.pdf';
+      download.saveBytes(bytes, name);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF descargado: $name')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al descargar PDF: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _downloadingPdf = false);
+    }
+  }
+
+  Widget _buildHeader(Map<String, dynamic> item, bool isDraft) {
+    final status = isDraft ? (item['status'] as String? ?? 'draft') : 'generated';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(
-              order['client_name'] ?? '',
+              isDraft ? 'Borrador' : 'Cotización',
               style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
             ),
             const SizedBox(width: 12),
-            _buildStateChip(order['state'] as String? ?? ''),
+            _buildStateChip(status),
+            const Spacer(),
+            if (isDraft && item['status'] != 'failed') ...[
+              OutlinedButton.icon(
+                icon: const Icon(Icons.edit, size: 18),
+                label: const Text('Editar'),
+                onPressed: () => context.push('/quotations/${widget.itemId}/edit'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _generating
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : FilledButton.icon(
+                      icon: const Icon(Icons.rocket_launch, size: 18),
+                      label: const Text('Generar'),
+                      onPressed: _generate,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+            ] else if (isDraft && item['status'] == 'failed')
+              FilledButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Reintentar'),
+                onPressed: _generating ? null : _generate,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              )
+            else
+              _downloadingPdf
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      icon: Icon(Icons.download, color: AppColors.primary),
+                      tooltip: 'Descargar PDF',
+                      onPressed: _downloadPdf,
+                    ),
           ],
         ),
         const SizedBox(height: 6),
-        Text(
-          'Cotización N° ${order['odoo_id']}',
-          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
-        ),
-        if (order['date_order'] != null)
+        if (!isDraft) ...[
+          Text(
+            'N° Odoo: ${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}',
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ],
+        if (item['created_at'] != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              _formatDate(order['date_order'] as String),
+              _formatDate(item['created_at'] as String),
               style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
-        if (order['description'] != null && (order['description'] as String).isNotEmpty) ...[
+        if (item['notes'] != null && (item['notes'] as String).isNotEmpty) ...[
           const SizedBox(height: 16),
-          _sectionTitle('DESCRIPCIÓN'),
+          _sectionTitle('NOTAS'),
           const SizedBox(height: 8),
           Text(
-            order['description'],
+            item['notes'],
             style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
           ),
         ],
@@ -222,84 +286,93 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     );
   }
 
-  Widget _buildLinesCard() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _linesFuture,
-      builder: (context, snapshot) {
-        final lines = snapshot.data ?? [];
-        final loading = snapshot.connectionState == ConnectionState.waiting;
+  double _calcSubtotal(Map<String, dynamic> line) {
+    final qty = (line['quantity'] as num).toDouble();
+    final priceUnit = (line['unit_price'] as num?)?.toDouble() ?? (line['price_unit'] as num?)?.toDouble() ?? 0.0;
+    final discount = (line['discount'] as num).toDouble();
+    return qty * priceUnit * (1 - discount / 100);
+  }
 
-        return _card(
-          padding: const EdgeInsets.all(0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                child: _sectionTitle('PRODUCTOS'),
-              ),
-              if (loading)
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (lines.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text('Sin productos', style: GoogleFonts.inter(color: AppColors.textSecondary)),
-                )
-              else
-                ...lines.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final line = entry.value;
-                  return _buildLineRow(line, i == lines.length - 1);
-                }),
-            ],
+  double _calcTax(Map<String, dynamic> line) {
+    final taxRate = (line['tax_rate'] as num?)?.toDouble() ?? 0.0;
+    return _calcSubtotal(line) * taxRate / 100;
+  }
+
+  Widget _buildLinesCard(Map<String, dynamic> item) {
+    final lines = item['lines'] as List<dynamic>? ?? [];
+
+    return _card(
+      padding: const EdgeInsets.all(0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: _sectionTitle('PRODUCTOS'),
           ),
-        );
-      },
+          if (lines.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text('Sin productos', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(width: 160, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      SizedBox(width: 80, child: Text('Cantidad', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      SizedBox(width: 90, child: Text('Precio Unit.', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      SizedBox(width: 60, child: Text('Dto %', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      SizedBox(width: 90, child: Text('Subtotal', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      SizedBox(width: 90, child: Text('IVA', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                      SizedBox(width: 90, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                    ],
+                  ),
+                  ...lines.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final line = entry.value as Map<String, dynamic>;
+                    return _buildLineRow(line, i == lines.length - 1);
+                  }),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildLineRow(Map<String, dynamic> line, bool isLast) {
     final qty = (line['quantity'] as num).toDouble();
-    final priceUnit = (line['price_unit'] as num).toDouble();
+    final priceUnit = (line['unit_price'] as num?)?.toDouble() ?? (line['price_unit'] as num?)?.toDouble() ?? 0.0;
     final discount = (line['discount'] as num).toDouble();
-    final subtotal = (line['subtotal'] as num).toDouble();
+    final subtotal = _calcSubtotal(line);
+    final tax = _calcTax(line);
+    final total = subtotal + tax;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         border: isLast ? null : Border(bottom: BorderSide(color: AppColors.divider)),
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  line['product_name'] as String? ?? 'Producto',
-                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                ),
-                if (line['description'] != null && (line['description'] as String).isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    line['description'],
-                    style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
+          SizedBox(
+            width: 160,
+            child: Text(
+              line['product_name'] as String? ?? 'Producto #${line['product_id']}',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
             ),
           ),
           SizedBox(
-            width: 60,
+            width: 80,
             child: Text(
-              'x${qty.toStringAsFixed(0)}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+              '${qty.toStringAsFixed(0)}',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
           ),
@@ -307,24 +380,39 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
             width: 90,
             child: Text(
               '\$${priceUnit.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
               textAlign: TextAlign.right,
             ),
           ),
-          if (discount > 0)
-            SizedBox(
-              width: 60,
-              child: Text(
-                '-${discount.toStringAsFixed(0)}%',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
-              ),
+          SizedBox(
+            width: 60,
+            child: Text(
+              discount > 0 ? '-${discount.toStringAsFixed(0)}%' : '—',
+              style: GoogleFonts.inter(fontSize: 13, color: discount > 0 ? Colors.orange : AppColors.textSecondary),
+              textAlign: TextAlign.center,
             ),
+          ),
           SizedBox(
             width: 90,
             child: Text(
               '\$${subtotal.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          SizedBox(
+            width: 90,
+            child: Text(
+              tax > 0 ? '\$${tax.toStringAsFixed(2)}' : '—',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          SizedBox(
+            width: 90,
+            child: Text(
+              '\$${total.toStringAsFixed(2)}',
+              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
               textAlign: TextAlign.right,
             ),
           ),
@@ -333,8 +421,11 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     );
   }
 
-  Widget _buildTotalsCard(Map<String, dynamic> order) {
-    final amount = (order['amount_total'] ?? 0.0) as num;
+  Widget _buildTotalsCard(Map<String, dynamic> item, bool isDraft) {
+    final lines = item['lines'] as List<dynamic>? ?? [];
+    final subtotal = lines.fold<double>(0.0, (s, l) => s + _calcSubtotal(l as Map<String, dynamic>));
+    final iva = lines.fold<double>(0.0, (s, l) => s + _calcTax(l as Map<String, dynamic>));
+    final total = subtotal + iva;
 
     return _card(
       child: Row(
@@ -343,23 +434,18 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              _totalRow('Subtotal', subtotal),
+              const SizedBox(height: 4),
+              _totalRow('IVA', iva),
+              const SizedBox(height: 6),
               Text(
-                'MONTO CON IVA',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0.5,
-                ),
+                'TOTAL',
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary, letterSpacing: 0.5),
               ),
               const SizedBox(height: 4),
               Text(
-                '\$${amount.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
+                '\$${total.toStringAsFixed(2)}',
+                style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary),
               ),
             ],
           ),
@@ -368,23 +454,35 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     );
   }
 
-  Widget _buildDetailsCard(Map<String, dynamic> order) {
+  Widget _totalRow(String label, double amount) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('$label:  ', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+        Text('\$${amount.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+      ],
+    );
+  }
+
+  Widget _buildDetailsCard(Map<String, dynamic> item, bool isDraft) {
+    final status = isDraft ? (item['status'] as String? ?? 'draft') : 'generated';
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle('DETALLES'),
           const SizedBox(height: 16),
-          _detailRow('Estado', _stateLabel(order['state'] as String? ?? '')),
+          _detailRow('Estado', _stateLabel(status)),
           const SizedBox(height: 10),
-          _detailRow('N° de cotización', '${order['odoo_id']}'),
+          _detailRow('Tipo', isDraft ? 'Borrador' : 'Cotización'),
           const SizedBox(height: 10),
-          if (order['date_order'] != null)
-            _detailRow('Fecha', _formatDate(order['date_order'] as String)),
-          if (order['vendedor_externo'] != null && (order['vendedor_externo'] as String).isNotEmpty) ...[
+          if (!isDraft) ...[
+            _detailRow('N° Odoo', '${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}'),
             const SizedBox(height: 10),
-            _detailRow('Vend. externo', order['vendedor_externo'] as String),
           ],
+          if (item['created_at'] != null)
+            _detailRow('Fecha', _formatDate(item['created_at'] as String)),
         ],
       ),
     );
@@ -402,56 +500,6 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
           child: Text(value, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatusHistoryCard() {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('HISTORIAL DE ESTADOS'),
-          const SizedBox(height: 16),
-          _buildStatusHistory(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusHistory() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _statusesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
-          return Text('Sin historial', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary));
-        }
-        final statuses = snapshot.data!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: statuses.map((s) {
-            final status = s['status'] as String? ?? '';
-            final changedAt = s['changed_at'] as String? ?? '';
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  _buildStateChip(status),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _formatDate(changedAt),
-                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-      },
     );
   }
 
@@ -486,17 +534,11 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   String _stateLabel(String state) {
     switch (state) {
       case 'draft':
-      case 'creada':
-        return 'Creada';
-      case 'sent':
-      case 'cotizacion_enviada':
-        return 'Cotización enviada';
-      case 'sale':
-      case 'orden_de_venta':
-        return 'Orden de venta';
-      case 'cancel':
-      case 'cancelada':
-        return 'Cancelada';
+        return 'Borrador';
+      case 'generated':
+        return 'Generada';
+      case 'failed':
+        return 'Error';
       default:
         return state;
     }
@@ -504,11 +546,14 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
 
   Color _stateColor(String state) {
     switch (state) {
-      case 'draft': return Colors.orange;
-      case 'sent': return AppColors.primary;
-      case 'sale': return Colors.green;
-      case 'cancel': return Colors.red;
-      default: return AppColors.textSecondary;
+      case 'draft':
+        return Colors.orange;
+      case 'generated':
+        return Colors.green;
+      case 'failed':
+        return Colors.red;
+      default:
+        return AppColors.textSecondary;
     }
   }
 }
