@@ -93,12 +93,14 @@ class Order(Base):
     client_id = Column(Integer, nullable=False)
     client_name = Column(String, nullable=False)
     amount_total = Column(Float, default=0.0)
+    amount_tax = Column(Float, default=0.0)
     state = Column(String, default="draft")
     date_order = Column(DateTime(timezone=True), server_default=func.now())
     user_id = Column(Integer, nullable=False)
     description = Column(Text, nullable=True)
     vendedor_externo = Column(String, nullable=True)
 
+    lines = relationship("OrderLine", back_populates="order", order_by="OrderLine.id")
     statuses = relationship("OrderStatus", back_populates="order", order_by="OrderStatus.changed_at.desc()")
 
 
@@ -112,3 +114,19 @@ class OrderStatus(Base):
     changed_by = Column(Integer, nullable=True)
 
     order = relationship("Order", back_populates="statuses")
+
+
+class OrderLine(Base):
+    __tablename__ = "order_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    product_id = Column(Integer, nullable=False)
+    product_name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    quantity = Column(Float, default=1.0)
+    price_unit = Column(Float, default=0.0)
+    discount = Column(Float, default=0.0)
+    subtotal = Column(Float, default=0.0)
+
+    order = relationship("Order", back_populates="lines")

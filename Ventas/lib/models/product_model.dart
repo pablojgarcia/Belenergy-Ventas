@@ -15,6 +15,8 @@ class Product {
   final bool active;
   final bool saleOk;
   final List<int> taxesId;
+  final String taxesDisplay;
+  final double taxesRate;
 
   Product({
     required this.id,
@@ -31,6 +33,8 @@ class Product {
     this.active = true,
     this.saleOk = true,
     this.taxesId = const [],
+    this.taxesDisplay = '',
+    this.taxesRate = 0.0,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -63,6 +67,8 @@ class Product {
       active: json['active'] ?? true,
       saleOk: json['sale_ok'] ?? true,
       taxesId: parseTaxes(json['taxes_id']),
+      taxesDisplay: json['taxes_display'] as String? ?? '',
+      taxesRate: (json['taxes_rate'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

@@ -38,9 +38,16 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     return api.getOrderStatuses(widget.orderId);
   }
 
-  Future<List<Map<String, dynamic>>> _fetchLines() {
+  Future<List<Map<String, dynamic>>> _fetchLines() async {
     final api = context.read<ApiService>();
-    return api.getOrderLines(widget.orderId);
+    var lines = await api.getOrderLines(widget.orderId);
+    if (lines.isEmpty) {
+      try {
+        await api.syncOrderLines(widget.orderId);
+        lines = await api.getOrderLines(widget.orderId);
+      } catch (_) {}
+    }
+    return lines;
   }
 
   Future<void> _syncStatus() async {

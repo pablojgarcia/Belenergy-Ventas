@@ -95,6 +95,8 @@ class ProductBase(BaseModel):
     description_sale: Optional[str] = None
     active: Optional[bool] = True
     taxes_id: Optional[str] = None
+    taxes_display: str = ""
+    taxes_rate: float = 0.0
     sale_ok: Optional[bool] = True
 
 class ProductCreate(ProductBase):
@@ -125,6 +127,7 @@ class OrderOut(BaseModel):
     client_id: int
     client_name: str
     amount_total: float
+    amount_tax: float = 0.0
     state: str
     date_order: datetime
     user_id: int
@@ -140,6 +143,21 @@ class OrderStatusOut(BaseModel):
     status: str
     changed_at: datetime
     changed_by: int | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrderLineOut(BaseModel):
+    id: int
+    order_id: int
+    product_id: int
+    product_name: str
+    description: str | None = None
+    quantity: float
+    price_unit: float
+    discount: float
+    subtotal: float
 
     class Config:
         from_attributes = True

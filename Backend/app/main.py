@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -90,6 +91,9 @@ if "products" in inspector.get_table_names():
 
 if "taxes" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Tax.__table__])
+
+if "order_lines" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.OrderLine.__table__])
 
 app = FastAPI(title="Auth API")
 
@@ -219,7 +223,40 @@ def get_products(
         q = q.filter(models.Product.name.ilike(f"%{search}%"))
     if categ_id:
         q = q.filter(models.Product.categ_id == categ_id)
-    return q.all()
+    products = q.all()
+
+    tax_ids = set()
+    for p in products:
+        if p.taxes_id:
+            try:
+                for tid in json.loads(p.taxes_id):
+                    tax_ids.add(tid)
+            except Exception:
+                pass
+    tax_map = {}
+    if tax_ids:
+        taxes = db.query(models.Tax).filter(models.Tax.odoo_id.in_(tax_ids)).all()
+        tax_map = {t.odoo_id: {"name": t.name, "amount": t.amount} for t in taxes}
+
+    result = []
+    for p in products:
+        labels = []
+        rate = 0.0
+        if p.taxes_id:
+            try:
+                for tid in json.loads(p.taxes_id):
+                    entry = tax_map.get(tid)
+                    if entry:
+                        labels.append(entry["name"])
+                        rate += entry["amount"]
+                    else:
+                        labels.append(f"ID {tid}")
+            except Exception:
+                pass
+        p.taxes_display = ", ".join(labels) if labels else "Exento"
+        p.taxes_rate = rate
+        result.append(p)
+    return result
 
 @app.get("/products/{product_id}", response_model=schemas.ProductOut)
 def get_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -406,16 +443,24 @@ def create_quotation_endpoint(
         print(f"ERROR creating Odoo quotation: {e}")
         raise HTTPException(status_code=502, detail=f"Error al comunicarse con Odoo: {e}")
 
-    total = sum(
-        line.quantity * line.price_unit * (1 - line.discount / 100)
-        for line in order_in.order_line
-    )
+    total = 0.0
+    total_tax = 0.0
+    for line in order_in.order_line:
+        subtotal = line.quantity * line.price_unit * (1 - line.discount / 100)
+        total += subtotal
+        tax_rate = 0.0
+        if line.tax_id:
+            taxes = db.query(models.Tax).filter(models.Tax.odoo_id.in_(line.tax_id)).all()
+            for t in taxes:
+                tax_rate += t.amount
+        total_tax += subtotal * tax_rate / 100
 
     order = models.Order(
         odoo_id=odoo_id,
         client_id=customer.id,
         client_name=customer.name,
         amount_total=total,
+        amount_tax=total_tax,
         state="draft",
         user_id=current_user.id,
         description=order_in.description,
@@ -423,6 +468,23 @@ def create_quotation_endpoint(
     )
     db.add(order)
     db.flush()
+
+    for line in order_in.order_line:
+        subtotal = line.quantity * line.price_unit * (1 - line.discount / 100)
+        product_name = ""
+        product = db.query(models.Product).filter(models.Product.odoo_id == line.product_id).first()
+        if product:
+            product_name = product.name
+        db.add(models.OrderLine(
+            order_id=order.id,
+            product_id=line.product_id,
+            product_name=product_name,
+            description="",
+            quantity=line.quantity,
+            price_unit=line.price_unit,
+            discount=line.discount,
+            subtotal=subtotal,
+        ))
 
     status_entry = models.OrderStatus(
         order_id=order.id,
@@ -517,7 +579,7 @@ def get_order_statuses(
         raise HTTPException(status_code=403, detail="No tenés permiso")
     return db.query(models.OrderStatus).filter(models.OrderStatus.order_id == order.id).order_by(models.OrderStatus.changed_at.desc()).all()
 
-@app.get("/orders/{order_id}/lines")
+@app.get("/orders/{order_id}/lines", response_model=list[schemas.OrderLineOut])
 def get_order_lines(
     order_id: int,
     db: Session = Depends(get_db),
@@ -528,30 +590,48 @@ def get_order_lines(
         raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
     if order.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tenés permiso")
+    return db.query(models.OrderLine).filter(models.OrderLine.order_id == order.id).order_by(models.OrderLine.id).all()
+
+
+@app.post("/orders/{order_id}/sync-lines")
+def sync_order_lines(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tenés permiso")
+
+    existing = db.query(models.OrderLine).filter(models.OrderLine.order_id == order.id).count()
+    if existing > 0:
+        return {"synced": False, "reason": "Las líneas ya existen en la base local"}
 
     odoo = get_odoo_connection()
     lines = odoo.env["sale.order.line"].search_read(
         [("order_id", "=", order.odoo_id)],
-        ["product_id", "name", "product_uom_qty", "price_unit", "discount", "price_subtotal", "price_total"],
+        ["product_id", "name", "product_uom_qty", "price_unit", "discount", "price_subtotal"],
     )
-    result = []
     for line in lines:
         product_name = ""
         product_id_val = line.get("product_id")
         if isinstance(product_id_val, (list, tuple)) and len(product_id_val) > 1:
             product_name = product_id_val[1]
             product_id_val = product_id_val[0]
-        result.append({
-            "product_id": product_id_val,
-            "product_name": product_name,
-            "description": line.get("name", ""),
-            "quantity": float(line.get("product_uom_qty", 1)),
-            "price_unit": float(line.get("price_unit", 0)),
-            "discount": float(line.get("discount", 0)),
-            "subtotal": float(line.get("price_subtotal", 0)),
-            "total": float(line.get("price_total", 0)),
-        })
-    return result
+        db.add(models.OrderLine(
+            order_id=order.id,
+            product_id=product_id_val,
+            product_name=product_name,
+            description=line.get("name", ""),
+            quantity=float(line.get("product_uom_qty", 1)),
+            price_unit=float(line.get("price_unit", 0)),
+            discount=float(line.get("discount", 0)),
+            subtotal=float(line.get("price_subtotal", 0)),
+        ))
+    db.commit()
+    return {"synced": True, "lines_count": len(lines)}
 
 
 @app.get("/health")

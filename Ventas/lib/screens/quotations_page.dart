@@ -205,12 +205,17 @@ class _QuotationsPageState extends State<QuotationsPage> {
               child: AppTable<Map<String, dynamic>>(
                 columns: const [
                   AppColumn(title: 'Cliente', flex: 3),
-                  AppColumn(title: 'Monto', flex: 1),
+                  AppColumn(title: 'Monto sin IVA', flex: 1),
+                  AppColumn(title: 'IVA', flex: 1),
+                  AppColumn(title: 'Monto Total', flex: 1),
                   AppColumn(title: 'Estado', flex: 1),
                   AppColumn(title: '', flex: 1),
                 ],
                 items: _filteredOrders,
                 cellBuilder: (_, order, col) {
+                  final amountTotal = (order['amount_total'] ?? 0.0).toDouble();
+                  final amountTax = (order['amount_tax'] ?? 0.0).toDouble();
+                  final amountGrandTotal = amountTotal + amountTax;
                   switch (col) {
                     case 0:
                       return Text(
@@ -220,12 +225,22 @@ class _QuotationsPageState extends State<QuotationsPage> {
                       );
                     case 1:
                       return Text(
-                        '\$${(order['amount_total'] ?? 0.0).toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        '\$${amountTotal.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       );
                     case 2:
-                      return _buildStateChip(order['state'] as String? ?? '');
+                      return Text(
+                        '\$${amountTax.toStringAsFixed(2)}',
+                        style: TextStyle(fontWeight: FontWeight.w500, color: amountTax > 0 ? null : AppColors.textSecondary),
+                      );
                     case 3:
+                      return Text(
+                        '\$${amountGrandTotal.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      );
+                    case 4:
+                      return _buildStateChip(order['state'] as String? ?? '');
+                    case 5:
                       return TextButton(
                         onPressed: () => context.push('/quotations/${order['id']}'),
                         child: const Text('Ver detalle'),
@@ -317,6 +332,9 @@ class _OrderCard extends StatelessWidget {
     final state = order['state'] as String? ?? '';
     final stateLabel = _stateLabel(state);
     final stateColor = _stateColor(state);
+    final amountTotal = (order['amount_total'] ?? 0.0).toDouble();
+    final amountTax = (order['amount_tax'] ?? 0.0).toDouble();
+    final amountGrandTotal = amountTotal + amountTax;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -326,9 +344,27 @@ class _OrderCard extends StatelessWidget {
           order['client_name'] ?? '',
           style: GoogleFonts.inter(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
-          '\$${(order['amount_total'] ?? 0.0).toStringAsFixed(2)}',
-          style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text('Sin IVA: ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                Text('\$${amountTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                const SizedBox(width: 12),
+                Text('IVA: ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                Text('\$${amountTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Text('Total: ', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                Text('\$${amountGrandTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+              ],
+            ),
+          ],
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../models/product_model.dart';
-import '../models/tax_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
@@ -23,7 +22,6 @@ class _ProductsPageState extends State<ProductsPage> {
   List<Product> _filteredProducts = [];
   final _searchController = TextEditingController();
   bool _loaded = false;
-  Map<int, Tax> _taxMap = {};
 
   @override
   void initState() {
@@ -39,24 +37,12 @@ class _ProductsPageState extends State<ProductsPage> {
 
   Future<List<Product>> _fetchProducts() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
-    final results = await Future.wait([
-      apiService.getProducts(),
-      apiService.getTaxes().catchError((_) => <Map<String, dynamic>>[]),
-    ]);
-    final data = results[0] as List<Map<String, dynamic>>;
-    final taxData = results[1] as List<Map<String, dynamic>>;
-    final taxMap = <int, Tax>{};
-    for (final t in taxData) {
-      final tax = Tax.fromJson(t);
-      taxMap[t['id'] as int] = tax;
-      taxMap[t['odoo_id'] as int] = tax;
-    }
+    final data = await apiService.getProducts();
     final products = data.map((json) => Product.fromJson(json)).toList();
     if (mounted) {
       setState(() {
         _allProducts = products;
         _filteredProducts = products;
-        _taxMap = taxMap;
         _loaded = true;
       });
     }
@@ -161,7 +147,7 @@ class _ProductsPageState extends State<ProductsPage> {
                     case 2: return Text(p.defaultCode);
                     case 3: return Text(p.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w600));
                     case 4: return Text(p.categId.isEmpty ? '—' : p.categId);
-                    case 5: return _TaxBadge(taxesId: p.taxesId, taxMap: _taxMap);
+                    case 5: return _TaxBadge(label: p.taxesDisplay);
                     default: return const SizedBox();
                   }
                 },
@@ -213,21 +199,12 @@ class _ProductsPageState extends State<ProductsPage> {
               childAspectRatio: columns == 1 ? 2.6 : 1.3,
             ),
             itemCount: _filteredProducts.length,
-            itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index], taxMap: _taxMap),
+            itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index]),
           ),
         ),
       ],
     );
   }
-}
-
-String _resolveTaxLabel(List<int> taxIds, Map<int, Tax> taxMap) {
-  if (taxIds.isEmpty) return 'Exento';
-  return taxIds.map((id) {
-    final tax = taxMap[id];
-    if (tax != null) return tax.displayLabel;
-    return 'ID $id';
-  }).join(', ');
 }
 
 String _typeLabel(String type) {
@@ -266,30 +243,15 @@ Widget _infoChip(IconData icon, String label) {
 }
 
 class _TaxBadge extends StatelessWidget {
-  final List<int> taxesId;
-  final Map<int, Tax> taxMap;
-  const _TaxBadge({required this.taxesId, required this.taxMap});
+  final String label;
+  const _TaxBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    if (taxesId.isEmpty) {
+    if (label.isEmpty || label == 'Exento') {
       return _badge('Exento', Colors.green);
     }
-    final labels = taxesId.map((id) {
-      final tax = taxMap[id];
-      return tax?.displayLabel ?? 'ID $id';
-    }).toList();
-    if (labels.length == 1) {
-      return _badge(labels[0], AppColors.primary);
-    }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: labels.map((l) => Padding(
-        padding: const EdgeInsets.only(bottom: 2),
-        child: _badge(l, AppColors.primary),
-      )).toList(),
-    );
+    return _badge(label, AppColors.primary);
   }
 
   Widget _badge(String text, Color color) {
@@ -363,8 +325,7 @@ class _ProductThumbnailState extends State<_ProductThumbnail> {
 
 class _ProductCard extends StatefulWidget {
   final Product product;
-  final Map<int, Tax> taxMap;
-  const _ProductCard({required this.product, required this.taxMap});
+  const _ProductCard({required this.product});
 
   @override
   State<_ProductCard> createState() => _ProductCardState();
@@ -460,7 +421,7 @@ class _ProductCardState extends State<_ProductCard> {
                 _infoChip(Icons.inventory_2_outlined, _typeLabel(product.type)),
                 if (product.uomId.isNotEmpty)
                   _infoChip(Icons.straighten, product.uomId),
-                _infoChip(Icons.receipt_long_outlined, _resolveTaxLabel(product.taxesId, widget.taxMap)),
+                _infoChip(Icons.receipt_long_outlined, product.taxesDisplay.isNotEmpty ? product.taxesDisplay : 'Exento'),
               ],
             ),
           ],

@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/customer_model.dart';
 import '../models/product_model.dart';
-import '../models/tax_model.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
@@ -26,12 +25,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   Client? _selectedClient;
   bool _pickingClient = false;
   bool _loadingClient = false;
-  Map<int, Tax> _taxMap = {};
 
   @override
   void initState() {
     super.initState();
-    _loadTaxes();
     if (widget.customerId != null) {
       _loadCustomer();
     } else {
@@ -56,23 +53,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       if (mounted) setState(() => _loadingClient = false);
       if (mounted) _pickClient();
     }
-  }
-
-  Future<void> _loadTaxes() async {
-    final api = context.read<ApiService>();
-    try {
-      final data = await api.getTaxes();
-      if (mounted) {
-        setState(() {
-          _taxMap = <int, Tax>{};
-          for (final t in data) {
-            final tax = Tax.fromJson(t);
-            _taxMap[t['id'] as int] = tax;
-            _taxMap[t['odoo_id'] as int] = tax;
-          }
-        });
-      }
-    } catch (_) {}
   }
 
   @override
@@ -100,7 +80,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
       if (selected != null) {
         setState(() {
-          _lineItems.add(_LineItem(product: selected, taxMap: _taxMap));
+          _lineItems.add(_LineItem(product: selected));
         });
       }
     } catch (_) {
@@ -588,22 +568,13 @@ class _LineItem {
   final Product product;
   final quantityController = TextEditingController(text: '1');
   final discountController = TextEditingController(text: '0');
-  Map<int, Tax> taxMap;
 
-  _LineItem({required this.product, this.taxMap = const {}});
+  _LineItem({required this.product});
 
   double get quantity => double.tryParse(quantityController.text.replaceAll(',', '.')) ?? 1;
   double get discount => double.tryParse(discountController.text.replaceAll(',', '.')) ?? 0;
 
-  double get taxRate {
-    if (product.taxesId.isEmpty) return 0;
-    double rate = 0;
-    for (final id in product.taxesId) {
-      final tax = taxMap[id];
-      if (tax != null) rate += tax.amount;
-    }
-    return rate;
-  }
+  double get taxRate => product.taxesRate;
 
   double get lineSubtotal => quantity * product.listPrice * (1 - discount / 100);
   double get lineTax => lineSubtotal * taxRate / 100;
