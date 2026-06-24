@@ -434,98 +434,139 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   Widget _buildProductsTable() {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(flex: 3, child: Text('Producto', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 90, child: Text('Cantidad', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 90, child: Text('Precio', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 90, child: Text('Dto', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 90, child: Text('Subtotal', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 90, child: Text('IVA', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              SizedBox(width: 90, child: Text('Total', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-              const SizedBox(width: 40),
-            ],
-          ),
+    return LayoutBuilder(builder: (context, constraints) {
+      final isWide = constraints.maxWidth > 700;
+      final table = Column(
+        children: [
+          _productTableHeader(isWide),
+          if (isWide)
+            ..._lineItems.asMap().entries.map((entry) => _buildProductRowWide(entry.key, entry.value))
+          else
+            ..._lineItems.asMap().entries.map((entry) => _buildProductRowNarrow(entry.key, entry.value)),
+        ],
+      );
+      if (isWide) return table;
+      return SingleChildScrollView(scrollDirection: Axis.horizontal, child: table);
+    });
+  }
+
+  Widget _productTableHeader(bool isWide) {
+    final style = GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary);
+    if (isWide) {
+      return Container(
+        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: const [
+            Expanded(flex: 3, child: Text('Producto', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Precio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Dto', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Subtotal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('IVA', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Total', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            SizedBox(width: 40),
+          ],
         ),
-        ..._lineItems.asMap().entries.map((entry) => _buildProductRow(entry.key, entry.value)),
-      ],
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          SizedBox(width: 160, child: Text('Producto', style: style)),
+          SizedBox(width: 80, child: Text('Cantidad', style: style)),
+          SizedBox(width: 80, child: Text('Precio', style: style)),
+          SizedBox(width: 60, child: Text('Dto', style: style)),
+          SizedBox(width: 80, child: Text('Subtotal', style: style)),
+          SizedBox(width: 80, child: Text('IVA', style: style)),
+          SizedBox(width: 80, child: Text('Total', style: style)),
+          SizedBox(width: 40),
+        ],
+      ),
     );
   }
 
-  Widget _buildProductRow(int index, _LineItem item) {
+  Widget _buildProductRowWide(int index, _LineItem item) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
-      ),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3)))),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          Expanded(
-            flex: 3,
-            child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          ),
-          SizedBox(
-            width: 90,
-            child: TextFormField(
-              controller: item.quantityController,
-              decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-              keyboardType: TextInputType.number,
-              validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: TextFormField(
-              controller: item.discountController,
-              decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: item.taxRate > 0
-                  ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
-                  : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-            ),
-          ),
-          SizedBox(
-            width: 40,
-            child: IconButton(
-              icon: const Icon(Icons.close, size: 16),
-              onPressed: () => setState(() => _lineItems.removeAt(index)),
-            ),
-          ),
+          Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          Expanded(flex: 1, child: TextFormField(
+            controller: item.quantityController,
+            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
+            keyboardType: TextInputType.number,
+            validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+          )),
+          Expanded(flex: 1, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          )),
+          Expanded(flex: 1, child: TextFormField(
+            controller: item.discountController,
+            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
+            keyboardType: TextInputType.number,
+          )),
+          Expanded(flex: 1, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          )),
+          Expanded(flex: 1, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: item.taxRate > 0
+                ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
+                : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+          )),
+          Expanded(flex: 1, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          )),
+          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _lineItems.removeAt(index)))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductRowNarrow(int index, _LineItem item) {
+    return Container(
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3)))),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(width: 160, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 80, child: TextFormField(
+            controller: item.quantityController,
+            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
+            keyboardType: TextInputType.number,
+            validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+          )),
+          SizedBox(width: 80, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          )),
+          SizedBox(width: 60, child: TextFormField(
+            controller: item.discountController,
+            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
+            keyboardType: TextInputType.number,
+          )),
+          SizedBox(width: 80, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+          )),
+          SizedBox(width: 80, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: item.taxRate > 0
+                ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
+                : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+          )),
+          SizedBox(width: 80, child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          )),
+          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _lineItems.removeAt(index)))),
         ],
       ),
     );

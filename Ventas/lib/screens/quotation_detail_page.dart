@@ -316,43 +316,94 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
               child: Text('Sin productos', style: GoogleFonts.inter(color: AppColors.textSecondary)),
             )
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Column(
+            LayoutBuilder(builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 650;
+              final content = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const SizedBox(width: 160, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                      SizedBox(width: 80, child: Text('Cantidad', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                      SizedBox(width: 90, child: Text('Precio Unit.', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                      SizedBox(width: 60, child: Text('Dto %', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                      SizedBox(width: 90, child: Text('Subtotal', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                      SizedBox(width: 90, child: Text('IVA', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                      SizedBox(width: 90, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                    ],
-                  ),
+                  _tableHeader(isWide),
                   ...lines.asMap().entries.map((entry) {
-                    final i = entry.key;
                     final line = entry.value as Map<String, dynamic>;
-                    return _buildLineRow(line, i == lines.length - 1);
+                    return _buildLineRow(line, entry.key == lines.length - 1, isWide);
                   }),
                 ],
-              ),
-            ),
+              );
+              if (isWide) return Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 0), child: content);
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: content,
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildLineRow(Map<String, dynamic> line, bool isLast) {
+  Widget _tableHeader(bool isWide) {
+    if (isWide) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          children: const [
+            Expanded(flex: 3, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Cantidad', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Precio Unit.', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Dto %', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Subtotal', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('IVA', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          ],
+        ),
+      );
+    }
+    return Row(
+      children: const [
+        SizedBox(width: 160, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        SizedBox(width: 80, child: Text('Cantidad', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        SizedBox(width: 90, child: Text('Precio Unit.', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        SizedBox(width: 60, child: Text('Dto %', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        SizedBox(width: 90, child: Text('Subtotal', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        SizedBox(width: 90, child: Text('IVA', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        SizedBox(width: 90, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+      ],
+    );
+  }
+
+  Widget _buildLineRow(Map<String, dynamic> line, bool isLast, bool isWide) {
     final qty = (line['quantity'] as num).toDouble();
     final priceUnit = (line['unit_price'] as num?)?.toDouble() ?? (line['price_unit'] as num?)?.toDouble() ?? 0.0;
     final discount = (line['discount'] as num).toDouble();
     final subtotal = _calcSubtotal(line);
     final tax = _calcTax(line);
     final total = subtotal + tax;
+    final productName = line['product_name'] as String? ?? 'Producto #${line['product_id']}';
+    final qtyText = '${qty.toStringAsFixed(0)}';
+    final puText = '\$${priceUnit.toStringAsFixed(2)}';
+    final dtoText = discount > 0 ? '-${discount.toStringAsFixed(0)}%' : '—';
+    final subText = '\$${subtotal.toStringAsFixed(2)}';
+    final ivaText = tax > 0 ? '\$${tax.toStringAsFixed(2)}' : '—';
+    final totalText = '\$${total.toStringAsFixed(2)}';
+
+    if (isWide) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: isLast ? null : Border(bottom: BorderSide(color: AppColors.divider)),
+        ),
+        child: Row(
+          children: [
+            Expanded(flex: 3, child: Text(productName, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+            Expanded(flex: 1, child: Text(qtyText, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+            Expanded(flex: 1, child: Text(puText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+            Expanded(flex: 1, child: Text(dtoText, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 13, color: discount > 0 ? Colors.orange : AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text(subText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+            Expanded(flex: 1, child: Text(ivaText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+            Expanded(flex: 1, child: Text(totalText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -361,61 +412,13 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 160,
-            child: Text(
-              line['product_name'] as String? ?? 'Producto #${line['product_id']}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
-            ),
-          ),
-          SizedBox(
-            width: 80,
-            child: Text(
-              '${qty.toStringAsFixed(0)}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Text(
-              '\$${priceUnit.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
-              textAlign: TextAlign.right,
-            ),
-          ),
-          SizedBox(
-            width: 60,
-            child: Text(
-              discount > 0 ? '-${discount.toStringAsFixed(0)}%' : '—',
-              style: GoogleFonts.inter(fontSize: 13, color: discount > 0 ? Colors.orange : AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Text(
-              '\$${subtotal.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
-              textAlign: TextAlign.right,
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Text(
-              tax > 0 ? '\$${tax.toStringAsFixed(2)}' : '—',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
-              textAlign: TextAlign.right,
-            ),
-          ),
-          SizedBox(
-            width: 90,
-            child: Text(
-              '\$${total.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
-              textAlign: TextAlign.right,
-            ),
-          ),
+          SizedBox(width: 160, child: Text(productName, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 80, child: Text(qtyText, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 90, child: Text(puText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 60, child: Text(dtoText, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 13, color: discount > 0 ? Colors.orange : AppColors.textSecondary))),
+          SizedBox(width: 90, child: Text(subText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 90, child: Text(ivaText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 90, child: Text(totalText, textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary))),
         ],
       ),
     );
