@@ -70,12 +70,6 @@ if "customers" in inspector.get_table_names():
 if "contacts" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Contact.__table__])
 
-if "orders" in inspector.get_table_names():
-    ord_cols = [c["name"] for c in inspector.get_columns("orders")]
-    if "vendedor_externo" not in ord_cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE orders ADD COLUMN vendedor_externo VARCHAR"))
-
 if "order_statuses" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.OrderStatus.__table__])
 
@@ -88,8 +82,10 @@ if "products" in inspector.get_table_names():
 if "taxes" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Tax.__table__])
 
-if "order_lines" not in inspector.get_table_names():
-    Base.metadata.create_all(bind=engine, tables=[models.OrderLine.__table__])
+if "orders" in inspector.get_table_names():
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS order_lines CASCADE"))
+        conn.execute(text("DROP TABLE IF EXISTS orders CASCADE"))
 
 if "quotation_drafts" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.QuotationDraft.__table__])
