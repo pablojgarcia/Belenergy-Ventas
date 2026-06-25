@@ -261,7 +261,7 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
         const SizedBox(height: 6),
         if (!isDraft) ...[
           Text(
-            'N° Odoo: ${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}',
+            'N° Interno: ${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}',
             style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],

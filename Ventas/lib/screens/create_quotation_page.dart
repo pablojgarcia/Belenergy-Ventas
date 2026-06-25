@@ -95,7 +95,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         _lineItems.add(_LineItem(
           product: product,
           quantity: (line['quantity'] as num).toDouble(),
-          discount: (line['discount'] as num).toDouble(),
         ));
       }
       if (mounted) setState(() => _loadingClient = false);
@@ -107,10 +106,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   @override
   void dispose() {
     _descriptionController.dispose();
-    for (final item in _lineItems) {
-      item.quantityController.dispose();
-      item.discountController.dispose();
-    }
     super.dispose();
   }
 
@@ -150,7 +145,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         'product_id': item.product.id,
         'quantity': item.quantity,
         'unit_price': item.product.listPrice,
-        'discount': item.discount,
         'tax_id': item.product.taxesId,
       }).toList(),
     };
@@ -461,7 +455,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             Expanded(flex: 3, child: Text('Producto', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Precio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-            Expanded(flex: 1, child: Text('Dto', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Subtotal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('IVA', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Total', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
@@ -478,7 +471,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           SizedBox(width: 160, child: Text('Producto', style: style)),
           SizedBox(width: 80, child: Text('Cantidad', style: style)),
           SizedBox(width: 80, child: Text('Precio', style: style)),
-          SizedBox(width: 60, child: Text('Dto', style: style)),
           SizedBox(width: 80, child: Text('Subtotal', style: style)),
           SizedBox(width: 80, child: Text('IVA', style: style)),
           SizedBox(width: 80, child: Text('Total', style: style)),
@@ -495,20 +487,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       child: Row(
         children: [
           Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          Expanded(flex: 1, child: TextFormField(
-            controller: item.quantityController,
-            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-            keyboardType: TextInputType.number,
-            validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
-          )),
+          Expanded(flex: 1, child: _qtyStepper(item)),
           Expanded(flex: 1, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          Expanded(flex: 1, child: TextFormField(
-            controller: item.discountController,
-            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-            keyboardType: TextInputType.number,
           )),
           Expanded(flex: 1, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -537,20 +519,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       child: Row(
         children: [
           SizedBox(width: 160, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          SizedBox(width: 80, child: TextFormField(
-            controller: item.quantityController,
-            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-            keyboardType: TextInputType.number,
-            validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
-          )),
+          SizedBox(width: 100, child: _qtyStepper(item)),
           SizedBox(width: 80, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          SizedBox(width: 60, child: TextFormField(
-            controller: item.discountController,
-            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-            keyboardType: TextInputType.number,
           )),
           SizedBox(width: 80, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -568,6 +540,39 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           )),
           SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _lineItems.removeAt(index)))),
         ],
+      ),
+    );
+  }
+
+  Widget _qtyStepper(_LineItem item) {
+    return Row(
+      children: [
+        _stepperBtn(Icons.remove, () {
+          if (item.quantity > 1) setState(() => item.quantity--);
+        }),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        ),
+        _stepperBtn(Icons.add, () {
+          setState(() => item.quantity++);
+        }),
+      ],
+    );
+  }
+
+  Widget _stepperBtn(IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, size: 16),
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.background,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
       ),
     );
   }
@@ -714,20 +719,14 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
 class _LineItem {
   final Product product;
-  final quantityController = TextEditingController(text: '1');
-  final discountController = TextEditingController(text: '0');
+  int quantity;
 
-  _LineItem({required this.product, double? quantity, double? discount}) {
-    if (quantity != null) quantityController.text = quantity.toStringAsFixed(0);
-    if (discount != null) discountController.text = discount.toStringAsFixed(0);
-  }
-
-  double get quantity => double.tryParse(quantityController.text.replaceAll(',', '.')) ?? 1;
-  double get discount => double.tryParse(discountController.text.replaceAll(',', '.')) ?? 0;
+  _LineItem({required this.product, double? quantity})
+    : quantity = (quantity ?? 1).toInt();
 
   double get taxRate => product.taxesRate;
 
-  double get lineSubtotal => quantity * product.listPrice * (1 - discount / 100);
+  double get lineSubtotal => quantity * product.listPrice;
   double get lineTax => lineSubtotal * taxRate / 100;
   double get lineTotal => lineSubtotal + lineTax;
 }
