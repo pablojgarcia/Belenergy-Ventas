@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 
@@ -52,10 +52,14 @@ class _DesktopShell extends StatelessWidget {
           backgroundColor: AppColors.surface,
           leading: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.accent,
-              child: Text('B', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/Belenergy ARG.webp',
+                width: 80,
+                height: 80,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
           destinations: const [
