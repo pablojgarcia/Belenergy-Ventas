@@ -190,17 +190,26 @@ class _ProductsPageState extends State<ProductsPage> {
       children: [
         _buildSearchBar(),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: columns == 1 ? 2.6 : 1.3,
-            ),
-            itemCount: _filteredProducts.length,
-            itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index]),
-          ),
+          child: columns == 1
+              ? ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _filteredProducts.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ProductCard(product: _filteredProducts[index]),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.3,
+                  ),
+                  itemCount: _filteredProducts.length,
+                  itemBuilder: (context, index) => _ProductCard(product: _filteredProducts[index]),
+                ),
         ),
       ],
     );

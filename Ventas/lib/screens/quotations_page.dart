@@ -15,26 +15,22 @@ class QuotationsPage extends StatefulWidget {
 }
 
 class _QuotationsPageState extends State<QuotationsPage> {
-  late Future<List<Map<String, dynamic>>> _itemsFuture;
-  List<Map<String, dynamic>> _allItems = [];
-  List<Map<String, dynamic>> _filteredItems = [];
-  bool _loaded = false;
-  String? _selectedTab;
+  List<Map<String, dynamic>> _items = [];
+  String _selectedTab = 'all';
   String _searchQuery = '';
+  bool _loading = true;
+  int _loadGen = 0;
 
   @override
   void initState() {
     super.initState();
-    _itemsFuture = _fetchItems();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<ApiService>().ordersRefreshNotifier.addListener(_onRefresh);
-      }
-    });
+    context.read<ApiService>().ordersRefreshNotifier.addListener(_onRefresh);
+    _loadData();
   }
 
   @override
   void dispose() {
+    _loadGen++;
     try {
       context.read<ApiService>().ordersRefreshNotifier.removeListener(_onRefresh);
     } catch (_) {}
@@ -42,58 +38,81 @@ class _QuotationsPageState extends State<QuotationsPage> {
   }
 
   void _onRefresh() {
-    _refresh();
+    _loadData();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchItems() async {
+  Future<void> _loadData() async {
+    final gen = ++_loadGen;
+    debugPrint('[QUOTATIONS] _loadData #$gen — selectedTab: $_selectedTab');
+    if (mounted) setState(() => _loading = true);
     final api = context.read<ApiService>();
-    final drafts = await api.getDrafts();
-    final quotations = await api.getQuotations();
-    final merged = <Map<String, dynamic>>[];
-
-    for (final d in drafts) {
-      if (d['status'] == 'generated') continue;
-      merged.add({
-        ...d,
-        '_type': 'draft',
-        '_sort_date': d['created_at'] as String? ?? '',
-      });
-    }
-    for (final q in quotations) {
-      merged.add({
-        ...q,
-        '_type': 'quotation',
-        '_sort_date': q['created_at'] as String? ?? '',
-      });
-    }
-    merged.sort((a, b) => (b['_sort_date'] as String).compareTo(a['_sort_date'] as String));
-
-    if (_selectedTab != null) {
-      if (_selectedTab == 'draft') {
-        merged.removeWhere((i) => i['_type'] != 'draft');
-      } else if (_selectedTab == 'generated') {
-        merged.removeWhere((i) => i['_type'] != 'quotation');
+    try {
+      final tab = _selectedTab;
+      debugPrint('[QUOTATIONS] fetching drafts & quotations...');
+      final drafts = await api.getDrafts();
+      final quotations = await api.getQuotations();
+      debugPrint('[QUOTATIONS] drafts: ${drafts.length}, quotations: ${quotations.length}');
+      if (gen != _loadGen) {
+        debugPrint('[QUOTATIONS] gen mismatch — discarding stale response');
+        return;
       }
-    }
-    return merged;
-  }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _loaded = false;
-      _itemsFuture = _fetchItems();
-    });
-    await _itemsFuture;
+      final merged = <Map<String, dynamic>>[];
+
+      for (final d in drafts) {
+        merged.add({
+          ...d,
+          '_type': 'draft',
+          '_sort_date': d['created_at'] as String? ?? '',
+        });
+      }
+      for (final q in quotations) {
+        merged.add({
+          ...q,
+          '_type': 'quotation',
+          '_sort_date': q['created_at'] as String? ?? '',
+        });
+      }
+      merged.sort((a, b) => (b['_sort_date'] as String).compareTo(a['_sort_date'] as String));
+      debugPrint('[QUOTATIONS] merged before filter: ${merged.length} items, tab=$tab');
+
+      if (tab == 'draft') {
+        merged.removeWhere((i) => i['status'] != 'draft');
+        debugPrint('[QUOTATIONS] filtered to draft: ${merged.length} items');
+      } else if (tab == 'generated') {
+        merged.retainWhere((i) {
+          if (i['_type'] == 'quotation') return true;
+          return i['status'] == 'generated';
+        });
+        debugPrint('[QUOTATIONS] filtered to generated: ${merged.length} items');
+      } else {
+        debugPrint('[QUOTATIONS] tab=$tab — showing all items');
+      }
+
+      if (mounted) {
+        setState(() {
+          _items = merged;
+          _loading = false;
+        });
+        debugPrint('[QUOTATIONS] state updated — items: ${merged.length}');
+      }
+    } catch (e) {
+      debugPrint('[QUOTATIONS] error: $e');
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _filterItems(String query) {
     _searchQuery = query.toLowerCase();
-    setState(() {
-      _filteredItems = _allItems.where((o) {
-        final name = (o['client_name'] as String? ?? '').toLowerCase();
-        return name.contains(_searchQuery);
-      }).toList();
-    });
+    setState(() {});
+  }
+
+  List<Map<String, dynamic>> get _displayItems {
+    if (_searchQuery.isEmpty) return _items;
+    return _items.where((o) {
+      final name = (o['client_name'] as String? ?? '').toLowerCase();
+      return name.contains(_searchQuery);
+    }).toList();
   }
 
   @override
@@ -118,61 +137,34 @@ class _QuotationsPageState extends State<QuotationsPage> {
             ),
           ),
           const SizedBox(width: 8),
-          PopupMenuButton<String?>(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (tab) {
-              setState(() {
-                _selectedTab = tab;
-                _loaded = false;
-                _itemsFuture = _fetchItems();
-              });
+              debugPrint('[QUOTATIONS] filter selected: $tab');
+              _selectedTab = tab;
+              _loadData();
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: null, child: Text('Todos')),
-              const PopupMenuItem(value: 'draft', child: Text('Borradores')),
+              const PopupMenuItem(value: 'all', child: Text('Todos')),
+              const PopupMenuItem(value: 'draft', child: Text('Borrador')),
               const PopupMenuItem(value: 'generated', child: Text('Generadas')),
             ],
           ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _itemsFuture,
-        builder: (context, snapshot) {
-          if (!_loaded) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Error al cargar cotizaciones',
-                  style: GoogleFonts.inter(color: Colors.red),
-                ),
-              );
-            }
-            final items = snapshot.data ?? [];
-            _allItems = items;
-            _filteredItems = items;
-            _loaded = true;
-          }
-
-          if (_allItems.isEmpty) {
-            return Center(
-              child: Text(
-                'No hay cotizaciones',
-                style: GoogleFonts.inter(color: AppColors.textSecondary),
-              ),
-            );
-          }
-
-          if (context.isDesktop) {
-            return _buildDesktopTable();
-          }
-
-          return _buildMobileList();
-        },
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _displayItems.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay cotizaciones',
+                    style: GoogleFonts.inter(color: AppColors.textSecondary),
+                  ),
+                )
+              : context.isDesktop
+                  ? _buildDesktopTable()
+                  : _buildMobileList(),
     );
   }
 
@@ -210,11 +202,10 @@ class _QuotationsPageState extends State<QuotationsPage> {
                 columns: const [
                   AppColumn(title: 'Cliente', flex: 3),
                   AppColumn(title: 'Monto', flex: 1),
-                  AppColumn(title: 'Tipo', flex: 1),
                   AppColumn(title: 'Estado', flex: 1),
                   AppColumn(title: '', flex: 1),
                 ],
-                items: _filteredItems,
+                items: _displayItems,
                 cellBuilder: (_, item, col) {
                   final isDraft = item['_type'] == 'draft';
                   final amountTotal = (item['amount_total'] ?? 0.0).toDouble();
@@ -231,16 +222,8 @@ class _QuotationsPageState extends State<QuotationsPage> {
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       );
                     case 2:
-                      return Text(
-                        isDraft ? 'Borrador' : 'Cotización',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: isDraft ? Colors.orange : AppColors.primary,
-                        ),
-                      );
-                    case 3:
                       return _buildStateChip(isDraft ? (item['status'] as String? ?? 'draft') : 'generated');
-                    case 4:
+                    case 3:
                       return TextButton(
                         onPressed: () => context.push('/quotations/${isDraft ? item['id'] : item['id']}'),
                         child: const Text('Ver detalle'),
@@ -260,10 +243,10 @@ class _QuotationsPageState extends State<QuotationsPage> {
   Widget _buildMobileList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _filteredItems.length,
+      itemCount: _displayItems.length,
       itemBuilder: (context, i) => _OrderCard(
-        item: _filteredItems[i],
-        onTap: () => context.push('/quotations/${_filteredItems[i]['id']}'),
+        item: _displayItems[i],
+        onTap: () => context.push('/quotations/${_displayItems[i]['id']}'),
       ),
     );
   }

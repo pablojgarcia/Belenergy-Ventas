@@ -115,6 +115,7 @@ class QuotationGenerationService:
             pass
 
         quotation = models.Quotation(
+            id=draft.id,
             draft_id=draft.id,
             customer_id=draft.customer_id,
             amount_untaxed=amount_untaxed,

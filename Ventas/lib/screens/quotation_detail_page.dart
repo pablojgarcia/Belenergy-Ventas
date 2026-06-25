@@ -30,20 +30,20 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final api = context.read<ApiService>();
-    final draft = await api.getDraft(widget.itemId);
-    if (draft != null && mounted) {
-      setState(() {
-        _item = draft;
-        _item!['_type'] = 'draft';
-        _loading = false;
-      });
-      return;
-    }
     final quotation = await api.getQuotation(widget.itemId);
     if (quotation != null && mounted) {
       setState(() {
         _item = quotation;
         _item!['_type'] = 'quotation';
+        _loading = false;
+      });
+      return;
+    }
+    final draft = await api.getDraft(widget.itemId);
+    if (draft != null && mounted) {
+      setState(() {
+        _item = draft;
+        _item!['_type'] = 'draft';
         _loading = false;
       });
       return;
@@ -71,7 +71,7 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
 
   Widget _buildContent() {
     final item = _item!;
-    final isDraft = item['_type'] == 'draft';
+    final isDraft = item['_type'] == 'draft' && item['status'] != 'generated';
     final padding = context.isDesktop ? 48.0 : 20.0;
 
     return SingleChildScrollView(
@@ -159,6 +159,8 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cotización generada correctamente')),
         );
+        context.read<ApiService>().ordersRefreshNotifier.value++;
+        context.go('/quotations');
       }
     } catch (e) {
       if (mounted) {
@@ -198,92 +200,114 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   }
 
   Widget _buildHeader(Map<String, dynamic> item, bool isDraft) {
-    final status = isDraft ? (item['status'] as String? ?? 'draft') : 'generated';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              isDraft ? 'Borrador' : 'Cotización',
-              style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-            ),
-            const SizedBox(width: 12),
-            _buildStateChip(status),
-            const Spacer(),
-            if (isDraft && item['status'] != 'failed') ...[
-              OutlinedButton.icon(
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text('Editar'),
-                onPressed: () => context.push('/quotations/${widget.itemId}/edit'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
+    final status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
+    return LayoutBuilder(builder: (context, constraints) {
+      final isNarrow = constraints.maxWidth < 500;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  isDraft ? 'Borrador' : 'Cotización',
+                  style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                 ),
               ),
-              const SizedBox(width: 8),
-              _generating
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : FilledButton.icon(
-                      icon: const Icon(Icons.rocket_launch, size: 18),
-                      label: const Text('Generar'),
-                      onPressed: _generate,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+              const SizedBox(width: 12),
+              _buildStateChip(status),
+              if (!isNarrow) const Spacer(),
+              if (!isNarrow && isDraft && item['status'] != 'failed') ...[
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.edit, size: 18),
+                  label: const Text('Editar'),
+                  onPressed: () => context.push('/quotations/${widget.itemId}/edit'),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary),
+                ),
+                const SizedBox(width: 8),
+                _generating
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : FilledButton.icon(
+                        icon: const Icon(Icons.rocket_launch, size: 18),
+                        label: const Text('Generar'),
+                        onPressed: _generate,
+                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                       ),
-                    ),
-            ] else if (isDraft && item['status'] == 'failed')
-              FilledButton.icon(
+              ] else if (!isNarrow && isDraft && item['status'] == 'failed')
+                FilledButton.icon(
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Reintentar'),
+                  onPressed: _generating ? null : _generate,
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                )
+              else
+                _downloadingPdf
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : IconButton(
+                        icon: Icon(Icons.download, color: AppColors.primary),
+                        tooltip: 'Descargar PDF',
+                        onPressed: _downloadPdf,
+                      ),
+            ],
+          ),
+          if (isNarrow && isDraft && item['status'] != 'failed') ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.edit, size: 18),
+                  label: const Text('Editar'),
+                  onPressed: () => context.push('/quotations/${widget.itemId}/edit'),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary),
+                ),
+                _generating
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : FilledButton.icon(
+                        icon: const Icon(Icons.rocket_launch, size: 18),
+                        label: const Text('Generar'),
+                        onPressed: _generate,
+                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                      ),
+              ],
+            ),
+          ] else if (isNarrow && isDraft && item['status'] == 'failed')
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: FilledButton.icon(
                 icon: const Icon(Icons.refresh, size: 18),
                 label: const Text('Reintentar'),
                 onPressed: _generating ? null : _generate,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-              )
-            else
-              _downloadingPdf
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : IconButton(
-                      icon: Icon(Icons.download, color: AppColors.primary),
-                      tooltip: 'Descargar PDF',
-                      onPressed: _downloadPdf,
-                    ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        if (!isDraft) ...[
-          Text(
-            'N° Interno: ${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}',
-            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
-          ),
-        ],
-        if (item['created_at'] != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              _formatDate(item['created_at'] as String),
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+                style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              ),
             ),
-          ),
-        if (item['notes'] != null && (item['notes'] as String).isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _sectionTitle('NOTAS'),
-          const SizedBox(height: 8),
-          Text(
-            item['notes'],
-            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
-          ),
+          const SizedBox(height: 6),
+          if (!isDraft) ...[
+            Text(
+              'N° Interno: ${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}',
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
+          if (item['created_at'] != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                _formatDate(item['created_at'] as String),
+                style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ),
+          if (item['notes'] != null && (item['notes'] as String).isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _sectionTitle('NOTAS'),
+            const SizedBox(height: 8),
+            Text(
+              item['notes'],
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
+            ),
+          ],
         ],
-      ],
-    );
+      );
+    });
   }
 
   double _calcSubtotal(Map<String, dynamic> line) {
@@ -468,7 +492,7 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   }
 
   Widget _buildDetailsCard(Map<String, dynamic> item, bool isDraft) {
-    final status = isDraft ? (item['status'] as String? ?? 'draft') : 'generated';
+    final status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
 
     return _card(
       child: Column(

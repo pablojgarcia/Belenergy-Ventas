@@ -398,19 +398,30 @@ class _ClientCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 12),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              spacing: 8,
+            Row(
               children: [
-                OutlinedButton(
-                  onPressed: () => onViewContact(client),
-                  child: const Text('Ver contacto'),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => onViewContact(client),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Ver contacto', style: TextStyle(fontSize: 13)),
+                  ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    context.push('/quotations/new?customer=${client.odooId}');
-                  },
-                  child: const Text('Nueva cotización'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      context.push('/quotations/new?customer=${client.odooId}');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Nueva cotización', style: TextStyle(fontSize: 13)),
+                  ),
                 ),
               ],
             ),

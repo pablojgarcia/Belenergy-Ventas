@@ -136,7 +136,8 @@ class _LoginPageState extends State<LoginPage>
                     padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
                     child: Form(
                       key: _formKey,
-                      child: Column(
+                      child: SingleChildScrollView(
+                        child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -282,7 +283,8 @@ class _LoginPageState extends State<LoginPage>
                               );
                             },
                           ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
