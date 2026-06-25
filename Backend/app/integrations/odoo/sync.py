@@ -164,6 +164,18 @@ def sync_products(db: Session):
         'taxes_id'
     ]
 
+    print("Cargando precios de lista USD Lista de Precios...")
+    pricelist_items = odoo.env['product.pricelist.item'].search_read(
+        [('pricelist_id', '=', 5)],
+        ['product_tmpl_id', 'fixed_price', 'compute_price']
+    )
+    usd_prices = {}
+    for item in pricelist_items:
+        tmpl = item.get('product_tmpl_id')
+        if tmpl and isinstance(tmpl, (list, tuple)) and item.get('compute_price') == 'fixed':
+            usd_prices[tmpl[0]] = float(item['fixed_price'])
+    print(f"Encontrados {len(usd_prices)} productos con precio USD.")
+
     print("Buscando productos en Odoo...")
     products_data = odoo.env['product.template'].search_read([('active', '=', True)], fields)
     print(f"Encontrados {len(products_data)} productos. Procesando...")
@@ -178,12 +190,13 @@ def sync_products(db: Session):
             for t in raw_taxes
         ]
 
+        usd_price = usd_prices.get(int(p['id']))
         product_data = {
             "odoo_id": int(p['id']),
             "name": str(p.get('name') or ""),
             "default_code": str(p.get('default_code') or ""),
             "barcode": str(p.get('barcode') or ""),
-            "list_price": float(p.get('list_price') or 0.0),
+            "list_price": usd_price if usd_price is not None else float(p.get('list_price') or 0.0),
             "standard_price": float(p.get('standard_price') or 0.0),
             "type": str(p.get('type') or "product"),
             "categ_id": str(p.get('categ_id')[1] if p.get('categ_id') else ""),
