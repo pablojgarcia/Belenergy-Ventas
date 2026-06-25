@@ -82,11 +82,6 @@ if "products" in inspector.get_table_names():
 if "taxes" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Tax.__table__])
 
-if "orders" in inspector.get_table_names():
-    with engine.begin() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS order_lines CASCADE"))
-        conn.execute(text("DROP TABLE IF EXISTS orders CASCADE"))
-
 if "quotation_drafts" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.QuotationDraft.__table__])
 
