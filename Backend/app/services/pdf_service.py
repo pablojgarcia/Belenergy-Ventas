@@ -25,7 +25,7 @@ class PdfService:
         )
 
         try:
-            with httpx.Client() as client:
+            with httpx.Client(follow_redirects=True) as client:
                 auth_resp = client.post(
                     f"{config.settings.ODOO_URL}/web/session/authenticate",
                     json={
