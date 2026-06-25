@@ -16,7 +16,7 @@ def sync_customers(db: Session):
     ]
 
     print("Buscando clientes en Odoo...")
-    partners_data = odoo.env['res.partner'].search_read([('customer_rank', '>', 0)], fields)
+    partners_data = odoo.env['res.partner'].search_read([], fields)
     print(f"Encontrados {len(partners_data)} clientes. Procesando...")
 
     vendedor_ids = set()
