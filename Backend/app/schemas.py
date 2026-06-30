@@ -246,3 +246,70 @@ class QuotationGenerateResponse(BaseModel):
     quotation_id: uuid.UUID
     odoo_sale_order_id: int
     odoo_sale_order_name: str | None = None
+
+
+class LeadCreate(BaseModel):
+    company_name: str
+    contact_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile: Optional[str] = None
+    street: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
+    country: Optional[str] = None
+    vat: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class LeadUpdate(BaseModel):
+    company_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile: Optional[str] = None
+    street: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
+    country: Optional[str] = None
+    vat: Optional[str] = None
+    notes: Optional[str] = None
+    version: int
+
+
+class LeadOut(BaseModel):
+    id: uuid.UUID
+    company_name: str
+    contact_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile: Optional[str] = None
+    street: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
+    country: Optional[str] = None
+    vat: Optional[str] = None
+    notes: Optional[str] = None
+    status: str
+    rejection_reason: Optional[str] = None
+    created_by: int
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    odoo_partner_id: Optional[int] = None
+    odoo_crm_lead_id: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    version: int = 1
+
+    model_config = {"from_attributes": True}
+
+
+class LeadApprove(BaseModel):
+    pass
+
+
+class LeadReject(BaseModel):
+    rejection_reason: str

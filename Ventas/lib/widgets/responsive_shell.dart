@@ -22,6 +22,7 @@ int _currentTab(String location) {
   if (location == '/customers') return 1;
   if (location == '/products') return 2;
   if (location.startsWith('/quotations')) return 3;
+  if (location.startsWith('/leads')) return 4;
   return 0;
 }
 
@@ -44,6 +45,7 @@ class _DesktopShell extends StatelessWidget {
               case 1: context.go('/customers');
               case 2: context.go('/products');
               case 3: context.go('/quotations');
+              case 4: context.go('/leads');
             }
           },
           labelType: NavigationRailLabelType.all,
@@ -83,6 +85,11 @@ class _DesktopShell extends StatelessWidget {
               selectedIcon: Icon(Icons.receipt_long_rounded),
               label: Text('Cotizaciones'),
             ),
+            NavigationRailDestination(
+              icon: Icon(Icons.fiber_new_rounded),
+              selectedIcon: Icon(Icons.fiber_new_rounded),
+              label: Text('Leads'),
+            ),
           ],
         ),
         const VerticalDivider(width: 1, thickness: 1),
@@ -111,6 +118,7 @@ class _MobileShell extends StatelessWidget {
             case 1: context.go('/customers');
             case 2: context.go('/products');
             case 3: context.go('/quotations');
+            case 4: context.go('/leads');
           }
         },
         backgroundColor: AppColors.surface,
@@ -120,6 +128,7 @@ class _MobileShell extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.people_alt_rounded), label: 'Clientes'),
           NavigationDestination(icon: Icon(Icons.solar_power_rounded), label: 'Productos'),
           NavigationDestination(icon: Icon(Icons.receipt_long_rounded), label: 'Cotizaciones'),
+          NavigationDestination(icon: Icon(Icons.fiber_new_rounded), label: 'Leads'),
         ],
       ),
     );

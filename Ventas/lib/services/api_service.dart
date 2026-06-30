@@ -16,7 +16,7 @@ class ApiService {
     if (overrideBaseUrl != null) return overrideBaseUrl!;
     final apiUrl = const String.fromEnvironment('API_URL', defaultValue: '');
     if (apiUrl.isNotEmpty) return apiUrl;
-    if (kIsWeb) return '';
+    if (kIsWeb) return 'http://localhost:8000';
     return 'http://10.0.2.2:8000';
   }
 
@@ -78,6 +78,16 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+
+  Future<Map<String, dynamic>> getCustomer(int id) async {
+    try {
+      final response = await _dio.get('/customers/$id');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching customer: $e');
+      rethrow;
+    }
+  }
 
   Future<List<Map<String, dynamic>>> getCustomers() async {
     try {
@@ -214,6 +224,118 @@ class ApiService {
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
       debugPrint('Error fetching taxes: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getLeads({
+    String? status, String? q, String? dateFrom, String? dateTo,
+  }) async {
+    try {
+      final params = <String, dynamic>{};
+      if (status != null) params['status'] = status;
+      if (q != null) params['q'] = q;
+      if (dateFrom != null) params['date_from'] = dateFrom;
+      if (dateTo != null) params['date_to'] = dateTo;
+      final response = await _dio.get('/leads', queryParameters: params);
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching leads: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getLead(String id) async {
+    try {
+      final response = await _dio.get(
+        '/leads/$id',
+        options: Options(validateStatus: (s) => s == 200 || s == 404),
+      );
+      if (response.statusCode == 404) return null;
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching lead: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> createLead(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/leads', data: data);
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error creating lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateLead(String id, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put('/leads/$id', data: data);
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error updating lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteLead(String id) async {
+    try {
+      await _dio.delete('/leads/$id');
+    } catch (e) {
+      debugPrint('Error deleting lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> approveLead(String id) async {
+    try {
+      final response = await _dio.post('/leads/$id/approve');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error approving lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> rejectLead(String id, String reason) async {
+    try {
+      final response = await _dio.post('/leads/$id/reject', data: {
+        'rejection_reason': reason,
+      });
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error rejecting lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> syncLead(String id) async {
+    try {
+      final response = await _dio.post('/leads/$id/sync');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error syncing lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> refreshLead(String id) async {
+    try {
+      final response = await _dio.post('/leads/$id/refresh');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error refreshing lead: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createDraftFromLead(String leadId) async {
+    try {
+      final response = await _dio.post('/leads/$leadId/create-draft');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error creating draft from lead: $e');
       rethrow;
     }
   }
