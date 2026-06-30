@@ -45,13 +45,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     setState(() => _loadingClient = true);
     final api = context.read<ApiService>();
     try {
-      final customerOdooId = int.parse(widget.customerId!);
-      final data = await api.getCustomers();
-      final match = data.map((j) => Client.fromJson(j)).firstWhere(
-        (c) => c.odooId == customerOdooId,
-      );
+      final customerId = int.parse(widget.customerId!);
+      final data = await api.getCustomer(customerId);
       if (mounted) setState(() {
-        _selectedClient = match;
+        _selectedClient = Client.fromJson(data);
         _loadingClient = false;
       });
     } catch (_) {
@@ -73,10 +70,18 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
       if (draft['customer_id'] != null) {
         final customers = await api.getCustomers();
-        final match = customers
-            .map((j) => Client.fromJson(j))
-            .firstWhere((c) => c.id == draft['customer_id'],
-                orElse: () => Client(id: 0, name: '', odooId: 0));
+        Client match;
+        try {
+          match = customers
+              .map((j) => Client.fromJson(j))
+              .firstWhere((c) => c.id == draft['customer_id']);
+        } catch (_) {
+          match = Client(
+            id: draft['customer_id'] as int,
+            odooId: 0,
+            name: draft['customer_name'] as String? ?? 'Cliente',
+          );
+        }
         if (mounted) _selectedClient = match;
       }
 

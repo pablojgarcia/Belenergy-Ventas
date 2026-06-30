@@ -12,7 +12,7 @@ from alembic import command as alembic_command
 from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
-from .api import auth, products, customers, quotations, taxes, sync, health
+from .api import auth, products, customers, quotations, taxes, sync, health, leads
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
 
@@ -29,7 +29,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://www.gstatic.com; connect-src 'self' https://www.gstatic.com https://fonts.gstatic.com"
+        csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://www.gstatic.com; connect-src 'self' http: https: ws: wss:"
         response.headers["Content-Security-Policy"] = csp
         return response
 
@@ -90,6 +90,9 @@ if "quotation_draft_lines" not in inspector.get_table_names():
 
 if "quotations" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Quotation.__table__])
+
+if "leads" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.Lead.__table__])
 
 app = FastAPI(title="Auth API")
 
@@ -173,6 +176,7 @@ app.include_router(sync.router)
 app.include_router(health.router)
 app.include_router(drafts_router)
 app.include_router(quotations_router)
+app.include_router(leads.router)
 
 # SPA catch-all (must be last)
 if os.path.isdir(STATIC_DIR):

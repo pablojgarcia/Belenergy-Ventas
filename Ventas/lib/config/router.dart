@@ -8,6 +8,10 @@ import '../screens/products_page.dart';
 import '../screens/create_quotation_page.dart';
 import '../screens/quotations_page.dart';
 import '../screens/quotation_detail_page.dart';
+import '../screens/leads_page.dart';
+import '../screens/create_lead_page.dart';
+import '../screens/lead_detail_page.dart';
+import '../screens/lead_approval_page.dart';
 import '../widgets/responsive_shell.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
@@ -79,6 +83,34 @@ GoRouter createRouter(AuthProvider authProvider) {
                     path: 'edit',
                     builder: (_, state) => CreateQuotationPage(
                       draftId: state.pathParameters['id'],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/leads',
+            builder: (_, __) => const LeadsPage(),
+            routes: [
+              GoRoute(
+                path: 'approval',
+                builder: (_, __) => const LeadApprovalPage(),
+              ),
+              GoRoute(
+                path: 'new',
+                builder: (_, __) => const CreateLeadPage(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, state) => LeadDetailPage(
+                  leadId: state.pathParameters['id']!,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    builder: (_, state) => CreateLeadPage(
+                      leadId: state.pathParameters['id'],
                     ),
                   ),
                 ],
