@@ -11,9 +11,11 @@ class ApiService {
   final ordersRefreshNotifier = ValueNotifier<int>(0);
 
   final String? overrideBaseUrl;
+  static const bool _sameOrigin = bool.fromEnvironment('SAME_ORIGIN', defaultValue: false);
 
   String get baseUrl {
     if (overrideBaseUrl != null) return overrideBaseUrl!;
+    if (_sameOrigin) return '';
     final apiUrl = const String.fromEnvironment('API_URL', defaultValue: '');
     if (apiUrl.isNotEmpty) return apiUrl;
     if (kIsWeb) return 'http://localhost:8000';
