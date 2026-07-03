@@ -63,11 +63,23 @@ def create_crm_lead(lead_data: dict) -> int:
 
     vendedor_externo = lead_data.get("vendedor_externo")
     if vendedor_externo:
-        partner_ids = odoo.env["res.users"].search(
+        user_ids = odoo.env["res.users"].search(
             [("login", "=", vendedor_externo)]
         )
-        if partner_ids:
-            vals["x_studio_vendedor_externo"] = partner_ids[0]
+        if user_ids:
+            user = odoo.env["res.users"].read(user_ids[0], ["partner_id"])
+            if user and user.get("partner_id"):
+                vals["x_studio_vendedor_externo"] = user["partner_id"][0]
+        else:
+            partner_ids = odoo.env["res.partner"].search(
+                [("email", "=", vendedor_externo)]
+            )
+            if not partner_ids:
+                partner_ids = odoo.env["res.partner"].search(
+                    [("name", "=", vendedor_externo)]
+                )
+            if partner_ids:
+                vals["x_studio_vendedor_externo"] = partner_ids[0]
 
     lead_id = odoo.env["crm.lead"].create(vals)
     return lead_id
