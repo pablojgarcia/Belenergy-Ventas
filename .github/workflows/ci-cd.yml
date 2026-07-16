@@ -132,9 +132,6 @@ jobs:
     needs: [test-backend-api, test-frontend]
     if: github.ref == 'refs/heads/main'
 
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -149,9 +146,6 @@ jobs:
       - name: Copy Flutter build to backend
         run: cp -r Ventas/build/web/. Backend/static/
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy backend (includes Flutter web)
-        working-directory: Backend
-        run: railway up --service=a75f02b1-abe2-4155-9589-2ec79f289cb3 --detach --json --yes --no-gitignore
+      - name: Deploy backend to Render
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

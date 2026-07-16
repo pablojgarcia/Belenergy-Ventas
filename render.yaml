@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: belenergy-api
+    env: docker
+    dockerfilePath: ./Backend/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ODOO_URL
+        sync: false
+      - key: ODOO_DB
+        sync: false
+      - key: ODOO_USER
+        sync: false
+      - key: ODOO_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
