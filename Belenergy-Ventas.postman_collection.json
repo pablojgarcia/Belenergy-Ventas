@@ -1,0 +1,650 @@
+{
+  "info": {
+    "name": "Belenergy Ventas API",
+    "description": "API del portal de ventas Belenergy. Todas las rutas protegidas requieren token Bearer (excepto login, register y health).\n\nBase URL: http://localhost:8000",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "lead_id",
+      "value": ""
+    },
+    {
+      "key": "draft_id",
+      "value": ""
+    },
+    {
+      "key": "quotation_id",
+      "value": ""
+    },
+    {
+      "key": "customer_id",
+      "value": ""
+    },
+    {
+      "key": "product_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"vendedor1\",\n  \"email\": \"vendedor1@example.com\",\n  \"password\": \"secreta123\",\n  \"name\": \"Vendedor Uno\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"vendedor1\",\n  \"password\": \"secreta123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "item": [
+        {
+          "name": "Create Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_name\": \"Cliente Ejemplo SRL\",\n  \"contact_name\": \"Juan Pérez\",\n  \"email\": \"juan@cliente.com\",\n  \"phone\": \"+5491112345678\",\n  \"mobile\": \"+5491112345678\",\n  \"street\": \"Av. Siempre Viva 123\",\n  \"city\": \"Buenos Aires\",\n  \"state\": \"CABA\",\n  \"zip\": \"C1000\",\n  \"country\": \"Argentina\",\n  \"vat\": \"30-12345678-9\",\n  \"notes\": \"Cliente interesado en paneles solares\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/leads",
+              "host": ["{{base_url}}"],
+              "path": ["leads"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('lead_id', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Leads",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/leads?status=pendiente&q=&date_from=&date_to=",
+              "host": ["{{base_url}}"],
+              "path": ["leads"],
+              "query": [
+                { "key": "status", "value": "pendiente", "description": "Filtrar por status (pendiente, sincronizado, rechazado)" },
+                { "key": "q", "value": "", "description": "Búsqueda por texto" },
+                { "key": "date_from", "value": "", "description": "Fecha desde (YYYY-MM-DD)" },
+                { "key": "date_to", "value": "", "description": "Fecha hasta (YYYY-MM-DD)" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Lead",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contact_name\": \"Juan Actualizado\",\n  \"email\": \"juan.nuevo@cliente.com\",\n  \"phone\": \"+5491112345679\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Lead",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Sync Lead to Odoo CRM",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}/sync",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}", "sync"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Lead from Odoo CRM",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Approve Lead (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Reject Lead (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejection_reason\": \"Cliente fuera de zona de cobertura\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Create Partner from Lead (Admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}/create-partner",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}", "create-partner"]
+            }
+          }
+        },
+        {
+          "name": "Create Quotation Draft from Lead",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/leads/{{lead_id}}/create-draft",
+              "host": ["{{base_url}}"],
+              "path": ["leads", "{{lead_id}}", "create-draft"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": ["{{base_url}}"],
+              "path": ["customers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.json().length > 0) {",
+                  "    pm.collectionVariables.set('customer_id', pm.response.json()[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/customers/{{customer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "{{customer_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer Contacts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/customers/{{customer_id}}/contacts",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "{{customer_id}}", "contacts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "search", "value": "", "description": "Búsqueda por nombre, código o barra" },
+                { "key": "categ_id", "value": "", "description": "Filtrar por categoría" },
+                { "key": "active", "value": "true", "description": "Solo activos" },
+                { "key": "sale_ok", "value": "true", "description": "Solo vendibles" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.json().length > 0) {",
+                  "    pm.collectionVariables.set('product_id', pm.response.json()[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products/{{product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["products", "{{product_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Product Image",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products/{{product_id}}/image",
+              "host": ["{{base_url}}"],
+              "path": ["products", "{{product_id}}", "image"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Taxes",
+      "item": [
+        {
+          "name": "List Taxes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/taxes",
+              "host": ["{{base_url}}"],
+              "path": ["taxes"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quotation Drafts",
+      "item": [
+        {
+          "name": "Create Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": 1,\n  \"notes\": \"Cotización para cliente ejemplo\",\n  \"lines\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2,\n      \"unit_price\": 1500.00,\n      \"discount\": 0,\n      \"tax_id\": [1]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/quotation-drafts",
+              "host": ["{{base_url}}"],
+              "path": ["quotation-drafts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('draft_id', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Drafts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quotation-drafts?customer_id=&status=draft&q=&date_from=&date_to=",
+              "host": ["{{base_url}}"],
+              "path": ["quotation-drafts"],
+              "query": [
+                { "key": "customer_id", "value": "", "description": "Filtrar por cliente" },
+                { "key": "status", "value": "draft", "description": "Filtrar por estado (draft, generated)" },
+                { "key": "q", "value": "", "description": "Búsqueda por texto en notas" },
+                { "key": "date_from", "value": "", "description": "Fecha desde" },
+                { "key": "date_to", "value": "", "description": "Fecha hasta" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Draft by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quotation-drafts/{{draft_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["quotation-drafts", "{{draft_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": 1,\n  \"notes\": \"Notas actualizadas\",\n  \"lines\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 3,\n      \"unit_price\": 1500.00,\n      \"discount\": 10,\n      \"tax_id\": [1]\n    }\n  ],\n  \"version\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/quotation-drafts/{{draft_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["quotation-drafts", "{{draft_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Draft",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/quotation-drafts/{{draft_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["quotation-drafts", "{{draft_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Generate Quotation from Draft",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/quotation-drafts/{{draft_id}}/generate",
+              "host": ["{{base_url}}"],
+              "path": ["quotation-drafts", "{{draft_id}}", "generate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('quotation_id', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Quotations",
+      "item": [
+        {
+          "name": "List Quotations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quotations?customer_id=&date_from=&date_to=",
+              "host": ["{{base_url}}"],
+              "path": ["quotations"],
+              "query": [
+                { "key": "customer_id", "value": "", "description": "Filtrar por cliente" },
+                { "key": "date_from", "value": "", "description": "Fecha desde" },
+                { "key": "date_to", "value": "", "description": "Fecha hasta" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Quotation by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quotations/{{quotation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["quotations", "{{quotation_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Download Quotation PDF",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quotations/{{quotation_id}}/pdf",
+              "host": ["{{base_url}}"],
+              "path": ["quotations", "{{quotation_id}}", "pdf"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync (Admin)",
+      "item": [
+        {
+          "name": "Sync Customers from Odoo",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/sync/customers",
+              "host": ["{{base_url}}"],
+              "path": ["sync", "customers"]
+            }
+          }
+        },
+        {
+          "name": "Sync Products from Odoo",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/sync/products",
+              "host": ["{{base_url}}"],
+              "path": ["sync", "products"]
+            }
+          }
+        },
+        {
+          "name": "Sync Taxes from Odoo",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/sync/taxes",
+              "host": ["{{base_url}}"],
+              "path": ["sync", "taxes"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

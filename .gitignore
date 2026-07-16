@@ -16,7 +16,9 @@ Ventas/build/
 
 login.json
 scripts/promote_to_admin.py
+*.log
+debug_*.py
+test_api.py
+check_taxes.py
+reset_password.py
 
-# Flutter web build output (copied by CI/CD, not committed)
-Backend/static/*
-!Backend/static/.gitkeep

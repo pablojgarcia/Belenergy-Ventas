@@ -125,7 +125,7 @@ jobs:
 
       - name: Build Flutter web
         working-directory: Ventas
-        run: flutter build web --release --dart-define=SAME_ORIGIN=true
+        run: flutter build web --release --dart-define=API_URL=http://localhost:8000
 
   deploy:
     runs-on: ubuntu-latest
@@ -141,11 +141,16 @@ jobs:
 
       - name: Build Flutter web
         working-directory: Ventas
-        run: flutter build web --release --dart-define=SAME_ORIGIN=true
+        run: flutter build web --release --dart-define=API_URL=${{ secrets.API_URL }}
 
-      - name: Copy Flutter build to backend
-        run: cp -r Ventas/build/web/. Backend/static/
+      - name: Deploy frontend to Render Static Site
+        run: |
+          cd Ventas/build/web
+          zip -r ../../../frontend-build.zip .
+          curl -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @../../../frontend-build.zip
 
-      - name: Deploy backend to Render
+      - name: Deploy backend to Render Web Service
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
