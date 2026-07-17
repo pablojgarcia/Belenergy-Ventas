@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-
 jobs:
   test-backend:
     runs-on: ubuntu-latest
@@ -146,6 +143,7 @@ jobs:
       - name: Copy Flutter build to backend
         run: cp -r Ventas/build/web/. Backend/static/
 
-      - name: Deploy backend to Render
-        run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only

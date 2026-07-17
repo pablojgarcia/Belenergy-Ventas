@@ -1,0 +1,10 @@
+.git/
+.gitignore
+venv/
+Ventas/
+.opencode/
+.env
+*.md
+.DS_Store
+__pycache__/
+*.pyc
