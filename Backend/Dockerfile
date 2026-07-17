@@ -6,5 +6,6 @@ COPY app/ ./app/
 COPY alembic.ini .
 COPY alembic/ ./alembic/
 COPY entrypoint.sh .
+COPY static/ ./static/
 RUN chmod +x entrypoint.sh
 CMD ["/bin/sh", "entrypoint.sh"]

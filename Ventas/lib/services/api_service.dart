@@ -11,9 +11,11 @@ class ApiService {
   final ordersRefreshNotifier = ValueNotifier<int>(0);
 
   final String? overrideBaseUrl;
+  static const bool _sameOrigin = bool.fromEnvironment('SAME_ORIGIN', defaultValue: false);
 
   String get baseUrl {
     if (overrideBaseUrl != null) return overrideBaseUrl!;
+    if (_sameOrigin) return '';
     final apiUrl = const String.fromEnvironment('API_URL', defaultValue: '');
     if (apiUrl.isNotEmpty) return apiUrl;
     if (kIsWeb) return 'http://localhost:8000';
@@ -130,10 +132,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getDrafts({
-    String? status,
-    String? q,
-    String? dateFrom,
-    String? dateTo,
+    String? status, String? q, String? dateFrom, String? dateTo,
   }) async {
     try {
       final params = <String, dynamic>{};
@@ -141,8 +140,7 @@ class ApiService {
       if (q != null) params['q'] = q;
       if (dateFrom != null) params['date_from'] = dateFrom;
       if (dateTo != null) params['date_to'] = dateTo;
-      final response =
-          await _dio.get('/quotation-drafts', queryParameters: params);
+      final response = await _dio.get('/quotation-drafts', queryParameters: params);
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
       debugPrint('Error fetching drafts: $e');
@@ -164,8 +162,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> updateDraft(
-      String id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateDraft(String id, Map<String, dynamic> data) async {
     try {
       final response = await _dio.put('/quotation-drafts/$id', data: data);
       return Map<String, dynamic>.from(response.data);
@@ -186,9 +183,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getQuotations({
-    int? customerId,
-    String? dateFrom,
-    String? dateTo,
+    int? customerId, String? dateFrom, String? dateTo,
   }) async {
     try {
       final params = <String, dynamic>{};
@@ -236,10 +231,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getLeads({
-    String? status,
-    String? q,
-    String? dateFrom,
-    String? dateTo,
+    String? status, String? q, String? dateFrom, String? dateTo,
   }) async {
     try {
       final params = <String, dynamic>{};
@@ -279,8 +271,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> updateLead(
-      String id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateLead(String id, Map<String, dynamic> data) async {
     try {
       final response = await _dio.put('/leads/$id', data: data);
       return Map<String, dynamic>.from(response.data);
