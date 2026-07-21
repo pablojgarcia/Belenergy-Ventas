@@ -94,9 +94,14 @@ if "quotations" not in inspector.get_table_names():
 if "leads" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Lead.__table__])
 
-app = FastAPI(title="Auth API")
+app = FastAPI(title="Belenergy API")
 
 setup_rate_limiter(app)
+
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "app": "Belenergy API"}
 
 
 # Seed: asegurar que existe al menos un admin
@@ -142,10 +147,12 @@ if os.path.isdir(STATIC_DIR):
             and "." not in request.url.path
             and request.url.path not in SPA_EXCLUDE
         ):
-            resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
-            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            resp.headers["Vary"] = "Accept"
-            return resp
+            index_path = os.path.join(STATIC_DIR, "index.html")
+            if os.path.isfile(index_path):
+                resp = FileResponse(index_path)
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                resp.headers["Vary"] = "Accept"
+                return resp
         return await call_next(request)
 
 CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
