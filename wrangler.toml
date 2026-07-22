@@ -1,2 +1,6 @@
 name = "ventas"
 compatibility_date = "2026-07-22"
+
+[assets]
+directory = "Ventas/build/web"
+not_found_handling = "single-page-application"

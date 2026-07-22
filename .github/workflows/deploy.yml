@@ -26,20 +26,11 @@ jobs:
           cd Ventas
           flutter build web --release --dart-define=API_URL=$API_URL
 
-      - name: Debug - List Pages projects
+      - name: Deploy to Cloudflare Workers
         run: |
-          npm i -g wrangler
-          wrangler pages project list
+          wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Deploy to Cloudflare Pages
-        run: |
-          wrangler pages deploy Ventas/build/web --project-name=ventas
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   backend:
     name: Backend → Railway
