@@ -1,10 +1,8 @@
-.git/
-.gitignore
-venv/
-Ventas/
-.opencode/
-.env
-*.md
-.DS_Store
-__pycache__/
+.git
+__pycache__
 *.pyc
+.env
+scripts/
+Ventas/
+venv/
+uvicorn*.log
