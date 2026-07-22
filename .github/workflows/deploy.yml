@@ -28,14 +28,15 @@ jobs:
 
       - name: Debug - List Pages projects
         run: |
-          npx wrangler pages project list
+          npm i -g wrangler
+          wrangler pages project list
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Pages
         run: |
-          npx wrangler pages deploy Ventas/build/web --project-name=ventas
+          wrangler pages deploy Ventas/build/web --project-name=ventas
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
