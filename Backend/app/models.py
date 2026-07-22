@@ -42,7 +42,7 @@ class Contact(Base):
     __tablename__ = "contacts"
 
     id = Column(Integer, primary_key=True, index=True)
-    odoo_id = Column(Integer, index=True)
+    odoo_id = Column(Integer, unique=True, index=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     name = Column(String, nullable=False)
     email = Column(String)
