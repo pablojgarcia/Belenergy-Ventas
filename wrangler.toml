@@ -1,0 +1,11 @@
+pages_build_output_dir = "Ventas/build/web"
+
+[build]
+command = """
+git clone --depth 1 https://github.com/flutter/flutter.git -b stable _flutter && \
+export PATH="$PWD/_flutter/bin:$PATH" && \
+export FLUTTER_ROOT="$PWD/_flutter" && \
+flutter config --enable-web && \
+cd Ventas && \
+flutter build web --release --dart-define=API_URL=$API_URL
+"""
