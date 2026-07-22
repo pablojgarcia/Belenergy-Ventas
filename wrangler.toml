@@ -1,5 +1,6 @@
 name = "ventas"
 compatibility_date = "2026-07-22"
+account_id = "fb63d326a7fb4bd25559817421c612ae"
 
 [assets]
 directory = "Ventas/build/web"
