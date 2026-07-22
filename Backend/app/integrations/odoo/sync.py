@@ -1,6 +1,7 @@
 import json
 import base64
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ... import models
 from .client import get_odoo_connection
 
@@ -70,13 +71,14 @@ def sync_customers(db: Session):
             "website": str(p.get('website') or "")
         }
 
-        customer = db.query(models.Customer).filter(models.Customer.odoo_id == p['id']).first()
-        if customer:
-            for key, value in customer_data.items():
-                setattr(customer, key, value)
-        else:
-            customer = models.Customer(**customer_data)
-            db.add(customer)
+        db.execute(
+            pg_insert(models.Customer)
+            .values(**customer_data)
+            .on_conflict_do_update(
+                index_elements=['odoo_id'],
+                set_=customer_data,
+            )
+        )
 
     db.commit()
     print("Sincronización completada en la base de datos.")
@@ -109,15 +111,14 @@ def sync_customers(db: Session):
             "phone": str(c.get('phone') or ""),
         }
 
-        contact = db.query(models.Contact).filter(
-            models.Contact.odoo_id == c['id']
-        ).first()
-        if contact:
-            for key, value in contact_data.items():
-                setattr(contact, key, value)
-        else:
-            contact = models.Contact(**contact_data)
-            db.add(contact)
+        db.execute(
+            pg_insert(models.Contact)
+            .values(**contact_data)
+            .on_conflict_do_update(
+                index_elements=['odoo_id'],
+                set_=contact_data,
+            )
+        )
 
     synced_odoo_ids = {c['id'] for c in contacts_data if c.get('parent_id') and isinstance(c['parent_id'], (list, tuple))}
     db.query(models.Contact).filter(
@@ -143,12 +144,14 @@ def sync_taxes(db: Session):
             "amount": float(t.get('amount') or 0.0),
             "type_tax_use": str(t.get('type_tax_use') or 'sale'),
         }
-        tax = db.query(models.Tax).filter(models.Tax.odoo_id == t['id']).first()
-        if tax:
-            for k, v in tax_data.items():
-                setattr(tax, k, v)
-        else:
-            db.add(models.Tax(**tax_data))
+        db.execute(
+            pg_insert(models.Tax)
+            .values(**tax_data)
+            .on_conflict_do_update(
+                index_elements=['odoo_id'],
+                set_=tax_data,
+            )
+        )
 
     db.commit()
     print("Sincronización de impuestos completada.")
@@ -208,13 +211,14 @@ def sync_products(db: Session):
             "image": image_bytes,
         }
 
-        product = db.query(models.Product).filter(models.Product.odoo_id == p['id']).first()
-        if product:
-            for key, value in product_data.items():
-                setattr(product, key, value)
-        else:
-            product = models.Product(**product_data)
-            db.add(product)
+        db.execute(
+            pg_insert(models.Product)
+            .values(**product_data)
+            .on_conflict_do_update(
+                index_elements=['odoo_id'],
+                set_=product_data,
+            )
+        )
 
     db.commit()
     print("Sincronización de productos completada.")
