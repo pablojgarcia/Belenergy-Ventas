@@ -12,6 +12,8 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 @router.get("", response_model=list[schemas.CustomerOut])
 def get_customers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role == "admin":
+        return CustomerRepository(db).get_all()
     return CustomerRepository(db).get_by_salesperson_ids([current_user.email, current_user.name])
 
 
