@@ -1,37 +1,45 @@
-from fastapi import APIRouter, Depends, HTTPException
+import time
+import logging
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..database import get_db, SessionLocal
 from ..dependencies import get_current_admin
 from ..integrations.odoo import sync_customers, sync_products, sync_taxes
 from .. import models
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/sync", tags=["sync"])
 
 
-@router.post("/customers", status_code=200)
-def trigger_sync(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
+def _run_sync(sync_fn, name: str, **kwargs):
+    db = SessionLocal()
     try:
-        sync_customers(db)
-        return {"message": "Sincronización completada"}
+        logger.info(f"Iniciando sincronización de {name}")
+        start = time.time()
+        sync_fn(db, **kwargs)
+        elapsed = time.time() - start
+        logger.info(f"Sincronización de {name} completada en {elapsed:.1f}s")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al sincronizar clientes: {str(e)}")
+        logger.error(f"Error en sincronización de {name}: {e}")
+    finally:
+        db.close()
 
 
-@router.post("/products", status_code=200)
-def trigger_sync_products(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    try:
-        sync_taxes(db)
-        sync_products(db)
-        return {"message": "Sincronización de impuestos y productos completada"}
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al sincronizar productos: {str(e)}")
+@router.post("/customers", status_code=202)
+def trigger_sync(background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
+    background_tasks.add_task(_run_sync, sync_customers, "clientes")
+    return {"message": "Sincronización de clientes iniciada en segundo plano"}
 
 
-@router.post("/taxes", status_code=200)
-def trigger_sync_taxes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
-    try:
-        sync_taxes(db)
-        return {"message": "Sincronización de impuestos completada"}
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al sincronizar impuestos: {str(e)}")
+@router.post("/products", status_code=202)
+def trigger_sync_products(background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
+    background_tasks.add_task(_run_sync, sync_products, "productos")
+    return {"message": "Sincronización de productos iniciada en segundo plano"}
+
+
+@router.post("/taxes", status_code=202)
+def trigger_sync_taxes(background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin)):
+    background_tasks.add_task(_run_sync, sync_taxes, "impuestos")
+    return {"message": "Sincronización de impuestos iniciada en segundo plano"}

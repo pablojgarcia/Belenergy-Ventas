@@ -12,6 +12,7 @@ class OdooClient:
                 config.settings.ODOO_URL.replace("https://", ""),
                 port=443,
                 protocol='jsonrpc+ssl',
+                timeout=60,
             )
             self._connection.login(
                 config.settings.ODOO_DB,
