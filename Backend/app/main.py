@@ -12,7 +12,7 @@ from alembic import command as alembic_command
 from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
-from .api import auth, products, customers, quotations, taxes, sync, health, leads
+from .api import auth, products, customers, quotations, taxes, sync, health, leads, users
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
 
@@ -51,6 +51,9 @@ if "users" in inspector.get_table_names():
     if "role" not in cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'vendedor'"))
+    if "vendedor_interno" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN vendedor_interno VARCHAR"))
 
 if "customers" in inspector.get_table_names():
     cust_cols = [c["name"] for c in inspector.get_columns("customers")]
@@ -184,6 +187,7 @@ app.include_router(health.router)
 app.include_router(drafts_router)
 app.include_router(quotations_router)
 app.include_router(leads.router)
+app.include_router(users.router)
 
 # SPA catch-all (must be last)
 if os.path.isdir(STATIC_DIR):

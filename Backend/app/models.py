@@ -14,6 +14,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role     = Column(String, default='vendedor')
     is_active = Column(Boolean, default=True)
+    vendedor_interno = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Customer(Base):

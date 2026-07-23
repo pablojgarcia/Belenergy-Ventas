@@ -197,7 +197,7 @@ class LeadService:
                         detail="Ya existe un cliente con ese CUIT en Odoo",
                     )
 
-            vendedor_email = self.db.query(models.User).filter(
+            vendedor_user = self.db.query(models.User).filter(
                 models.User.id == lead.created_by
             ).first()
 
@@ -214,7 +214,8 @@ class LeadService:
                 "country": lead.country,
                 "vat": lead.vat,
                 "notes": lead.notes,
-                "vendedor_externo": vendedor_email.email if vendedor_email else None,
+                "vendedor_externo": vendedor_user.email if vendedor_user else None,
+                "vendedor_interno": vendedor_user.vendedor_interno if vendedor_user else None,
             }
 
             crm_lead_id = create_crm_lead(crm_data)

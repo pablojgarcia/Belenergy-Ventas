@@ -22,7 +22,11 @@ class UserOut(BaseModel):
     name: str
     role: str = 'vendedor'
     is_active: bool
+    vendedor_interno: str | None = None
     model_config = {"from_attributes": True}
+
+class UserUpdate(BaseModel):
+    vendedor_interno: str | None = None
 
 class Token(BaseModel):
     access_token: str
