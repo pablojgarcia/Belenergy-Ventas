@@ -677,27 +677,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonalIcon(
-                onPressed: _editCustomer,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Editar cliente'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.tonalIcon(
                 onPressed: _showCustomerPicker,
                 icon: const Icon(Icons.swap_horiz, size: 18),
                 label: const Text('Cambiar cliente'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _newCustomer,
-                icon: const Icon(Icons.person_add_outlined, size: 18),
-                label: const Text('Nuevo cliente'),
               ),
             ),
           ],
