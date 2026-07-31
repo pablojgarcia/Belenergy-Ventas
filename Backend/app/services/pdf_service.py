@@ -37,10 +37,10 @@ class PdfService:
                         },
                     },
                 )
-                if auth_resp.status_code != 200:
+                if auth_resp.status_code != 200 or not auth_resp.json().get("result", {}).get("uid"):
                     raise HTTPException(
                         status_code=502,
-                        detail="Error al autenticar en Odoo para descargar el PDF",
+                        detail="No se pudo autenticar en Odoo para descargar el PDF",
                     )
 
                 pdf_resp = client.get(pdf_url)
@@ -51,6 +51,11 @@ class PdfService:
                     )
 
                 pdf_data = pdf_resp.content
+                if not pdf_data.startswith(b"%PDF-"):
+                    raise HTTPException(
+                        status_code=502,
+                        detail="Odoo no devolvió un PDF válido (posible error de sesión o pedido inexistente)",
+                    )
         except HTTPException:
             raise
         except Exception as e:
