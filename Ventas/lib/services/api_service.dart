@@ -35,7 +35,7 @@ class ApiService {
   bool _isRefreshing = false;
 
   ApiService({this.overrideBaseUrl}) {
-    debugPrint('--- BASE URL: ${baseUrl} ---');
+    debugPrint('--- BASE URL: $baseUrl ---');
     _dio = Dio(BaseOptions(baseUrl: baseUrl));
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
