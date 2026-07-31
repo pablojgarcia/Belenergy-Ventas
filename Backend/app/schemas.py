@@ -181,6 +181,7 @@ class QuotationDraftCreate(BaseModel):
     customer_id: int | None = None
     new_client_name: str | None = None
     new_client_vat: str | None = None
+    terms_and_conditions_id: uuid.UUID | None = None
     notes: str | None = None
     lines: list[QuotationDraftLineInput] = []
 
@@ -189,6 +190,7 @@ class QuotationDraftUpdate(BaseModel):
     customer_id: int | None = None
     new_client_name: str | None = None
     new_client_vat: str | None = None
+    terms_and_conditions_id: uuid.UUID | None = None
     notes: str | None = None
     lines: list[QuotationDraftLineInput] = []
     version: int
@@ -223,6 +225,7 @@ class QuotationDraftOut(BaseModel):
     customer_name: str | None = None
     new_client_name: str | None = None
     new_client_vat: str | None = None
+    terms_and_conditions_id: uuid.UUID | None = None
     status: str = "draft"
     notes: str | None = None
     created_by: int
@@ -265,3 +268,28 @@ class SyncStatusOut(BaseModel):
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     elapsed: Optional[float] = None
+
+
+class TermsAndConditionsOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    content: str
+    is_default: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class TermsAndConditionsCreate(BaseModel):
+    name: str
+    content: str
+    is_default: bool = False
+
+
+class TermsAndConditionsUpdate(BaseModel):
+    name: str | None = None
+    content: str | None = None
+    is_default: bool | None = None
+    is_active: bool | None = None

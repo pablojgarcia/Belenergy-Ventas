@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/customer_model.dart';
 import '../models/product_model.dart';
+import '../models/terms_and_conditions_model.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
@@ -31,16 +32,33 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   Client? _selectedClient;
   bool _isNewClient = false;
   bool _loadingClient = false;
+  String? _selectedTermsId;
+  List<TermsAndConditions> _termsList = [];
 
   @override
   void initState() {
     super.initState();
+    _loadTerms();
     if (widget.draftId != null) {
       _loadDraft();
     } else if (widget.customerId != null) {
       _loadCustomer();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _pickClient());
+    }
+  }
+
+  Future<void> _loadTerms() async {
+    final api = context.read<ApiService>();
+    try {
+      final data = await api.getTermsAndConditions();
+      if (mounted) {
+        setState(() {
+          _termsList = data.map((j) => TermsAndConditions.fromJson(j)).toList();
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _termsList = []);
     }
   }
 
@@ -93,6 +111,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           _newClientNameController.text = newClientName;
           _newClientVatController.text = draft['new_client_vat'] as String? ?? '';
         }
+      }
+
+      final termsId = draft['terms_and_conditions_id'];
+      if (termsId != null && termsId is String && termsId.isNotEmpty) {
+        _selectedTermsId = termsId;
       }
 
       final lines = draft['lines'] as List<dynamic>? ?? [];
@@ -164,6 +187,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         'tax_id': item.product.taxesId,
       }).toList(),
     };
+    if (_selectedTermsId != null) {
+      payload['terms_and_conditions_id'] = _selectedTermsId;
+    }
     if (_isNewClient) {
       payload['new_client_name'] = _newClientNameController.text.trim();
       final vat = _newClientVatController.text.trim();
@@ -285,6 +311,44 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     }
   }
 
+  Future<void> _pickTermsAndConditions() async {
+    if (_termsList.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay términos y condiciones disponibles')),
+      );
+      return;
+    }
+
+    final selected = await showDialog<TermsAndConditions>(
+      context: context,
+      builder: (ctx) => _TermsAndConditionsDialog(terms: _termsList),
+    );
+
+    if (selected != null && mounted) {
+      setState(() {
+        _selectedTermsId = selected.id;
+      });
+    }
+  }
+
+  Future<void> _previewTermsAndConditions(TermsAndConditions terms) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(terms.name, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        content: SingleChildScrollView(
+          child: Text(terms.content, style: GoogleFonts.inter(fontSize: 13)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showCustomerPicker() async {
     final api = context.read<ApiService>();
     try {
@@ -377,6 +441,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           const SizedBox(height: 20),
           _buildDescriptionCard(),
           const SizedBox(height: 20),
+          _buildTermsCard(),
+          const SizedBox(height: 20),
           _buildProductsCard(),
           const SizedBox(height: 20),
           _buildTotalsCard(),
@@ -391,6 +457,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       child: ListView(
         children: [
           _buildDescriptionCard(),
+          const SizedBox(height: 24),
+          _buildTermsCard(),
           const SizedBox(height: 24),
           _buildProductsCard(),
           const SizedBox(height: 24),
@@ -418,6 +486,99 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                 hintText: 'Descripción de la cotización',
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTermsCard() {
+    final selectedTerms = _termsList.firstWhere(
+      (t) => t.id == _selectedTermsId,
+      orElse: () => TermsAndConditions(
+        id: '',
+        name: 'Sin términos seleccionados',
+        content: '',
+        createdAt: DateTime.now(),
+      ),
+    );
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Términos y Condiciones', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.textPrimary)),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _pickTermsAndConditions,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selectedTerms.name,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: _selectedTermsId != null
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
+                          fontWeight: _selectedTermsId != null
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_drop_down_rounded,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_selectedTermsId != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final terms = _termsList.firstWhere(
+                        (t) => t.id == _selectedTermsId,
+                        orElse: () => TermsAndConditions(
+                          id: '',
+                          name: '',
+                          content: '',
+                          createdAt: DateTime.now(),
+                        ),
+                      );
+                      _previewTermsAndConditions(terms);
+                    },
+                    icon: const Icon(Icons.visibility, size: 16),
+                    label: const Text('Previsualizar'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _selectedTermsId = null;
+                      });
+                    },
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Quitar'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -919,6 +1080,130 @@ class _ProductDialogState extends State<_ProductDialog> {
                                 ],
                               ),
                               onTap: () => Navigator.pop(context, p),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TermsAndConditionsDialog extends StatefulWidget {
+  final List<TermsAndConditions> terms;
+  const _TermsAndConditionsDialog({required this.terms});
+
+  @override
+  State<_TermsAndConditionsDialog> createState() =>
+      _TermsAndConditionsDialogState();
+}
+
+class _TermsAndConditionsDialogState extends State<_TermsAndConditionsDialog> {
+  final _searchController = TextEditingController();
+  late List<TermsAndConditions> _filtered;
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.terms;
+    _searchController.addListener(_filter);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filter() {
+    final q = _searchController.text.toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? widget.terms
+          : widget.terms
+              .where((t) => t.name.toLowerCase().contains(q))
+              .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 600),
+        child: Material(
+          borderRadius: BorderRadius.circular(18),
+          color: AppColors.surface,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Seleccionar Términos y Condiciones',
+                      style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar por nombre...',
+                    prefixIcon: Icon(Icons.search),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: _filtered.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Sin resultados',
+                            style: GoogleFonts.inter(
+                                color: AppColors.textSecondary),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: _filtered.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1),
+                          itemBuilder: (ctx, i) {
+                            final t = _filtered[i];
+                            return ListTile(
+                              title: Text(
+                                t.name,
+                                style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                              subtitle: Text(
+                                t.content.length > 80
+                                    ? '${t.content.substring(0, 80)}...'
+                                    : t.content,
+                                style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () => Navigator.pop(context, t),
                             );
                           },
                         ),

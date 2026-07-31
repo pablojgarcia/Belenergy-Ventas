@@ -141,6 +141,7 @@ class QuotationDraft(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True, index=True)
     new_client_name = Column(String, nullable=True)
     new_client_vat = Column(String, nullable=True)
+    terms_and_conditions_id = Column(Uuid, ForeignKey("terms_and_conditions.id"), nullable=True)
     status = Column(String(20), default="draft", index=True)
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -182,3 +183,15 @@ class Quotation(Base):
     odoo_sale_order_name = Column(String(100), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class TermsAndConditions(Base):
+    __tablename__ = "terms_and_conditions"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    is_default = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

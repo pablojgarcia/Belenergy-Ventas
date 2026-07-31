@@ -12,7 +12,7 @@ from alembic import command as alembic_command
 from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
-from .api import auth, products, customers, quotations, taxes, sync, health, users
+from .api import auth, products, customers, quotations, taxes, sync, health, users, terms_and_conditions
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
 
@@ -105,6 +105,12 @@ if "quotation_drafts" in inspector.get_table_names():
     if "new_client_vat" not in draft_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_vat VARCHAR"))
+    if "terms_and_conditions_id" not in draft_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN terms_and_conditions_id UUID"))
+
+if "terms_and_conditions" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.TermsAndConditions.__table__])
 
 if "quotation_draft_lines" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.QuotationDraftLine.__table__])
@@ -149,6 +155,22 @@ try:
             _seed_db.commit()
 except Exception as e:
     print(f"Seed error: {e}")
+finally:
+    _seed_db.close()
+
+# Seed: terms and conditions preloaded
+_seed_db = next(get_db())
+try:
+    if not _seed_db.query(models.TermsAndConditions).filter(
+        models.TermsAndConditions.is_active == True
+    ).count():
+        _seed_db.add(models.TermsAndConditions(
+            name="Términos y Condiciones Estándar",
+            content="1. La cotización tiene una vigencia de 30 días corridos desde su emisión.\n2. Los precios indicados no incluyen IVA.\n3. La entrega se realizará dentro del plazo acordado al momento de la confirmación del pedido.\n4. Cualquier modificación a los términos deberá ser aceptada por escrito por ambas partes.\n5. Belenergy se reserva el derecho de modificar las condiciones según la normativa vigente.",
+            is_default=True,
+            is_active=True,
+        ))
+        _seed_db.commit()
 finally:
     _seed_db.close()
 
@@ -199,6 +221,7 @@ app.include_router(customers.router)
 app.include_router(taxes.router)
 app.include_router(sync.router)
 app.include_router(health.router)
+app.include_router(terms_and_conditions.router)
 app.include_router(drafts_router)
 app.include_router(quotations_router)
 app.include_router(users.router)

@@ -256,6 +256,16 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getTermsAndConditions() async {
+    try {
+      final response = await _dio.get('/terms-and-conditions');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching terms and conditions: $e');
+      rethrow;
+    }
+  }
+
   Future<Uint8List> downloadPdf(String quotationId) async {
     final response = await _dio.get(
       '/quotations/$quotationId/pdf',

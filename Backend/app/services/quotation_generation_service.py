@@ -109,11 +109,20 @@ class QuotationGenerationService:
 
         amount_total = amount_untaxed + amount_tax
 
+        note = draft.notes or ""
+        if draft.terms_and_conditions_id:
+            terms = self.db.query(models.TermsAndConditions).filter(
+                models.TermsAndConditions.id == draft.terms_and_conditions_id,
+                models.TermsAndConditions.is_active == True,
+            ).first()
+            if terms:
+                note = terms.content
+
         try:
             odoo_id = create_quotation(
                 partner_id=customer.odoo_id,
                 order_lines=odoo_lines,
-                description=draft.notes or "",
+                description=note,
             )
         except ValueError as e:
             draft.status = "failed"
