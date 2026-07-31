@@ -20,7 +20,6 @@ class _HomePageState extends State<HomePage> {
   int _clientCount = 0;
   int _orderCount = 0;
   int _productCount = 0;
-  int _leadCount = 0;
   bool _loadingStats = true;
 
   @override
@@ -36,13 +35,11 @@ class _HomePageState extends State<HomePage> {
       final drafts = await api.getDrafts();
       final quotations = await api.getQuotations();
       final products = await api.getProducts();
-      final leads = await api.getLeads();
       if (mounted) {
         setState(() {
           _clientCount = clients.length;
           _orderCount = drafts.length + quotations.length;
           _productCount = products.length;
-          _leadCount = leads.length;
           _loadingStats = false;
         });
       }
@@ -122,7 +119,6 @@ class _HomePageState extends State<HomePage> {
                       clientCount: _clientCount,
                       orderCount: _orderCount,
                       productCount: _productCount,
-                      leadCount: _leadCount,
                     ),
             ),
           ),
@@ -358,19 +354,6 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () { Navigator.pop(context); context.go('/leads/approval'); },
-                  icon: const Icon(Icons.fiber_new_rounded, color: AppColors.primary),
-                  label: Text('Aprobar leads', style: GoogleFonts.inter(color: AppColors.primary)),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
             ],
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -509,19 +492,6 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () { Navigator.pop(context); context.go('/leads/approval'); },
-                  icon: const Icon(Icons.fiber_new_rounded, color: AppColors.primary),
-                  label: Text('Aprobar leads', style: GoogleFonts.inter(color: AppColors.primary)),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
             ],
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -592,7 +562,6 @@ final _quickItems = [
   _QuickItem(icon: Icons.people_alt_rounded, label: 'Clientes', color: const Color(0xFF2D9CDB), route: '/customers'),
   _QuickItem(icon: Icons.receipt_long_rounded, label: 'Cotizaciones', color: const Color(0xFF5E60CE), route: '/quotations'),
   _QuickItem(icon: Icons.solar_power_rounded, label: 'Productos', color: const Color(0xFFF4A900), route: '/products'),
-  _QuickItem(icon: Icons.fiber_new_rounded, label: 'Leads', color: const Color(0xFFE67E22), route: '/leads'),
 ];
 
 class _QuickCard extends StatelessWidget {
@@ -639,9 +608,8 @@ class _StatsSection extends StatelessWidget {
   final int clientCount;
   final int orderCount;
   final int productCount;
-  final int leadCount;
 
-  const _StatsSection({required this.clientCount, required this.orderCount, required this.productCount, this.leadCount = 0});
+  const _StatsSection({required this.clientCount, required this.orderCount, required this.productCount});
 
   @override
   Widget build(BuildContext context) {
@@ -649,7 +617,6 @@ class _StatsSection extends StatelessWidget {
       StatCard(label: 'Clientes', value: clientCount.toString(), delta: '', positive: true, icon: Icons.people_alt_rounded, iconColor: const Color(0xFF2D9CDB)),
       StatCard(label: 'Presupuestos', value: orderCount.toString(), delta: '', positive: true, icon: Icons.receipt_long_rounded, iconColor: const Color(0xFF5E60CE)),
       StatCard(label: 'Productos', value: productCount.toString(), delta: '', positive: true, icon: Icons.solar_power_rounded, iconColor: AppColors.accent),
-      StatCard(label: 'Leads', value: leadCount.toString(), delta: '', positive: true, icon: Icons.fiber_new_rounded, iconColor: const Color(0xFFE67E22)),
     ];
 
     if (context.isPhone) {

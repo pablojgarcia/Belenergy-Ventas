@@ -27,6 +27,8 @@ def create_draft(
         customer_id=body.customer_id,
         notes=body.notes,
         lines_data=[l.model_dump() for l in body.lines],
+        new_client_name=body.new_client_name,
+        new_client_vat=body.new_client_vat,
     )
 
 
@@ -72,6 +74,8 @@ def update_draft(
         notes=body.notes,
         lines_data=[l.model_dump() for l in body.lines],
         version=body.version,
+        new_client_name=body.new_client_name,
+        new_client_vat=body.new_client_vat,
     )
 
 

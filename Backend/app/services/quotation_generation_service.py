@@ -11,6 +11,7 @@ from ..repositories.customer_repository import CustomerRepository
 from ..repositories.product_repository import ProductRepository
 from ..integrations.odoo.sale import create_quotation
 from ..integrations.odoo.client import get_odoo_connection
+from ..services.customer_creation_service import CustomerCreationService
 
 
 class QuotationGenerationService:
@@ -35,7 +36,26 @@ class QuotationGenerationService:
             draft.status = "draft"
 
         if draft.customer_id is None:
-            raise HTTPException(status_code=400, detail="El borrador debe tener un cliente asignado")
+            if draft.new_client_name:
+                try:
+                    customer = CustomerCreationService(self.db, self.user).create_new_customer(
+                        name=draft.new_client_name,
+                        vat=draft.new_client_vat,
+                    )
+                    draft.customer_id = customer.id
+                    draft.new_client_name = None
+                    draft.new_client_vat = None
+                    self.db.commit()
+                except HTTPException:
+                    draft.status = "failed"
+                    self.db.commit()
+                    raise
+                except Exception as e:
+                    draft.status = "failed"
+                    self.db.commit()
+                    raise HTTPException(status_code=502, detail=f"Error al crear el cliente nuevo: {e}")
+            else:
+                raise HTTPException(status_code=400, detail="El borrador debe tener un cliente asignado")
 
         customer = self.customer_repo.get_by_id(draft.customer_id)
         if not customer:

@@ -20,13 +20,16 @@ class CreateQuotationPage extends StatefulWidget {
 
 class _CreateQuotationPageState extends State<CreateQuotationPage> {
   final _formKey = GlobalKey<FormState>();
+  final _newClientFormKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
+  final _newClientNameController = TextEditingController();
+  final _newClientVatController = TextEditingController();
   final _lineItems = <_LineItem>[];
   bool _loading = false;
   bool _isEditing = false;
   String? _draftId;
   Client? _selectedClient;
-  bool _pickingClient = false;
+  bool _isNewClient = false;
   bool _loadingClient = false;
 
   @override
@@ -83,6 +86,13 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           );
         }
         if (mounted) _selectedClient = match;
+      } else {
+        final newClientName = draft['new_client_name'] as String? ?? '';
+        if (newClientName.isNotEmpty) {
+          _isNewClient = true;
+          _newClientNameController.text = newClientName;
+          _newClientVatController.text = draft['new_client_vat'] as String? ?? '';
+        }
       }
 
       final lines = draft['lines'] as List<dynamic>? ?? [];
@@ -111,6 +121,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   @override
   void dispose() {
     _descriptionController.dispose();
+    _newClientNameController.dispose();
+    _newClientVatController.dispose();
     super.dispose();
   }
 
@@ -144,7 +156,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
   Map<String, dynamic> _buildPayload() {
     final payload = <String, dynamic>{
-      'customer_id': _selectedClient!.id,
       'notes': _descriptionController.text,
       'lines': _lineItems.map((item) => {
         'product_id': item.product.id,
@@ -153,21 +164,50 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         'tax_id': item.product.taxesId,
       }).toList(),
     };
+    if (_isNewClient) {
+      payload['new_client_name'] = _newClientNameController.text.trim();
+      final vat = _newClientVatController.text.trim();
+      if (vat.isNotEmpty) payload['new_client_vat'] = vat;
+    } else {
+      payload['customer_id'] = _selectedClient!.id;
+    }
     if (_isEditing) {
       payload['version'] = _version;
     }
     return payload;
   }
 
+  bool _validateForms() {
+    final mainOk = _formKey.currentState?.validate() ?? false;
+    final clientOk = _isNewClient
+        ? (_newClientFormKey.currentState?.validate() ?? false)
+        : true;
+    return mainOk && clientOk;
+  }
+
+  bool _isValidCuit(String vat) {
+    final digits = vat.replaceAll(RegExp(r'[\s\-.]'), '');
+    if (!RegExp(r'^\d{11}$').hasMatch(digits)) return false;
+    const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+    var total = 0;
+    for (var i = 0; i < 10; i++) {
+      total += int.parse(digits[i]) * weights[i];
+    }
+    var check = 11 - (total % 11);
+    if (check == 11) check = 0;
+    if (check == 10) return false;
+    return check == int.parse(digits[10]);
+  }
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_validateForms()) return;
     if (_lineItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Agregá al menos un producto')),
       );
       return;
     }
-    if (_selectedClient == null) return;
+    if (_selectedClient == null && !_isNewClient) return;
 
     setState(() => _loading = true);
 
@@ -199,14 +239,14 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   Future<void> _submitAndGenerate() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_validateForms()) return;
     if (_lineItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Agregá al menos un producto')),
       );
       return;
     }
-    if (_selectedClient == null) return;
+    if (_selectedClient == null && !_isNewClient) return;
 
     setState(() => _loading = true);
 
@@ -238,22 +278,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     }
   }
 
-  void _editCustomer() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        content: Text('Pendiente implementar', style: GoogleFonts.inter()),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickClient() async {
-    setState(() => _pickingClient = true);
     await _showCustomerPicker();
-    if (mounted && _selectedClient == null) {
+    if (mounted && _selectedClient == null && !_isNewClient) {
       context.go('/quotations');
     }
   }
@@ -265,14 +292,19 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       final clients = data.map((j) => Client.fromJson(j)).toList();
       if (!mounted) return;
 
-      final selected = await showDialog<Client>(
+      final result = await showDialog<_PickerResult>(
         context: context,
         builder: (ctx) => _CustomerPickerDialog(clients: clients),
       );
-      if (selected != null) {
+      if (result != null && mounted) {
         setState(() {
-          _selectedClient = selected;
-          _pickingClient = false;
+          if (result is _PickerClient) {
+            _selectedClient = result.client;
+            _isNewClient = false;
+          } else if (result is _PickerNewClient) {
+            _selectedClient = null;
+            _isNewClient = true;
+          }
         });
       }
     } catch (_) {
@@ -281,10 +313,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         const SnackBar(content: Text('Error al cargar clientes')),
       );
     }
-  }
-
-  void _newCustomer() {
-    context.push('/clients/new');
   }
 
   @override
@@ -319,7 +347,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           const SizedBox(width: 16),
         ],
       ),
-      body: _selectedClient == null || _loadingClient
+      body: (_selectedClient == null && !_isNewClient) || _loadingClient
           ? Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
@@ -636,6 +664,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   Widget _buildClientCard() {
+    if (_isNewClient) return _buildNewClientCard();
     final c = _selectedClient!;
     return Card(
       elevation: 0,
@@ -683,6 +712,84 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewClientCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _newClientFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    child: const Icon(Icons.person_add_alt_1, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Nuevo cliente', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                        Text('Se creará al generar la cotización', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _newClientNameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Razón social *',
+                  hintText: 'Ej: Fábrica Solar SRL',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'La razón social es obligatoria';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _newClientVatController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'CUIT (opcional)',
+                  hintText: 'Ej: 20123456789',
+                ),
+                validator: (value) {
+                  final vat = (value ?? '').trim();
+                  if (vat.isEmpty) return null;
+                  if (!_isValidCuit(vat)) {
+                    return 'CUIT inválido';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: _showCustomerPicker,
+                  icon: const Icon(Icons.people_alt_outlined, size: 18),
+                  label: const Text('Seleccionar cliente existente'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -833,6 +940,15 @@ class _CustomerPickerDialog extends StatefulWidget {
   State<_CustomerPickerDialog> createState() => _CustomerPickerDialogState();
 }
 
+sealed class _PickerResult {}
+
+class _PickerClient extends _PickerResult {
+  final Client client;
+  _PickerClient(this.client);
+}
+
+class _PickerNewClient extends _PickerResult {}
+
 class _CustomerPickerDialogState extends State<_CustomerPickerDialog> {
   final _searchController = TextEditingController();
   late List<Client> _filtered;
@@ -897,6 +1013,17 @@ class _CustomerPickerDialogState extends State<_CustomerPickerDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  tileColor: AppColors.primary.withValues(alpha: 0.08),
+                  leading: const Icon(Icons.person_add_alt_1, color: AppColors.primary),
+                  title: Text('Nuevo cliente', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  subtitle: Text('Crear un cliente nuevo para esta cotización', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                  onTap: () => Navigator.pop(context, _PickerNewClient()),
+                ),
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
                 Expanded(
                   child: _filtered.isEmpty
                       ? Center(
@@ -927,7 +1054,7 @@ class _CustomerPickerDialogState extends State<_CustomerPickerDialog> {
                                     Flexible(child: Text(c.companyName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
                                 ],
                               ),
-                              onTap: () => Navigator.pop(context, c),
+                              onTap: () => Navigator.pop(context, _PickerClient(c)),
                             );
                           },
                         ),

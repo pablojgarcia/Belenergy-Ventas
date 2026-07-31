@@ -3,25 +3,23 @@
 Este documento detalla el estado funcional actual del repositorio de Belenergy-Ventas.
 
 ## Backend
-- **Framework:** FastAPI (Python)
-- **Base de datos:** Utiliza SQLAlchemy ORM.
-- **Verificación de salud:** Proporciona un endpoint `/health` básico.
-- **Funcionalidad:** Sirve principalmente para propósitos de autenticación en esta etapa.
+- **Framework:** FastAPI (Python) con SQLAlchemy ORM.
+- **Base de datos:** PostgreSQL en producción; SQLite en entornos de prueba.
+- **Autenticación:** JWT con hashing de contraseñas y refresh tokens.
+- **Clientes:** sincronización desde Odoo (`res.partner`) con asignación de vendedor.
+- **Productos:** sincronización de productos e impuestos desde Odoo (lista de precios USD).
+- **Cotizaciones:** borradores (`quotation_drafts`) con líneas de producto, generación de `sale.order` en Odoo y descarga de PDF (validado con magic bytes `%PDF-`).
+- **Cliente nuevo:** alta de `res.partner` en Odoo al generar una cotización cuando el borrador usa `new_client_name`/`new_client_vat` (validación de CUIT mod-11 AFIP y anti-duplicados local/Odoo).
+- **Leads:** feature eliminado por completo (endpoints, servicio, repositorio, integración Odoo CRM, tabla y migración de drop).
 
 ## Frontend
-- **Framework:** Flutter (compatible con Web)
-- **Funcionalidades:** 
-    - Pantalla de inicio de sesión: Incluye campos de correo/contraseña, validación, manejo de errores a través de `AuthProvider` y retroalimentación visual (indicadores de carga, mensajes de error).
-    - Navegación: Configuración básica de enrutamiento con una pantalla de inicio (splash), pantalla de inicio de sesión y pantalla principal.
-    - Recursos: Incluye recursos gráficos de la marca (logo de Belenergy ARG).
-
-## Autenticación
-- **Backend:** 
-    - Endpoints: `/auth/register` (POST), `/auth/login` (POST), `/auth/me` (GET, protegido).
-    - Lógica: Implementa hashing de contraseñas y autenticación basada en JWT con tiempo de expiración.
-- **Frontend:** 
-    - Gestiona el estado de autenticación a través de `AuthProvider`.
-    - Maneja el flujo de inicio de sesión del usuario y la lógica de gestión persistente de la sesión.
+- **Framework:** Flutter (compatible con Web).
+- **Pantallas:** login, dashboard, clientes, productos, cotizaciones (listado, creación/edición con modal de selección de cliente y panel de cliente nuevo, detalle con PDF).
+- **Navegación:** `go_router` con `ResponsiveShell` (NavigationRail en escritorio, NavigationBar en móvil).
+- **Estado:** Provider (`AuthProvider`, `ApiService`).
 
 ## Infraestructura
-- **Contenedores:** Dockerfile presente en el directorio `Backend` y `docker-compose.yml` en la raíz, facilitando el despliegue contenedorizado.
+- **Backend:** Railway (FastAPI + migraciones Alembic vía `entrypoint.sh`).
+- **Frontend:** Cloudflare Workers (build de Flutter web).
+- **Odoo:** Odoo v19 Online como fuente de verdad comercial.
+- **Contenedores:** Dockerfile en `Backend` y `docker-compose.yml` en la raíz.
