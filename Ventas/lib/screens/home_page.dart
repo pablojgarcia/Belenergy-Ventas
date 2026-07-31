@@ -264,7 +264,11 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar clientes';
+      final msg = e is DioException
+          ? _extractError(e)
+          : e is SyncException
+              ? e.message
+              : 'Error al sincronizar clientes';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: AppColors.error),
       );
@@ -283,7 +287,11 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar productos';
+      final msg = e is DioException
+          ? _extractError(e)
+          : e is SyncException
+              ? e.message
+              : 'Error al sincronizar productos';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: AppColors.error),
       );
@@ -405,7 +413,11 @@ class _ProfileSheetState extends State<_ProfileSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar clientes';
+      final msg = e is DioException
+          ? _extractError(e)
+          : e is SyncException
+              ? e.message
+              : 'Error al sincronizar clientes';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: AppColors.error),
       );
@@ -424,7 +436,11 @@ class _ProfileSheetState extends State<_ProfileSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e is DioException ? _extractError(e) : 'Error al sincronizar productos';
+      final msg = e is DioException
+          ? _extractError(e)
+          : e is SyncException
+              ? e.message
+              : 'Error al sincronizar productos';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: AppColors.error),
       );

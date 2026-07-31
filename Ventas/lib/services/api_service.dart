@@ -3,6 +3,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
 
+class SyncException implements Exception {
+  final String message;
+  SyncException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class ApiService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
@@ -214,10 +222,28 @@ class ApiService {
 
   Future<void> syncCustomers() async {
     await _dio.post('/sync/customers');
+    await _waitForSync('customers');
   }
 
   Future<void> syncProducts() async {
     await _dio.post('/sync/products');
+    await _waitForSync('products');
+  }
+
+  Future<void> _waitForSync(String type) async {
+    const timeout = Duration(minutes: 10);
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final response = await _dio.get('/sync/status/$type');
+      final data = Map<String, dynamic>.from(response.data);
+      final state = data['status'] as String? ?? 'running';
+      if (state == 'completed') return;
+      if (state == 'failed') {
+        throw SyncException(data['error'] as String? ?? 'La sincronización falló');
+      }
+      await Future.delayed(const Duration(seconds: 2));
+    }
+    throw SyncException('La sincronización tardó demasiado');
   }
 
   Future<List<Map<String, dynamic>>> getTaxes() async {

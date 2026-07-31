@@ -317,3 +317,12 @@ class LeadApprove(BaseModel):
 
 class LeadReject(BaseModel):
     rejection_reason: str
+
+
+class SyncStatusOut(BaseModel):
+    status: str
+    name: Optional[str] = None
+    error: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    elapsed: Optional[float] = None
