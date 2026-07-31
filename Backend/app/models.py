@@ -139,6 +139,8 @@ class QuotationDraft(Base):
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True, index=True)
+    new_client_name = Column(String, nullable=True)
+    new_client_vat = Column(String, nullable=True)
     status = Column(String(20), default="draft", index=True)
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -180,31 +182,3 @@ class Quotation(Base):
     odoo_sale_order_name = Column(String(100), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-
-class Lead(Base):
-    __tablename__ = "leads"
-
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    company_name = Column(String(255), nullable=False)
-    contact_name = Column(String(255), nullable=True)
-    email = Column(String(255), nullable=True)
-    phone = Column(String(50), nullable=True)
-    mobile = Column(String(50), nullable=True)
-    street = Column(String(255), nullable=True)
-    city = Column(String(100), nullable=True)
-    state = Column(String(100), nullable=True)
-    zip = Column(String(20), nullable=True)
-    country = Column(String(100), nullable=True)
-    vat = Column(String(50), nullable=True)
-    notes = Column(Text, nullable=True)
-    status = Column(String(20), default="pendiente", index=True)
-    rejection_reason = Column(Text, nullable=True)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    odoo_partner_id = Column(Integer, nullable=True)
-    odoo_crm_lead_id = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    version = Column(Integer, default=1)

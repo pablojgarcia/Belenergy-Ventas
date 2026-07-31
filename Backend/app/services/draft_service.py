@@ -22,7 +22,7 @@ class DraftService:
         self.product_repo = ProductRepository(db)
         self.tax_repo = TaxRepository(db)
 
-    def create(self, customer_id: Optional[int] = None, notes: Optional[str] = None, lines_data: Optional[list] = None) -> models.QuotationDraft:
+    def create(self, customer_id: Optional[int] = None, notes: Optional[str] = None, lines_data: Optional[list] = None, new_client_name: Optional[str] = None, new_client_vat: Optional[str] = None) -> models.QuotationDraft:
         if customer_id:
             customer = self.customer_repo.get_by_id(customer_id)
             if not customer:
@@ -30,6 +30,8 @@ class DraftService:
 
         draft = models.QuotationDraft(
             customer_id=customer_id,
+            new_client_name=new_client_name,
+            new_client_vat=new_client_vat,
             notes=notes,
             created_by=self.user.id,
         )
@@ -124,6 +126,8 @@ class DraftService:
         notes: Optional[str],
         lines_data: List[dict],
         version: int,
+        new_client_name: Optional[str] = None,
+        new_client_vat: Optional[str] = None,
     ) -> models.QuotationDraft:
         draft = self.draft_repo.get_by_id(draft_id)
         if not draft:
@@ -144,6 +148,8 @@ class DraftService:
                 raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
         draft.customer_id = customer_id
+        draft.new_client_name = new_client_name
+        draft.new_client_vat = new_client_vat
         draft.notes = notes
         draft.updated_by = self.user.id
         draft.version += 1

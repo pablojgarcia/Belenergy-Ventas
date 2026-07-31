@@ -1,6 +1,14 @@
 from .client import get_odoo_connection
 
 
+def check_vat_exists(vat: str) -> bool:
+    odoo = get_odoo_connection()
+    count = odoo.env["res.partner"].search_count(
+        [("vat", "=", vat), ("parent_id", "=", False)]
+    )
+    return count > 0
+
+
 def create_partner(partner_data: dict) -> int:
     odoo = get_odoo_connection()
 
@@ -66,8 +74,8 @@ def create_partner(partner_data: dict) -> int:
         )
         if partner_ids:
             user = odoo.env["res.users"].read(partner_ids[0], ["partner_id"])
-            if user and user.get("partner_id"):
-                vals["x_studio_vendedor_externo"] = user["partner_id"][0]
+            if user and user[0].get("partner_id"):
+                vals["x_studio_vendedor_externo"] = user[0]["partner_id"][0]
         else:
             partner_ids = odoo.env["res.partner"].search(
                 [("email", "=", vendedor_externo)]

@@ -12,7 +12,7 @@ from alembic import command as alembic_command
 from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
-from .api import auth, products, customers, quotations, taxes, sync, health, leads, users
+from .api import auth, products, customers, quotations, taxes, sync, health, users
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
 
@@ -97,14 +97,20 @@ if "taxes" not in inspector.get_table_names():
 if "quotation_drafts" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.QuotationDraft.__table__])
 
+if "quotation_drafts" in inspector.get_table_names():
+    draft_cols = [c["name"] for c in inspector.get_columns("quotation_drafts")]
+    if "new_client_name" not in draft_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_name VARCHAR"))
+    if "new_client_vat" not in draft_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_vat VARCHAR"))
+
 if "quotation_draft_lines" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.QuotationDraftLine.__table__])
 
 if "quotations" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Quotation.__table__])
-
-if "leads" not in inspector.get_table_names():
-    Base.metadata.create_all(bind=engine, tables=[models.Lead.__table__])
 
 app = FastAPI(title="Belenergy API")
 
@@ -195,7 +201,6 @@ app.include_router(sync.router)
 app.include_router(health.router)
 app.include_router(drafts_router)
 app.include_router(quotations_router)
-app.include_router(leads.router)
 app.include_router(users.router)
 
 # SPA catch-all (must be last)

@@ -11,7 +11,6 @@ engine = create_engine(url)
 with engine.connect() as conn:
     conn.execute(text('DROP TABLE IF EXISTS alembic_version CASCADE'))
     conn.execute(text('DROP TABLE IF EXISTS contacts CASCADE'))
-    conn.execute(text('DROP TABLE IF EXISTS leads CASCADE'))
     conn.execute(text('DROP TABLE IF EXISTS orders CASCADE'))
     conn.execute(text('DROP TABLE IF EXISTS products CASCADE'))
     conn.execute(text('DROP TABLE IF EXISTS refresh_tokens CASCADE'))

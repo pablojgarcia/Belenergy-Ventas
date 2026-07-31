@@ -1,6 +1,6 @@
 # Manual de Usuario — Belenergy Ventas
 
-Sistema de gestión de ventas, cotizaciones y leads integrado con **Odoo v19**.
+Sistema de gestión de ventas y cotizaciones integrado con **Odoo v19**.
 
 ---
 
@@ -12,15 +12,14 @@ Sistema de gestión de ventas, cotizaciones y leads integrado con **Odoo v19**.
 4. [Clientes](#4-clientes)
 5. [Productos](#5-productos)
 6. [Cotizaciones](#6-cotizaciones)
-7. [Leads](#7-leads)
-8. [Administración](#8-administración)
-9. [Solución de Problemas](#9-solución-de-problemas)
+7. [Administración](#7-administración)
+8. [Solución de Problemas](#8-solución-de-problemas)
 
 ---
 
 ## 1. Introducción
 
-**Belenergy Ventas** es una aplicación web para la gestión de clientes, cotizaciones y leads, sincronizada en tiempo real con Odoo v19.
+**Belenergy Ventas** es una aplicación web para la gestión de clientes, cotizaciones y productos, sincronizada en tiempo real con Odoo v19.
 
 **URL de acceso:** [https://ventas.belenergy-arg.workers.dev](https://ventas.belenergy-arg.workers.dev)
 
@@ -63,7 +62,6 @@ Al iniciar sesión, se muestra el panel principal con tarjetas de resumen:
 | **Clientes** | Cantidad total de clientes sincronizados |
 | **Presupuestos** | Cantidad de borradores y cotizaciones generadas |
 | **Productos** | Cantidad de productos activos |
-| **Leads** | Cantidad de leads registrados |
 
 Desde aquí puede acceder rápidamente a cada sección tocando su tarjeta.
 
@@ -80,7 +78,6 @@ Toque su avatar (iniciales) en la barra superior para abrir el panel de perfil. 
 |---|---|
 | **Sincronizar clientes** | Trae todos los clientes desde Odoo |
 | **Sincronizar productos** | Trae productos e impuestos desde Odoo |
-| **Aprobar leads** | Abre la pantalla de aprobación de leads |
 
 ---
 
@@ -161,15 +158,21 @@ Acceda desde el menú lateral. Muestra todos los borradores y cotizaciones gener
    - Si viene desde la pantalla de cliente, ya estará preseleccionado.
    - Si no, se abrirá un buscador de clientes. Escriba para filtrar y seleccione uno.
    - Puede presionar **Cambiar cliente** para elegir otro.
-3. **Agregar productos:**
+   - Si el cliente es **nuevo** (no figura en la búsqueda), presione **Nuevo cliente** en el buscador.
+3. **Cliente nuevo** (opcional):
+   - Se muestra un panel editable con **Razón social** (obligatorio) y **CUIT** (opcional).
+   - El CUIT se valida con el algoritmo oficial de AFIP (módulo 11). Si no lo conoce, puede omitirlo.
+   - El cliente se crea automáticamente en Odoo **al generar la cotización**.
+   - Puede volver a un cliente existente con **Seleccionar cliente existente**.
+4. **Agregar productos:**
    - Presione **Agregar producto**.
    - Busque por nombre, código o código de barras.
    - Seleccione el producto; se agrega a la tabla con cantidad 1.
    - Ajuste la cantidad con los botones ➕/➖.
    - Puede eliminar un renglón con el botón **✕**.
-4. **Notas:** (opcional) agregue una descripción interna.
-5. **Guardar:** presione **Guardar** para guardar el borrador.
-6. **Generar:** presione **Generar cotización** para crear la orden de venta en Odoo.
+5. **Notas:** (opcional) agregue una descripción interna.
+6. **Guardar:** presione **Guardar** para guardar el borrador.
+7. **Generar:** presione **Generar cotización** para crear el cliente nuevo (si corresponde) y la orden de venta en Odoo.
 
 ### 6.3. Editar una cotización (borrador)
 
@@ -199,120 +202,9 @@ En cotizaciones ya generadas, presione el botón **Descargar PDF**. El archivo s
 
 ---
 
-## 7. Leads
+## 7. Administración
 
-Un **lead** es un potencial cliente que aún no está registrado en el sistema. El flujo completo es:
-
-```
-Crear lead → Enviar a Odoo → Aprobar (admin) → Crear cliente → Crear cotización
-```
-
-### 7.1. Listado de leads
-
-Acceda desde el menú lateral.
-
-**Filtros disponibles:**
-
-| Filtro | Muestra |
-|---|---|
-| Todos | Todos los leads |
-| Pendiente | Leads pendientes de revisión |
-| Aprobado | Leads aprobados |
-| Rechazado | Leads rechazados |
-| Sincronizado | Leads ya enviados a Odoo |
-
-**Estados:**
-
-| Estado | Color | Significado |
-|---|---|---|
-| Pendiente | 🟠 Naranja | Creado, esperando revisión |
-| Aprobado | 🟢 Verde | Aprobado por admin |
-| Rechazado | 🔴 Rojo | Rechazado por admin |
-| Sincronizado | 🔵 Azul | Enviado a Odoo CRM |
-
-### 7.2. Crear un lead
-
-1. Presione **Nuevo lead**.
-2. Complete los campos obligatorios (*):
-   - **Nombre de la empresa** (obligatorio)
-   - **CUIT** (obligatorio)
-   - Datos de contacto (email, teléfono, celular) — opcional
-   - Dirección (calle, ciudad, provincia, CP, país) — opcional
-   - **Notas** — opcional
-3. Presione **Crear lead**.
-
-El lead queda en estado **Pendiente**.
-
-### 7.3. Editar un lead
-
-Solo se pueden editar leads en estado **Pendiente**.
-
-1. Desde el listado, toque el lead para ver su detalle.
-2. Presione el ícono ✏️ **Editar**.
-3. Modifique los campos necesarios.
-4. Presione **Guardar cambios**.
-
-### 7.4. Enviar lead a Odoo CRM
-
-Puede enviar un lead a Odoo desde:
-
-- **Listado:** presione el botón **Enviar** en el lead (visible para Pendiente y Aprobado).
-- **Detalle:** la sincronización se dispara automáticamente al aprobar.
-
-Al enviar, el sistema:
-
-1. Verifica que el CUIT no exista ya en Odoo.
-2. Crea la oportunidad en Odoo CRM.
-3. Asigna el **vendedor externo** (usuario que creó el lead).
-4. Asigna el **vendedor interno** (configurado por admin en el usuario).
-
-### 7.5. Aprobar / Rechazar leads (Admin)
-
-Acceda desde **Perfil de usuario → Aprobar leads**.
-
-1. Se muestran todos los leads **Pendientes**.
-2. Para cada lead:
-   - Presione ✅ **Aprobar** — el lead se sincroniza automáticamente a Odoo CRM.
-   - Presione ❌ **Rechazar** — ingrese el motivo de rechazo en el diálogo.
-
-### 7.6. Ver detalle de lead
-
-Muestra:
-
-- Datos de la empresa y contacto
-- Dirección e información fiscal
-- Notas
-- Estado y motivo de rechazo (si aplica)
-- Información de Odoo CRM (ID de oportunidad, ID de partner si ya se creó)
-
-**Acciones disponibles:**
-
-| Estado | Acciones |
-|---|---|
-| Pendiente | Editar, Eliminar |
-| Aprobado | Crear cliente, Crear cotización |
-| Sincronizado | Refrescar estado desde Odoo |
-
-### 7.7. Crear cliente desde lead aprobado
-
-Una vez aprobado, puede crear el cliente en Odoo desde el detalle del lead. El sistema:
-
-1. Crea el partner en Odoo.
-2. Lo sincroniza a la base local.
-3. Asocia el lead al nuevo cliente.
-
-### 7.8. Crear cotización desde lead aprobado
-
-Después de crear el cliente, puede generar una cotización directamente desde el lead. El sistema:
-
-1. Crea el cliente en Odoo (si no se creó antes).
-2. Abre la pantalla de nueva cotización con el cliente preseleccionado.
-
----
-
-## 8. Administración
-
-### 8.1. Sincronizar datos desde Odoo
+### 7.1. Sincronizar datos desde Odoo
 
 Acceda desde el **Perfil de usuario** (solo administradores).
 
@@ -324,9 +216,9 @@ Trae productos activos e impuestos desde Odoo. Los precios se toman de la lista 
 
 > La sincronización se ejecuta en segundo plano. Recibirá una confirmación inmediata y los datos se actualizarán progresivamente.
 
-### 8.2. Asignar vendedor interno a usuarios
+### 7.2. Asignar vendedor interno a usuarios
 
-Cada usuario de la app puede tener un **vendedor interno** asociado. Este se utiliza al crear leads en Odoo CRM para asignar el responsable de la oportunidad.
+Cada usuario de la app puede tener un **vendedor interno** asociado. Este se utiliza en la sincronización de clientes para asignar el responsable en Odoo.
 
 **Para asignarlo:**
 
@@ -342,38 +234,40 @@ Reemplace `'Nombre del vendedor'` con el nombre o login del usuario en Odoo que 
 
 ---
 
-## 9. Solución de Problemas
+## 8. Solución de Problemas
 
-### 9.1. No puedo iniciar sesión
+### 8.1. No puedo iniciar sesión
 
 - Verifique que el email y la contraseña sean correctos.
 - Si olvidó su contraseña, contacte al administrador.
 
-### 9.2. Los clientes no aparecen
+### 8.2. Los clientes no aparecen
 
 - Verifique que el administrador haya ejecutado la **sincronización de clientes** desde su perfil.
 - Si es un vendedor, solo ve los clientes donde es el vendedor externo asignado.
 
-### 9.3. Error al sincronizar
+### 8.3. Error al sincronizar
 
 - Verifique que el servicio de Odoo esté disponible.
 - Contacte al administrador si el error persiste.
 
-### 9.4. Error al enviar lead a Odoo
+### 8.4. Error al crear un cliente nuevo
 
 | Error | Causa | Solución |
 |---|---|---|
-| "Ya existe un cliente con ese CUIT" | El CUIT ya está registrado | Verifique que el CUIT sea correcto |
+| "El CUIT ingresado no es válido" | El CUIT no cumple el algoritmo de AFIP | Verifique que el CUIT sea correcto (11 dígitos) |
+| "Ya existe un cliente con ese CUIT" | El CUIT ya está registrado localmente | Verifique que el CUIT sea correcto o use el cliente existente |
+| "Ya existe un cliente con ese CUIT en Odoo" | El CUIT ya existe en Odoo | Use el cliente existente |
 | "Token inválido o expirado" | Token de Odoo desactualizado | El admin debe actualizar el token en Railway |
 | "Invalid field" | Campo de Odoo incorrecto | Contacte al administrador |
 
-### 9.5. La cotización no se genera
+### 8.5. La cotización no se genera
 
 - Verifique que tenga al menos un producto agregado.
-- Verifique que el cliente esté seleccionado.
+- Verifique que el cliente esté seleccionado (o la razón social del cliente nuevo esté completa).
 - Si el error persiste, contacte al administrador.
 
-### 9.6. Contacto
+### 8.6. Contacto
 
 Para reportar errores o solicitar ayuda:
 
