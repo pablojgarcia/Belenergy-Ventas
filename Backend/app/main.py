@@ -82,6 +82,15 @@ if "products" in inspector.get_table_names():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE products ADD COLUMN taxes_id TEXT"))
 
+if "orders" in inspector.get_table_names():
+    order_cols = [c["name"] for c in inspector.get_columns("orders")]
+    if "amount_tax" not in order_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE orders ADD COLUMN amount_tax FLOAT DEFAULT 0.0"))
+    if "vendedor_externo" not in order_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE orders ADD COLUMN vendedor_externo VARCHAR"))
+
 if "taxes" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Tax.__table__])
 
