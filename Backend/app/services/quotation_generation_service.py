@@ -94,7 +94,6 @@ class QuotationGenerationService:
                 partner_id=customer.odoo_id,
                 order_lines=odoo_lines,
                 description=draft.notes or "",
-                vendedor_externo=customer.salesperson_id,
             )
         except ValueError as e:
             draft.status = "failed"

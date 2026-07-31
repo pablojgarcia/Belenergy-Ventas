@@ -67,7 +67,7 @@ def create_partner(partner_data: dict) -> int:
         if partner_ids:
             user = odoo.env["res.users"].read(partner_ids[0], ["partner_id"])
             if user and user.get("partner_id"):
-                vals["x_studio_vendedor_externo_4"] = user["partner_id"][0]
+                vals["x_studio_vendedor_externo"] = user["partner_id"][0]
         else:
             partner_ids = odoo.env["res.partner"].search(
                 [("email", "=", vendedor_externo)]
@@ -77,7 +77,7 @@ def create_partner(partner_data: dict) -> int:
                     [("name", "=", vendedor_externo)]
                 )
             if partner_ids:
-                vals["x_studio_vendedor_externo_4"] = partner_ids[0]
+                vals["x_studio_vendedor_externo"] = partner_ids[0]
 
     partner_id = odoo.env["res.partner"].create(vals)
     return partner_id
