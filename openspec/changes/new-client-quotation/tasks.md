@@ -46,6 +46,6 @@
 
 ## 7. Push y deploy
 
-- [ ] 7.1 Commit y push del branch
-- [ ] 7.2 Crear PR, esperar CI/CD y merge
+- [x] 7.1 Commit y push del branch
+- [x] 7.2 Crear PR, esperar CI/CD y merge
 - [ ] 7.3 Verificar deploy (backend Railway + frontend Cloudflare) y smoke test en producción
