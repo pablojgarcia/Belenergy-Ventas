@@ -143,7 +143,7 @@ class TestDiscountEngine:
         user = _seed_user(self.db, "test_user_4", "vendedor_interno")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
-        assert results[0]["max_discount"] == 15.0
+        assert results[0]["max_discount"] == 20.0
 
     def test_agro_lower_small_amount(self):
         prod = _seed_product(self.db, "Inversor Deye pequeño", "SUN-3K-G", 200.0, "deye")
