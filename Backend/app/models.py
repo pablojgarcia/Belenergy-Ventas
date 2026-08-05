@@ -15,6 +15,7 @@ class User(Base):
     role     = Column(String, default='vendedor')
     is_active = Column(Boolean, default=True)
     vendedor_interno = Column(String, nullable=True)
+    seller_type = Column(String, nullable=True, default='vendedor_interno')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Customer(Base):
@@ -70,6 +71,7 @@ class Product(Base):
     standard_price = Column(Float, default=0.0)
     type = Column(String, default="product")
     categ_id = Column(String)
+    product_line_id = Column(Uuid, ForeignKey("product_lines.id"), nullable=True)
     uom_id = Column(String)
     description_sale = Column(String)
     active = Column(Boolean, default=True)
@@ -165,6 +167,9 @@ class QuotationDraftLine(Base):
     discount = Column(Float, default=0.0)
     tax_id = Column(Text, nullable=True)
     tax_rate = Column(Float, default=0.0)
+    discount_rule_id = Column(Uuid, nullable=True)
+    max_discount_applied = Column(Float, nullable=True)
+    seller_type_applied = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     draft = relationship("QuotationDraft", back_populates="lines")
@@ -193,5 +198,34 @@ class TermsAndConditions(Base):
     content = Column(Text, nullable=False)
     is_default = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+
+class ProductLine(Base):
+    __tablename__ = "product_lines"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    key = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+
+class DiscountRule(Base):
+    __tablename__ = "discount_rules"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    seller_type = Column(String, nullable=False, index=True)
+    product_line_id = Column(Uuid, ForeignKey("product_lines.id"), nullable=True)
+    condition_type = Column(String, nullable=False)
+    min_value = Column(Float, nullable=True)
+    max_value = Column(Float, nullable=True)
+    max_discount = Column(Float, nullable=False)
+    requires_approval = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_by = Column(Integer, nullable=True)
+    updated_by = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

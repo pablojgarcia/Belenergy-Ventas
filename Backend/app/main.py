@@ -12,7 +12,7 @@ from alembic import command as alembic_command
 from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
-from .api import auth, products, customers, quotations, taxes, sync, health, users, terms_and_conditions
+from .api import auth, products, customers, quotations, taxes, sync, health, users, terms_and_conditions, discount_rules
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
 
@@ -118,6 +118,36 @@ if "quotation_draft_lines" not in inspector.get_table_names():
 if "quotations" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Quotation.__table__])
 
+if "product_lines" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.ProductLine.__table__])
+
+if "discount_rules" not in inspector.get_table_names():
+    Base.metadata.create_all(bind=engine, tables=[models.DiscountRule.__table__])
+
+if "users" in inspector.get_table_names():
+    user_cols = [c["name"] for c in inspector.get_columns("users")]
+    if "seller_type" not in user_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN seller_type VARCHAR DEFAULT 'vendedor_interno'"))
+
+if "products" in inspector.get_table_names():
+    prod_cols = [c["name"] for c in inspector.get_columns("products")]
+    if "product_line_id" not in prod_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE products ADD COLUMN product_line_id UUID"))
+
+if "quotation_draft_lines" in inspector.get_table_names():
+    dl_cols = [c["name"] for c in inspector.get_columns("quotation_draft_lines")]
+    if "discount_rule_id" not in dl_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_draft_lines ADD COLUMN discount_rule_id UUID"))
+    if "max_discount_applied" not in dl_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_draft_lines ADD COLUMN max_discount_applied FLOAT"))
+    if "seller_type_applied" not in dl_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_draft_lines ADD COLUMN seller_type_applied VARCHAR"))
+
 app = FastAPI(title="Belenergy API")
 
 setup_rate_limiter(app)
@@ -174,6 +204,16 @@ try:
 finally:
     _seed_db.close()
 
+# Seed: product lines (master data)
+from .seed_discount_rules import seed_product_lines, seed_discount_rules
+
+_seed_db = next(get_db())
+try:
+    seed_product_lines(_seed_db)
+    seed_discount_rules(_seed_db)
+finally:
+    _seed_db.close()
+
 # SPA middleware
 if os.path.isdir(STATIC_DIR):
     SPA_EXCLUDE = {"/docs", "/openapi.json", "/redoc", "/health"}
@@ -222,6 +262,7 @@ app.include_router(taxes.router)
 app.include_router(sync.router)
 app.include_router(health.router)
 app.include_router(terms_and_conditions.router)
+app.include_router(discount_rules.router)
 app.include_router(drafts_router)
 app.include_router(quotations_router)
 app.include_router(users.router)

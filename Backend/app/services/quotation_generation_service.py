@@ -12,6 +12,7 @@ from ..repositories.product_repository import ProductRepository
 from ..integrations.odoo.sale import create_quotation
 from ..integrations.odoo.client import get_odoo_connection
 from ..services.customer_creation_service import CustomerCreationService
+from ..services.discount_engine import DiscountEngine
 
 
 class QuotationGenerationService:
@@ -84,10 +85,25 @@ class QuotationGenerationService:
                     detail=f"El precio del producto '{product.name}' en la línea #{i + 1} cambió. Recargue el borrador.",
                 )
 
+        engine = DiscountEngine(self.db)
+        evaluation = engine.evaluate(draft, self.user)
+
+        violations = [r for r in evaluation if r.get("message")]
+        if violations:
+            messages = "; ".join(r["message"] for r in violations)
+            raise HTTPException(status_code=409, detail=messages)
+
         amount_untaxed = 0.0
         amount_tax = 0.0
         odoo_lines = []
-        for line in lines:
+        for i, line in enumerate(lines):
+            product = self.product_repo.get_by_id(line.product_id)
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Producto ID {line.product_id} no encontrado")
+
+            if product.odoo_id is None:
+                raise HTTPException(status_code=400, detail=f"El producto '{product.name}' no tiene un ID válido en Odoo")
+
             subtotal = line.quantity * line.unit_price * (1 - line.discount / 100)
             amount_untaxed += subtotal
             amount_tax += subtotal * line.tax_rate / 100
@@ -98,6 +114,12 @@ class QuotationGenerationService:
                     tax_ids = json.loads(line.tax_id)
                 except Exception:
                     pass
+
+            eval_result = evaluation[i] if i < len(evaluation) else None
+
+            line.discount_rule_id = eval_result.get("discount_rule_id") if eval_result else None
+            line.max_discount_applied = eval_result.get("max_discount") if eval_result else None
+            line.seller_type_applied = self.user.seller_type or "vendedor_interno"
 
             odoo_lines.append({
                 "product_id": line.product_odoo_id,

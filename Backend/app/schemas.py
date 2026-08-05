@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     name: str = ''
     password: str
     role: str = 'vendedor'
+    seller_type: str = 'vendedor_interno'
 
 class UserLogin(BaseModel):
     username: str
@@ -23,10 +24,12 @@ class UserOut(BaseModel):
     role: str = 'vendedor'
     is_active: bool
     vendedor_interno: str | None = None
+    seller_type: str | None = None
     model_config = {"from_attributes": True}
 
 class UserUpdate(BaseModel):
     vendedor_interno: str | None = None
+    seller_type: str | None = None
 
 class Token(BaseModel):
     access_token: str
@@ -202,14 +205,16 @@ class QuotationDraftLineOut(BaseModel):
     product_id: int
     product_odoo_id: int | None = None
     product_name: str | None = None
+    product_line_key: str | None = None
     quantity: float
     unit_price: float
     discount: float
     tax_id: list[int] = []
     tax_rate: float = 0.0
+    discount_rule_id: uuid.UUID | None = None
+    max_discount_applied: float | None = None
+    seller_type_applied: str | None = None
     created_at: datetime
-
-    model_config = {"from_attributes": True}
 
     @field_validator("tax_id", mode="before")
     @classmethod
@@ -217,6 +222,8 @@ class QuotationDraftLineOut(BaseModel):
         if isinstance(v, str):
             return json.loads(v) if v else []
         return v or []
+
+    model_config = {"from_attributes": True}
 
 
 class QuotationDraftOut(BaseModel):
@@ -293,3 +300,70 @@ class TermsAndConditionsUpdate(BaseModel):
     content: str | None = None
     is_default: bool | None = None
     is_active: bool | None = None
+
+
+class ProductLineOut(BaseModel):
+    id: uuid.UUID
+    key: str
+    name: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class ProductLineCreate(BaseModel):
+    key: str
+    name: str
+
+
+class DiscountRuleOut(BaseModel):
+    id: uuid.UUID
+    seller_type: str
+    product_line_id: uuid.UUID | None = None
+    product_line_key: str | None = None
+    product_line_name: str | None = None
+    condition_type: str
+    min_value: float | None = None
+    max_value: float | None = None
+    max_discount: float
+    requires_approval: bool
+    is_active: bool
+    created_by: int | None = None
+    updated_by: int | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class DiscountRuleCreate(BaseModel):
+    seller_type: str
+    product_line_id: uuid.UUID | None = None
+    condition_type: str
+    min_value: float | None = None
+    max_value: float | None = None
+    max_discount: float
+    requires_approval: bool = False
+
+
+class DiscountRuleUpdate(BaseModel):
+    seller_type: str | None = None
+    product_line_id: uuid.UUID | None = None
+    condition_type: str | None = None
+    min_value: float | None = None
+    max_value: float | None = None
+    max_discount: float | None = None
+    requires_approval: bool | None = None
+    is_active: bool | None = None
+
+
+class DiscountRuleResult(BaseModel):
+    line_index: int
+    product_name: str
+    product_line_key: str | None = None
+    max_discount: float | None = None
+    requires_approval: bool = False
+    tier: str | None = None
+    message: str | None = None

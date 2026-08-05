@@ -7,7 +7,7 @@ from ..dependencies import get_current_user
 from ..services.draft_service import DraftService
 from ..services.quotation_generation_service import QuotationGenerationService
 from ..services.quotation_query_service import QuotationQueryService
-from ..services.pdf_service import PdfService
+from ..services.discount_engine import DiscountEngine
 from .. import models, schemas
 
 
@@ -98,6 +98,23 @@ def generate_quotation(
 ):
     service = QuotationGenerationService(db, current_user)
     return service.generate(draft_id)
+
+
+@drafts_router.get("/{draft_id}/discount-rules", response_model=list[schemas.DiscountRuleResult])
+def get_draft_discount_rules(
+    draft_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    draft = db.query(models.QuotationDraft).filter(
+        models.QuotationDraft.id == draft_id,
+    ).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Borrador no encontrado")
+
+    engine = DiscountEngine(db)
+    results = engine.evaluate(draft, current_user)
+    return [schemas.DiscountRuleResult(**r) for r in results]
 
 
 # --- Quotations router ---

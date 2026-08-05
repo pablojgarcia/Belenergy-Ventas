@@ -157,6 +157,37 @@ def sync_taxes(db: Session):
     print("Sincronización de impuestos completada.")
 
 
+def _build_category_tree(odoo):
+    categories = odoo.env['product.category'].search_read(
+        [], ['id', 'name', 'parent_id']
+    )
+    cat_map = {}
+    for c in categories:
+        cat_map[c['id']] = {
+            'name': str(c.get('name') or ''),
+            'parent_id': c.get('parent_id'),
+        }
+    return cat_map
+
+
+def _resolve_product_line(categ_id, cat_map, product_lines_map):
+    if not categ_id:
+        return None
+    current_id = categ_id
+    while current_id:
+        cat = cat_map.get(current_id)
+        if not cat:
+            break
+        key = cat['name'].strip().lower()
+        if key in product_lines_map:
+            return product_lines_map[key]
+        parent = cat.get('parent_id')
+        if not parent:
+            break
+        current_id = parent[0] if isinstance(parent, (list, tuple)) else parent
+    return None
+
+
 def sync_products(db: Session):
     odoo = get_odoo_connection()
 
@@ -179,6 +210,13 @@ def sync_products(db: Session):
             usd_prices[tmpl[0]] = float(item['fixed_price'])
     print(f"Encontrados {len(usd_prices)} productos con precio USD.")
 
+    product_lines = db.query(models.ProductLine).filter(
+        models.ProductLine.is_active == True
+    ).all()
+    product_lines_map = {pl.key: pl.id for pl in product_lines}
+
+    cat_map = _build_category_tree(odoo)
+
     print("Buscando productos en Odoo...")
     products_data = odoo.env['product.template'].search_read([('active', '=', True)], fields)
     print(f"Encontrados {len(products_data)} productos. Procesando...")
@@ -194,6 +232,16 @@ def sync_products(db: Session):
         ]
 
         usd_price = usd_prices.get(int(p['id']))
+        categ_id_raw = p.get('categ_id')
+        categ_name = str(categ_id_raw[1]) if categ_id_raw else ""
+        categ_odoo_id = categ_id_raw[0] if categ_id_raw else None
+
+        product_line_id = None
+        if categ_odoo_id:
+            product_line_id = _resolve_product_line(
+                categ_odoo_id, cat_map, product_lines_map
+            )
+
         product_data = {
             "odoo_id": int(p['id']),
             "name": str(p.get('name') or ""),
@@ -202,7 +250,8 @@ def sync_products(db: Session):
             "list_price": usd_price if usd_price is not None else float(p.get('list_price') or 0.0),
             "standard_price": float(p.get('standard_price') or 0.0),
             "type": str(p.get('type') or "product"),
-            "categ_id": str(p.get('categ_id')[1] if p.get('categ_id') else ""),
+            "categ_id": categ_name,
+            "product_line_id": product_line_id,
             "uom_id": str(p.get('uom_id')[1] if p.get('uom_id') else ""),
             "description_sale": str(p.get('description_sale') or ""),
             "active": bool(p.get('active', True)),
