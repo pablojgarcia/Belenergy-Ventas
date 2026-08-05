@@ -367,3 +367,13 @@ class DiscountRuleResult(BaseModel):
     requires_approval: bool = False
     tier: str | None = None
     message: str | None = None
+
+
+class DiscountRuleEvaluateLine(BaseModel):
+    product_id: int
+    quantity: float
+    discount: float = 0.0
+
+
+class DiscountRuleEvaluateRequest(BaseModel):
+    lines: list[DiscountRuleEvaluateLine]

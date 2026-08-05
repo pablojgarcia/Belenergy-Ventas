@@ -1,8 +1,11 @@
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/customer_model.dart';
+import '../models/discount_rule_result_model.dart';
 import '../models/product_model.dart';
 import '../models/terms_and_conditions_model.dart';
 import '../services/api_service.dart';
@@ -34,6 +37,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   bool _loadingClient = false;
   String? _selectedTermsId;
   List<TermsAndConditions> _termsList = [];
+  Map<int, DiscountRuleResult> _discountRules = {};
+  Timer? _evaluateDebounce;
 
   @override
   void initState() {
@@ -60,6 +65,35 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     } catch (_) {
       if (mounted) setState(() => _termsList = []);
     }
+  }
+
+  Future<void> _evaluateDiscounts() async {
+    final api = context.read<ApiService>();
+    try {
+      final lines = _lineItems.map((item) => {
+        'product_id': item.product.id,
+        'quantity': item.quantity,
+        'discount': item.discount,
+      }).toList();
+      final data = await api.evaluateDiscountRules(lines);
+      if (mounted) {
+        setState(() {
+          _discountRules = {
+            for (final entry in data)
+              DiscountRuleResult.fromJson(entry).lineIndex: DiscountRuleResult.fromJson(entry),
+          };
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _discountRules = {});
+    }
+  }
+
+  void _scheduleEvaluate() {
+    _evaluateDebounce?.cancel();
+    _evaluateDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _evaluateDiscounts();
+    });
   }
 
   Future<void> _loadCustomer() async {
@@ -135,7 +169,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           quantity: (line['quantity'] as num).toDouble(),
         ));
       }
-      if (mounted) setState(() => _loadingClient = false);
+      if (mounted) {
+        setState(() => _loadingClient = false);
+        _evaluateDiscounts();
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingClient = false);
     }
@@ -146,6 +183,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     _descriptionController.dispose();
     _newClientNameController.dispose();
     _newClientVatController.dispose();
+    _evaluateDebounce?.cancel();
     super.dispose();
   }
 
@@ -162,11 +200,12 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         builder: (ctx) => _ProductDialog(products: products),
       );
 
-      if (selected != null) {
-        setState(() {
-          _lineItems.add(_LineItem(product: selected));
-        });
-      }
+       if (selected != null) {
+         setState(() {
+           _lineItems.add(_LineItem(product: selected));
+         });
+         _scheduleEvaluate();
+       }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,6 +224,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         'quantity': item.quantity,
         'unit_price': item.product.listPrice,
         'tax_id': item.product.taxesId,
+        'discount': item.discount,
       }).toList(),
     };
     if (_selectedTermsId != null) {
@@ -283,8 +323,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         await api.generateQuotation(_draftId!);
       } else {
         final draft = await api.createDraft(_buildPayload());
-        final draftId = draft['id'] as String;
-        await api.generateQuotation(draftId);
+        _draftId = draft['id'] as String;
+        _isEditing = true;
+        await api.generateQuotation(_draftId!);
       }
 
       if (!mounted) return;
@@ -296,12 +337,55 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
-      );
+      final messages = _parse409Messages(e);
+      if (messages != null && messages.isNotEmpty) {
+        _showViolationDialog(context, messages);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  List<String>? _parse409Messages(dynamic error) {
+    if (error is DioException && error.response?.statusCode == 409) {
+      final data = error.response?.data;
+      if (data is Map && data['detail'] is String) {
+        return (data['detail'] as String).split('; ');
+      }
+      if (data is String) {
+        return [data];
+      }
+    }
+    return null;
+  }
+
+  Future<void> _showViolationDialog(BuildContext context, List<String> messages) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Descuento fuera de límite'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: messages.map((m) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(m, style: GoogleFonts.inter(fontSize: 13, color: AppColors.error)),
+            )).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickClient() async {
@@ -648,6 +732,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           children: const [
             Expanded(flex: 3, child: Text('Producto', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
+            Expanded(flex: 1, child: Text('Dto %', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Precio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('Subtotal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
             Expanded(flex: 1, child: Text('IVA', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
@@ -662,12 +747,13 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          SizedBox(width: 160, child: Text('Producto', style: style)),
-          SizedBox(width: 80, child: Text('Cantidad', style: style)),
-          SizedBox(width: 80, child: Text('Precio', style: style)),
-          SizedBox(width: 80, child: Text('Subtotal', style: style)),
-          SizedBox(width: 80, child: Text('IVA', style: style)),
-          SizedBox(width: 80, child: Text('Total', style: style)),
+          SizedBox(width: 130, child: Text('Producto', style: style)),
+          SizedBox(width: 50, child: Text('Cant', style: style)),
+          SizedBox(width: 55, child: Text('Dto %', style: style)),
+          SizedBox(width: 65, child: Text('Precio', style: style)),
+          SizedBox(width: 65, child: Text('Subtotal', style: style)),
+          SizedBox(width: 55, child: Text('IVA', style: style)),
+          SizedBox(width: 65, child: Text('Total', style: style)),
           SizedBox(width: 40),
         ],
       ),
@@ -675,13 +761,20 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   Widget _buildProductRowWide(int index, _LineItem item) {
+    final rule = _discountRules[index];
+    final maxDisc = rule?.maxDiscount;
+    final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
     return Container(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3)))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
+        color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
           Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
           Expanded(flex: 1, child: _qtyStepper(item)),
+          Expanded(flex: 1, child: _discountField(item, index, maxDisc, exceedsLimit)),
           Expanded(flex: 1, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
@@ -700,39 +793,52 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
           )),
-          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _lineItems.removeAt(index)))),
+          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () {
+            setState(() => _lineItems.removeAt(index));
+            _scheduleEvaluate();
+          })),
         ],
       ),
     );
   }
 
   Widget _buildProductRowNarrow(int index, _LineItem item) {
+    final rule = _discountRules[index];
+    final maxDisc = rule?.maxDiscount;
+    final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
     return Container(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3)))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
+        color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          SizedBox(width: 160, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          SizedBox(width: 100, child: _qtyStepper(item)),
-          SizedBox(width: 80, child: Padding(
+          SizedBox(width: 100, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 40, child: _qtyStepper(item)),
+          SizedBox(width: 55, child: _discountField(item, index, maxDisc, exceedsLimit)),
+          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
           )),
-          SizedBox(width: 80, child: Padding(
+          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
           )),
-          SizedBox(width: 80, child: Padding(
+          SizedBox(width: 45, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: item.taxRate > 0
                 ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
                 : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
           )),
-          SizedBox(width: 80, child: Padding(
+          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
           )),
-          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _lineItems.removeAt(index)))),
+          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () {
+            setState(() => _lineItems.removeAt(index));
+            _scheduleEvaluate();
+          })),
         ],
       ),
     );
@@ -742,7 +848,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     return Row(
       children: [
         _stepperBtn(Icons.remove, () {
-          if (item.quantity > 1) setState(() => item.quantity--);
+          if (item.quantity > 1) {
+            setState(() => item.quantity--);
+            _scheduleEvaluate();
+          }
         }),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -750,6 +859,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         ),
         _stepperBtn(Icons.add, () {
           setState(() => item.quantity++);
+          _scheduleEvaluate();
         }),
       ],
     );
@@ -768,6 +878,60 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       ),
+    );
+  }
+
+  Widget _discountField(_LineItem item, int index, double? maxDiscount, bool exceedsLimit) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 55,
+          child: TextFormField(
+            initialValue: item.discount > 0 ? item.discount.toStringAsFixed(1) : '',
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: '0',
+              suffixText: '%',
+              suffixStyle: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(4),
+                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(4),
+                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(4),
+                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.primary, width: 1.5),
+              ),
+            ),
+            onChanged: (value) {
+              final parsed = double.tryParse(value.replaceAll(',', '.'));
+              setState(() {
+                item.discount = parsed ?? 0.0;
+              });
+              _scheduleEvaluate();
+            },
+          ),
+        ),
+        if (maxDiscount != null) ...[
+          const SizedBox(height: 1),
+          Text(
+            'máx ${maxDiscount.toStringAsFixed(0)}%',
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              color: exceedsLimit ? AppColors.error : AppColors.textSecondary,
+              fontWeight: exceedsLimit ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -975,13 +1139,14 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 class _LineItem {
   final Product product;
   int quantity;
+  double discount;
 
-  _LineItem({required this.product, double? quantity})
+  _LineItem({required this.product, double? quantity, this.discount = 0.0})
     : quantity = (quantity ?? 1).toInt();
 
   double get taxRate => product.taxesRate;
 
-  double get lineSubtotal => quantity * product.listPrice;
+  double get lineSubtotal => quantity * product.listPrice * (1 - discount / 100);
   double get lineTax => lineSubtotal * taxRate / 100;
   double get lineTotal => lineSubtotal + lineTax;
 }

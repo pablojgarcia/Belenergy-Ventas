@@ -41,11 +41,11 @@ def _seed_discount_rules(db):
     seed_discount_rules(db)
 
 
-def _seed_product(db, name, default_code, list_price, product_line_key):
+def _seed_product(db, name, default_code, list_price, product_line_key, odoo_id=999001):
     pl = db.query(models.ProductLine).filter(models.ProductLine.key == product_line_key).first()
     product = models.Product(
         name=name,
-        odoo_id=999001,
+        odoo_id=odoo_id,
         default_code=default_code,
         list_price=list_price,
         product_line_id=pl.id if pl else None,
@@ -260,3 +260,77 @@ class TestDiscountEngine:
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 20.0
+
+
+class TestDiscountEngineEvaluateLines:
+    def setup_method(self):
+        self.db_engine, self.Session, self.db_path = _fresh_db()
+        self.db = self.Session()
+        _seed_product_lines(self.db)
+        _seed_discount_rules(self.db)
+        self.engine = DiscountEngine(self.db)
+
+    def teardown_method(self):
+        self.db.close()
+        self.db_engine.dispose()
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_amount_band_lt_5000(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] == 11.0
+
+    def test_amount_4000_vendedor_interno(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 400.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] == 11.0
+
+    def test_amount_4000_representante_agro(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 400.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["max_discount"] == 5.0
+
+    def test_qty_band_pallet(self):
+        prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
+        lines_data = [{"product_id": prod.id, "quantity": 36, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] == 11.0
+
+    def test_qty_band_container_requires_approval(self):
+        prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
+        lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["requires_approval"] is True
+        assert results[0]["max_discount"] == 0.0
+
+    def test_discount_exceeds_max_returns_violation(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 15.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["message"] is not None
+        assert "15.0%" in results[0]["message"]
+        assert "11.0%" in results[0]["message"]
+
+    def test_no_product_line_no_validation(self):
+        prod = _seed_product(self.db, "Producto sin línea", "SIN-LINEA", 100.0, "deye")
+        prod.product_line_id = None
+        self.db.commit()
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 50.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] is None
+        assert results[0]["message"] is None
+
+    def test_multiple_lines(self):
+        prod1 = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        prod2 = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja", odoo_id=999002)
+        lines_data = [
+            {"product_id": prod1.id, "quantity": 10, "discount": 0.0},
+            {"product_id": prod2.id, "quantity": 36, "discount": 0.0},
+        ]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] == 11.0
+        assert results[1]["max_discount"] == 11.0

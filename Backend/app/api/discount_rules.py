@@ -4,10 +4,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..dependencies import get_current_admin
+from ..dependencies import get_current_user, get_current_admin
+from ..services.discount_engine import DiscountEngine
 from .. import models, schemas
 
 router = APIRouter(prefix="/discount-rules", tags=["discount-rules"])
+
+
+@router.post("/evaluate", response_model=list[schemas.DiscountRuleResult])
+def evaluate_discount_rules(
+    body: schemas.DiscountRuleEvaluateRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    seller_type = current_user.seller_type or "vendedor_interno"
+    lines_data = [
+        {"product_id": line.product_id, "quantity": line.quantity, "discount": line.discount}
+        for line in body.lines
+    ]
+    engine = DiscountEngine(db)
+    results = engine.evaluate_lines(lines_data, seller_type)
+    return [schemas.DiscountRuleResult(**r) for r in results]
 
 
 @router.get("", response_model=list[schemas.DiscountRuleOut])

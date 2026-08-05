@@ -266,6 +266,26 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getDiscountRules(String draftId) async {
+    try {
+      final response = await _dio.get('/quotation-drafts/$draftId/discount-rules');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching discount rules: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> evaluateDiscountRules(List<Map<String, dynamic>> lines) async {
+    try {
+      final response = await _dio.post('/discount-rules/evaluate', data: {'lines': lines});
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error evaluating discount rules: $e');
+      rethrow;
+    }
+  }
+
   Future<Uint8List> downloadPdf(String quotationId) async {
     final response = await _dio.get(
       '/quotations/$quotationId/pdf',

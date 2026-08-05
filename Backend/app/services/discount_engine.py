@@ -11,29 +11,35 @@ class DiscountEngine:
 
     def evaluate(self, draft: models.QuotationDraft, user: models.User) -> list[dict]:
         seller_type = user.seller_type or "vendedor_interno"
+        lines_data = [
+            {"product_id": line.product_id, "quantity": line.quantity, "discount": line.discount}
+            for line in draft.lines
+        ]
+        return self.evaluate_lines(lines_data, seller_type)
 
+    def evaluate_lines(self, lines_data: list[dict], seller_type: str) -> list[dict]:
         amount_untaxed = 0.0
-        for line in draft.lines:
+        for entry in lines_data:
             product = (
                 self.db.query(models.Product)
-                .filter(models.Product.id == line.product_id)
+                .filter(models.Product.id == entry["product_id"])
                 .first()
             )
             if product:
-                amount_untaxed += line.quantity * product.list_price
+                amount_untaxed += entry["quantity"] * product.list_price
 
         results = []
-        for i, line in enumerate(draft.lines):
+        for i, entry in enumerate(lines_data):
             product = (
                 self.db.query(models.Product)
-                .filter(models.Product.id == line.product_id)
+                .filter(models.Product.id == entry["product_id"])
                 .first()
             )
             if not product:
                 results.append(
                     {
                         "line_index": i,
-                        "product_name": f"Producto ID {line.product_id}",
+                        "product_name": f"Producto ID {entry['product_id']}",
                         "product_line_key": None,
                         "max_discount": None,
                         "requires_approval": False,
@@ -75,7 +81,7 @@ class DiscountEngine:
                 .all()
             )
 
-            applicable = self._find_applicable_rule(rules, line.quantity, amount_untaxed)
+            applicable = self._find_applicable_rule(rules, entry["quantity"], amount_untaxed)
 
             if applicable is None:
                 results.append(
@@ -94,17 +100,17 @@ class DiscountEngine:
 
             max_discount = applicable.max_discount
             requires_approval = applicable.requires_approval
-            tier = self._describe_tier(applicable, line.quantity, amount_untaxed)
+            tier = self._describe_tier(applicable, entry["quantity"], amount_untaxed)
 
             if requires_approval:
                 message = (
-                    f"Este tramo requiere aprobación manual. "
-                    f"El descuento automático máximo no aplica."
+                    "Este tramo requiere aprobación manual. "
+                    "El descuento automático máximo no aplica."
                 )
-            elif line.discount > max_discount + 0.001:
+            elif entry["discount"] > max_discount + 0.001:
                 message = (
                     f"El descuento de la línea #{i + 1} ('{product.name}') es "
-                    f"{line.discount:.1f}% pero el máximo para este tramo es "
+                    f"{entry['discount']:.1f}% pero el máximo para este tramo es "
                     f"{max_discount:.1f}%."
                 )
             else:
