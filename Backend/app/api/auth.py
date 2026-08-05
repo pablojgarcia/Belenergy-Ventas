@@ -55,6 +55,7 @@ def register(request: Request, user_in: schemas.UserCreate, db: Session = Depend
         username=user_in.username,
         name=user_in.name,
         role=role,
+        seller_type=user_in.seller_type,
         hashed_password=hash_password(user_in.password),
     )
     user_repo.create(user)
