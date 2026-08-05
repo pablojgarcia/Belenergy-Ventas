@@ -340,6 +340,18 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       final messages = _parse409Messages(e);
       if (messages != null && messages.isNotEmpty) {
         _showViolationDialog(context, messages);
+      } else if (e is DioException && e.response != null) {
+        final status = e.response?.statusCode;
+        final data = e.response?.data;
+        String detail;
+        if (data is Map && data['detail'] is String) {
+          detail = data['detail'] as String;
+        } else if (data is String) {
+          detail = data;
+        } else {
+          detail = e.toString();
+        }
+        _showErrorDialog(context, 'Error $status', detail);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
@@ -359,6 +371,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       if (data is String) {
         return [data];
       }
+      if (data is Map) {
+        return [data.toString()];
+      }
     }
     return null;
   }
@@ -377,6 +392,24 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
               child: Text(m, style: GoogleFonts.inter(fontSize: 13, color: AppColors.error)),
             )).toList(),
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showErrorDialog(BuildContext context, String title, String message) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Text(message, style: GoogleFonts.inter(fontSize: 13)),
         ),
         actions: [
           TextButton(
@@ -815,7 +848,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       child: Row(
         children: [
           SizedBox(width: 100, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          SizedBox(width: 40, child: _qtyStepper(item)),
+          SizedBox(width: 100, child: _qtyStepper(item)),
           SizedBox(width: 55, child: _discountField(item, index, maxDisc, exceedsLimit)),
           SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
