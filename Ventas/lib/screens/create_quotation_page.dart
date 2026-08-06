@@ -847,24 +847,24 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          Expanded(flex: 1, child: _qtyStepper(item)),
-          Expanded(flex: 1, child: _discountField(item, index, maxDisc, exceedsLimit)),
-          Expanded(flex: 1, child: Padding(
+          SizedBox(width: 99, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+          SizedBox(width: 100, child: _qtyStepper(item)),
+          SizedBox(width: 55, child: _discountField(item, index, maxDisc, exceedsLimit)),
+          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
           )),
-          Expanded(flex: 1, child: Padding(
+          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
           )),
-          Expanded(flex: 1, child: Padding(
+          SizedBox(width: 45, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: item.taxRate > 0
                 ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
                 : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
           )),
-          Expanded(flex: 1, child: Padding(
+          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
           )),
