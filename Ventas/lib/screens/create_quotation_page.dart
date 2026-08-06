@@ -886,9 +886,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             _scheduleEvaluate();
           }
         }),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          ),
         ),
         _stepperBtn(Icons.add, () {
           setState(() => item.quantity++);
