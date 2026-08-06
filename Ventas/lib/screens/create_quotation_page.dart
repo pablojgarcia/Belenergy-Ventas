@@ -867,40 +867,37 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 55,
-          child: TextFormField(
-            initialValue: item.discount > 0 ? item.discount.toStringAsFixed(1) : '',
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
-            decoration: InputDecoration(
-              hintText: '0',
-              suffixText: '%',
-              suffixStyle: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.primary, width: 1.5),
-              ),
+        TextFormField(
+          initialValue: item.discount > 0 ? item.discount.toStringAsFixed(1) : '',
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: '0',
+            suffixText: '%',
+            suffixStyle: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
             ),
-            onChanged: (value) {
-              final parsed = double.tryParse(value.replaceAll(',', '.'));
-              setState(() {
-                item.discount = parsed ?? 0.0;
-              });
-              _scheduleEvaluate();
-            },
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.primary, width: 1.5),
+            ),
           ),
+          onChanged: (value) {
+            final parsed = double.tryParse(value.replaceAll(',', '.'));
+            setState(() {
+              item.discount = parsed ?? 0.0;
+            });
+            _scheduleEvaluate();
+          },
         ),
         if (maxDiscount != null) ...[
           const SizedBox(height: 1),
