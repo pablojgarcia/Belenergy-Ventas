@@ -802,7 +802,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         children: [
           Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
           Expanded(flex: 1, child: _qtyStepper(item)),
-          Expanded(flex: 1, child: _discountField(item, index, maxDisc, exceedsLimit)),
+          Expanded(flex: 1, child: _discountField(item, index, exceedsLimit)),
           Expanded(flex: 1, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
@@ -863,56 +863,45 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     );
   }
 
-  Widget _discountField(_LineItem item, int index, double? maxDiscount, bool exceedsLimit) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextFormField(
-          initialValue: item.discount > 0 ? item.discount.toStringAsFixed(1) : '',
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: '0',
-            suffixText: '%',
-            suffixStyle: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.primary, width: 1.5),
-            ),
-          ),
-          onChanged: (value) {
-            final parsed = double.tryParse(value.replaceAll(',', '.'));
-            setState(() {
-              item.discount = parsed ?? 0.0;
-            });
-            _scheduleEvaluate();
-          },
-        ),
-        if (maxDiscount != null) ...[
-          const SizedBox(height: 1),
-          Text(
-            'máx ${maxDiscount.toStringAsFixed(0)}%',
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              color: exceedsLimit ? AppColors.error : AppColors.textSecondary,
-              fontWeight: exceedsLimit ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
+   Widget _discountField(_LineItem item, int index, bool exceedsLimit) {
+     return Column(
+       mainAxisSize: MainAxisSize.min,
+       children: [
+         TextFormField(
+           initialValue: item.discount > 0 ? item.discount.toStringAsFixed(1) : '',
+           keyboardType: TextInputType.numberWithOptions(decimal: true),
+           textAlign: TextAlign.center,
+           style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
+           decoration: InputDecoration(
+             hintText: '0',
+             suffixText: '%',
+             suffixStyle: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
+             isDense: true,
+             contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+             border: OutlineInputBorder(
+               borderRadius: BorderRadius.circular(4),
+               borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
+             ),
+             enabledBorder: OutlineInputBorder(
+               borderRadius: BorderRadius.circular(4),
+               borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
+             ),
+             focusedBorder: OutlineInputBorder(
+               borderRadius: BorderRadius.circular(4),
+               borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.primary, width: 1.5),
+             ),
+           ),
+           onChanged: (value) {
+             final parsed = double.tryParse(value.replaceAll(',', '.'));
+             setState(() {
+               item.discount = parsed ?? 0.0;
+             });
+             _scheduleEvaluate();
+           },
+         ),
+       ],
+     );
+   }
 
   Widget _buildTotalsCard() {
     final subtotal = _lineItems.fold<double>(0.0, (s, i) => s + i.lineSubtotal);

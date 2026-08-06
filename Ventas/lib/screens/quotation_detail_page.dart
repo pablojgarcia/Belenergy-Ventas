@@ -366,8 +366,9 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
 
   Widget _tableHeader(bool isWide) {
     if (isWide) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 4),
+      return Container(
+        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: const [
             Expanded(flex: 3, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
@@ -381,16 +382,20 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
         ),
       );
     }
-    return Row(
-      children: const [
-        SizedBox(width: 160, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-        SizedBox(width: 80, child: Text('Cantidad', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-        SizedBox(width: 90, child: Text('Precio Unit.', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-        SizedBox(width: 60, child: Text('Dto %', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-        SizedBox(width: 90, child: Text('Subtotal', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-        SizedBox(width: 90, child: Text('IVA', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-        SizedBox(width: 90, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-      ],
+    return Container(
+      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: const [
+          SizedBox(width: 160, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 80, child: Text('Cantidad', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 90, child: Text('Precio Unit.', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 60, child: Text('Dto %', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 90, child: Text('Subtotal', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 90, child: Text('IVA', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 90, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+        ],
+      ),
     );
   }
 
