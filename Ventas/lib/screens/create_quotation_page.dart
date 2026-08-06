@@ -744,14 +744,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       final table = Column(
         children: [
           _productTableHeader(isWide),
-          if (isWide)
-            ..._lineItems.asMap().entries.map((entry) => _buildProductRowWide(entry.key, entry.value))
-          else
-            ..._lineItems.asMap().entries.map((entry) => _buildProductRowNarrow(entry.key, entry.value)),
+          ..._lineItems.asMap().entries.map((entry) => _buildProductRow(entry.key, entry.value)),
         ],
       );
-      if (isWide) return table;
-      return SingleChildScrollView(scrollDirection: Axis.horizontal, child: table);
+      return table;
     });
   }
 
@@ -775,24 +771,24 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         ),
       );
     }
-    return Container(
+     return Container(
       decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          SizedBox(width: 130, child: Text('Producto', style: style)),
-          SizedBox(width: 50, child: Text('Cant', style: style)),
-          SizedBox(width: 55, child: Text('Dto %', style: style)),
-          SizedBox(width: 65, child: Text('Precio', style: style)),
-           SizedBox(width: 65, child: Text('Subtotal', style: style)),
-           SizedBox(width: 65, child: Text('Total', style: style)),
+          Expanded(flex: 3, child: Text('Producto', style: style)),
+          Expanded(flex: 1, child: Text('Cant', style: style)),
+          Expanded(flex: 1, child: Text('Dto %', style: style)),
+          Expanded(flex: 1, child: Text('Precio', style: style)),
+          Expanded(flex: 1, child: Text('Subtotal', style: style)),
+          Expanded(flex: 1, child: Text('Total', style: style)),
           SizedBox(width: 40),
         ],
       ),
     );
   }
 
-  Widget _buildProductRowWide(int index, _LineItem item) {
+   Widget _buildProductRow(int index, _LineItem item) {
     final rule = _discountRules[index];
     final maxDisc = rule?.maxDiscount;
     final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
@@ -816,48 +812,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
           )),
           Expanded(flex: 1, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: item.taxRate > 0
-                ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
-                : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-          )),
-          Expanded(flex: 1, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-          )),
-          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () {
-            setState(() => _lineItems.removeAt(index));
-            _scheduleEvaluate();
-          })),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductRowNarrow(int index, _LineItem item) {
-    final rule = _discountRules[index];
-    final maxDisc = rule?.maxDiscount;
-    final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
-        color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Row(
-        children: [
-          SizedBox(width: 99, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          SizedBox(width: 100, child: _qtyStepper(item)),
-          SizedBox(width: 55, child: _discountField(item, index, maxDisc, exceedsLimit)),
-          SizedBox(width: 55, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          SizedBox(width: 55, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
           )),
