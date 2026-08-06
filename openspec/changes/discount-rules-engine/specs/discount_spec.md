@@ -28,6 +28,7 @@
 - "a convenir" → requiere aprobación manual.
 
 ## Evaluación
-- Monto: precios de lista × cantidad, sin descuento.
+- Monto: precios de lista × cantidad, sin descuento, sumando **todos** los productos del presupuesto.
 - Tramo 10k aplica para 10k-50k.
-- Regla más restrictiva gana.
+- Líneas de monto (DEYE, Huawei, Sungrow, Estructuras, Cables): el tramo se determina por el total del presupuesto (sin impuestos, sin descuento). Ese tramo fija el % máximo por línea de producto.
+- Líneas de paneles (Paneles JA, Paneles Astro 575, Paneles Astro 615): el tramo se determina solo por la cantidad de la línea (reglas qty), sin fallback al tramo por monto.

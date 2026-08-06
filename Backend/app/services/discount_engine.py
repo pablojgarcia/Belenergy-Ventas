@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 
 from .. import models
 
+QTY_CONDITION_LINES = {"paneles_ja", "paneles_astro_575", "paneles_astro_615"}
+
 
 class DiscountEngine:
     def __init__(self, db: Session):
@@ -81,7 +83,12 @@ class DiscountEngine:
                 .all()
             )
 
-            applicable = self._find_applicable_rule(rules, entry["quantity"], amount_untaxed)
+            applicable = self._find_applicable_rule(
+                rules,
+                entry["quantity"],
+                amount_untaxed,
+                product_line.key,
+            )
 
             if applicable is None:
                 results.append(
@@ -136,26 +143,26 @@ class DiscountEngine:
         rules: list[models.DiscountRule],
         quantity: float,
         amount_untaxed: float,
+        product_line_key: str,
     ) -> Optional[models.DiscountRule]:
-        qty_rules = [r for r in rules if r.condition_type == "qty"]
-        amount_rules = [r for r in rules if r.condition_type == "amount"]
-        kit_rules = [r for r in rules if r.condition_type == "kit"]
-        campaign_rules = [r for r in rules if r.condition_type == "campaign"]
+        if product_line_key in QTY_CONDITION_LINES:
+            return self._first_match(rules, "qty", quantity, amount_untaxed)
+        return self._first_match(rules, "amount", quantity, amount_untaxed)
 
-        for rule in qty_rules:
-            if self._qty_matches(rule, quantity):
+    def _first_match(
+        self,
+        rules: list[models.DiscountRule],
+        condition_type: str,
+        quantity: float,
+        amount_untaxed: float,
+    ) -> Optional[models.DiscountRule]:
+        for rule in rules:
+            if rule.condition_type != condition_type:
+                continue
+            if condition_type == "qty" and self._qty_matches(rule, quantity):
                 return rule
-
-        for rule in amount_rules:
-            if self._amount_matches(rule, amount_untaxed):
+            if condition_type == "amount" and self._amount_matches(rule, amount_untaxed):
                 return rule
-
-        for rule in kit_rules:
-            return rule
-
-        for rule in campaign_rules:
-            return rule
-
         return None
 
     def _amount_matches(self, rule: models.DiscountRule, amount: float) -> bool:

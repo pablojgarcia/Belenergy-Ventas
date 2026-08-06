@@ -334,3 +334,39 @@ class TestDiscountEngineEvaluateLines:
         results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
         assert results[0]["max_discount"] == 11.0
         assert results[1]["max_discount"] == 11.0
+
+    def test_panel_qty_outside_bands_no_amount_fallback(self):
+        prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
+        lines_data = [{"product_id": prod.id, "quantity": 0.5, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] is None
+        assert results[0]["message"] is None
+
+    def test_amount_line_ignores_qty_rules(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        deye_line = self.db.query(models.ProductLine).filter(models.ProductLine.key == "deye").first()
+        self.db.add(models.DiscountRule(
+            seller_type="vendedor_interno",
+            product_line_id=deye_line.id,
+            condition_type="qty",
+            min_value=1.0,
+            max_value=18.0,
+            max_discount=0.0,
+            requires_approval=False,
+            is_active=True,
+        ))
+        self.db.commit()
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] == 11.0
+
+    def test_amount_line_total_includes_panel_lines(self):
+        prod1 = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        prod2 = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja", odoo_id=999002)
+        lines_data = [
+            {"product_id": prod1.id, "quantity": 10, "discount": 0.0},
+            {"product_id": prod2.id, "quantity": 180, "discount": 0.0},
+        ]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] == 20.0
+        assert results[1]["max_discount"] == 15.0
