@@ -744,7 +744,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       final table = Column(
         children: [
           _productTableHeader(isWide),
-          ..._lineItems.asMap().entries.map((entry) => _buildProductRow(entry.key, entry.value)),
+          ..._lineItems.asMap().entries.map((entry) => _buildProductRow(entry.key, entry.value, isWide)),
         ],
       );
       return table;
@@ -788,41 +788,41 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     );
   }
 
-   Widget _buildProductRow(int index, _LineItem item) {
-    final rule = _discountRules[index];
-    final maxDisc = rule?.maxDiscount;
-    final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
-        color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Row(
-        children: [
-          Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-          Expanded(flex: 1, child: _qtyStepper(item)),
-          Expanded(flex: 1, child: _discountField(item, index, exceedsLimit)),
-          Expanded(flex: 1, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          Expanded(flex: 1, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          Expanded(flex: 1, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-          )),
-          SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () {
-            setState(() => _lineItems.removeAt(index));
-            _scheduleEvaluate();
-          })),
-        ],
-      ),
-    );
-  }
+   Widget _buildProductRow(int index, _LineItem item, bool isWide) {
+     final rule = _discountRules[index];
+     final maxDisc = rule?.maxDiscount;
+     final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
+     return Container(
+       decoration: BoxDecoration(
+         border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
+         color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
+       ),
+       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+       child: Row(
+         children: [
+           Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
+           isWide ? Expanded(flex: 1, child: _qtyStepper(item)) : Expanded(flex: 1, child: _qtyField(item)),
+           Expanded(flex: 1, child: _discountField(item, index, exceedsLimit)),
+           Expanded(flex: 1, child: Padding(
+             padding: const EdgeInsets.symmetric(vertical: 6),
+             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+           )),
+           Expanded(flex: 1, child: Padding(
+             padding: const EdgeInsets.symmetric(vertical: 6),
+             child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
+           )),
+           Expanded(flex: 1, child: Padding(
+             padding: const EdgeInsets.symmetric(vertical: 6),
+             child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+           )),
+           SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () {
+             setState(() => _lineItems.removeAt(index));
+             _scheduleEvaluate();
+           })),
+         ],
+       ),
+     );
+   }
 
   Widget _qtyStepper(_LineItem item) {
     return Row(
@@ -860,8 +860,40 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       ),
-    );
-  }
+     );
+   }
+
+   Widget _qtyField(_LineItem item) {
+     return TextFormField(
+       initialValue: '${item.quantity}',
+       keyboardType: TextInputType.numberWithOptions(decimal: false),
+       textAlign: TextAlign.center,
+       style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+       decoration: InputDecoration(
+         isDense: true,
+         contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+         border: OutlineInputBorder(
+           borderRadius: BorderRadius.circular(4),
+           borderSide: BorderSide(color: AppColors.divider, width: 1),
+         ),
+         enabledBorder: OutlineInputBorder(
+           borderRadius: BorderRadius.circular(4),
+           borderSide: BorderSide(color: AppColors.divider, width: 1),
+         ),
+         focusedBorder: OutlineInputBorder(
+           borderRadius: BorderRadius.circular(4),
+           borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+         ),
+       ),
+       onChanged: (value) {
+         final parsed = int.tryParse(value);
+         if (parsed != null && parsed > 0) {
+           setState(() => item.quantity = parsed);
+           _scheduleEvaluate();
+         }
+       },
+     );
+   }
 
    Widget _discountField(_LineItem item, int index, bool exceedsLimit) {
      return Column(
