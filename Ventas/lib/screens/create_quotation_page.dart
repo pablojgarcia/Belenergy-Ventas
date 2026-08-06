@@ -784,9 +784,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           SizedBox(width: 50, child: Text('Cant', style: style)),
           SizedBox(width: 55, child: Text('Dto %', style: style)),
           SizedBox(width: 65, child: Text('Precio', style: style)),
-          SizedBox(width: 65, child: Text('Subtotal', style: style)),
-          SizedBox(width: 55, child: Text('IVA', style: style)),
-          SizedBox(width: 65, child: Text('Total', style: style)),
+           SizedBox(width: 65, child: Text('Subtotal', style: style)),
+           SizedBox(width: 65, child: Text('Total', style: style)),
           SizedBox(width: 40),
         ],
       ),
@@ -857,12 +856,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-          )),
-          SizedBox(width: 45, child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: item.taxRate > 0
-                ? Text('\$${item.lineTax.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))
-                : Text('—', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
           )),
           SizedBox(width: 55, child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
