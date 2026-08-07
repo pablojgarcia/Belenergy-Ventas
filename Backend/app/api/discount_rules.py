@@ -6,9 +6,27 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_user, get_current_admin
 from ..services.discount_engine import DiscountEngine
+from ..seed_discount_rules import BAND_MAP
 from .. import models, schemas
 
 router = APIRouter(prefix="/discount-rules", tags=["discount-rules"])
+
+BAND_LABELS = {
+    "amount": {
+        "lt_500": "< 500",
+        "lt_5000": "500 – 5.000",
+        "lt_10000": "5.000 – 50.000",
+        "gt_50000": "> 50.000",
+    },
+    "qty": {
+        "lt_18": "1 – 17 u",
+        "medio_pallet": "18 – 35 u (medio pallet)",
+        "pallet": "36 – 179 u (pallet)",
+        "5_pallets": "180 – 359 u (5 pallets)",
+        "10_pallets": "360 – 719 u (10 pallets)",
+        "container": "720+ u (container)",
+    },
+}
 
 
 @router.post("/evaluate", response_model=list[schemas.DiscountRuleResult])
@@ -31,12 +49,13 @@ def evaluate_discount_rules(
 def list_discount_rules(
     seller_type: Optional[str] = None,
     product_line_id: Optional[str] = None,
+    include_inactive: bool = False,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin),
 ):
-    query = db.query(models.DiscountRule).filter(
-        models.DiscountRule.is_active == True,
-    )
+    query = db.query(models.DiscountRule)
+    if not include_inactive:
+        query = query.filter(models.DiscountRule.is_active == True)
     if seller_type:
         query = query.filter(models.DiscountRule.seller_type == seller_type)
     if product_line_id:
@@ -72,12 +91,73 @@ def create_discount_rule(
 
 @router.get("/product-lines", response_model=list[schemas.ProductLineOut])
 def list_product_lines(
+    include_inactive: bool = False,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin),
 ):
-    return db.query(models.ProductLine).filter(
-        models.ProductLine.is_active == True
-    ).order_by(models.ProductLine.key).all()
+    query = db.query(models.ProductLine)
+    if not include_inactive:
+        query = query.filter(models.ProductLine.is_active == True)
+    return query.order_by(models.ProductLine.key).all()
+
+
+@router.post("/product-lines", response_model=schemas.ProductLineOut)
+def create_product_line(
+    body: schemas.ProductLineCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin),
+):
+    existing = db.query(models.ProductLine).filter(
+        models.ProductLine.key == body.key
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Ya existe una línea con esa clave")
+    line = models.ProductLine(key=body.key, name=body.name, is_active=True)
+    db.add(line)
+    db.commit()
+    db.refresh(line)
+    return line
+
+
+@router.put("/product-lines/{line_id}", response_model=schemas.ProductLineOut)
+def update_product_line(
+    line_id: str,
+    body: schemas.ProductLineUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin),
+):
+    line = db.query(models.ProductLine).filter(
+        models.ProductLine.id == uuid.UUID(line_id)
+    ).first()
+    if not line:
+        raise HTTPException(status_code=404, detail="Línea de producto no encontrada")
+    if body.name is not None:
+        line.name = body.name
+    if body.is_active is not None:
+        line.is_active = body.is_active
+    db.commit()
+    db.refresh(line)
+    return line
+
+
+@router.get("/bands", response_model=list[schemas.DiscountBandOut])
+def list_discount_bands(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin),
+):
+    bands = []
+    for condition_type, bands_map in BAND_MAP.items():
+        for band_key, (min_val, max_val) in bands_map.items():
+            bands.append(
+                {
+                    "key": band_key,
+                    "label": BAND_LABELS.get(condition_type, {}).get(band_key, band_key),
+                    "condition_type": condition_type,
+                    "min": min_val,
+                    "max": max_val,
+                }
+            )
+    return bands
 
 
 @router.put("/{rule_id}", response_model=schemas.DiscountRuleOut)
@@ -93,21 +173,22 @@ def update_discount_rule(
     if not rule:
         raise HTTPException(status_code=404, detail="Regla no encontrada")
 
-    if body.seller_type is not None:
+    fields = body.model_fields_set
+    if "seller_type" in fields:
         rule.seller_type = body.seller_type
-    if body.product_line_id is not None:
+    if "product_line_id" in fields:
         rule.product_line_id = body.product_line_id
-    if body.condition_type is not None:
+    if "condition_type" in fields:
         rule.condition_type = body.condition_type
-    if body.min_value is not None:
+    if "min_value" in fields:
         rule.min_value = body.min_value
-    if body.max_value is not None:
+    if "max_value" in fields:
         rule.max_value = body.max_value
-    if body.max_discount is not None:
+    if "max_discount" in fields:
         rule.max_discount = body.max_discount
-    if body.requires_approval is not None:
+    if "requires_approval" in fields:
         rule.requires_approval = body.requires_approval
-    if body.is_active is not None:
+    if "is_active" in fields:
         rule.is_active = body.is_active
 
     rule.updated_by = current_user.id

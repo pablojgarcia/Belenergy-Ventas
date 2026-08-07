@@ -318,6 +318,19 @@ class ProductLineCreate(BaseModel):
     name: str
 
 
+class ProductLineUpdate(BaseModel):
+    name: str | None = None
+    is_active: bool | None = None
+
+
+class DiscountBandOut(BaseModel):
+    key: str
+    label: str
+    condition_type: str
+    min: float | None = None
+    max: float | None = None
+
+
 class DiscountRuleOut(BaseModel):
     id: uuid.UUID
     seller_type: str

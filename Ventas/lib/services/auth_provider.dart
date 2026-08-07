@@ -15,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   UserInfo? get user => _user;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _status == AuthStatus.loading;
+  bool get isAdmin => _user?.role == 'admin';
 
   // ── Chequear sesión al inicio ────────────────────────────────────────────
   Future<void> checkAuthStatus() async {

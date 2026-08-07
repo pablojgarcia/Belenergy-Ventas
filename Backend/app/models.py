@@ -229,3 +229,13 @@ class DiscountRule(Base):
     updated_by = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    product_line = relationship("ProductLine")
+
+    @property
+    def product_line_key(self) -> str | None:
+        return self.product_line.key if self.product_line else None
+
+    @property
+    def product_line_name(self) -> str | None:
+        return self.product_line.name if self.product_line else None

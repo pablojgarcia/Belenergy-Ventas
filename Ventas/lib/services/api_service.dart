@@ -266,12 +266,12 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getDiscountRules(String draftId) async {
+  Future<List<Map<String, dynamic>>> getDraftDiscountRules(String draftId) async {
     try {
       final response = await _dio.get('/quotation-drafts/$draftId/discount-rules');
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
-      debugPrint('Error fetching discount rules: $e');
+      debugPrint('Error fetching draft discount rules: $e');
       rethrow;
     }
   }
@@ -284,6 +284,66 @@ class ApiService {
       debugPrint('Error evaluating discount rules: $e');
       rethrow;
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getDiscountRules({
+    String? sellerType,
+    String? productLineId,
+    bool includeInactive = true,
+  }) async {
+    try {
+      final response = await _dio.get('/discount-rules', queryParameters: {
+        if (sellerType != null && sellerType.isNotEmpty) 'seller_type': sellerType,
+        if (productLineId != null && productLineId.isNotEmpty) 'product_line_id': productLineId,
+        'include_inactive': includeInactive,
+      });
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching discount rules: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createDiscountRule(Map<String, dynamic> rule) async {
+    final response = await _dio.post('/discount-rules', data: rule);
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateDiscountRule(String id, Map<String, dynamic> rule) async {
+    final response = await _dio.put('/discount-rules/$id', data: rule);
+    return response.data;
+  }
+
+  Future<void> deleteDiscountRule(String id) async {
+    await _dio.delete('/discount-rules/$id');
+  }
+
+  Future<List<Map<String, dynamic>>> getDiscountBands() async {
+    final response = await _dio.get('/discount-rules/bands');
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  Future<List<Map<String, dynamic>>> getProductLines({bool includeInactive = true}) async {
+    try {
+      final response = await _dio.get(
+        '/discount-rules/product-lines',
+        queryParameters: {'include_inactive': includeInactive},
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      debugPrint('Error fetching product lines: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createProductLine(Map<String, dynamic> line) async {
+    final response = await _dio.post('/discount-rules/product-lines', data: line);
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateProductLine(String id, Map<String, dynamic> line) async {
+    final response = await _dio.put('/discount-rules/product-lines/$id', data: line);
+    return response.data;
   }
 
   Future<Uint8List> downloadPdf(String quotationId) async {

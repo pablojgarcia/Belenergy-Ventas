@@ -354,6 +354,20 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                 ],
               ),
               const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.go('/admin/discount-rules');
+                },
+                icon: const Icon(Icons.percent_rounded, color: AppColors.primary),
+                label: Text('Administrar descuentos', style: GoogleFonts.inter(color: AppColors.primary)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -490,6 +504,20 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.go('/admin/discount-rules');
+                },
+                icon: const Icon(Icons.percent_rounded, color: AppColors.primary),
+                label: Text('Administrar descuentos', style: GoogleFonts.inter(color: AppColors.primary)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
               const SizedBox(height: 12),
             ],

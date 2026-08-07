@@ -8,6 +8,7 @@ import '../screens/products_page.dart';
 import '../screens/create_quotation_page.dart';
 import '../screens/quotations_page.dart';
 import '../screens/quotation_detail_page.dart';
+import '../screens/admin_discount_rules_page.dart';
 import '../widgets/responsive_shell.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
@@ -32,6 +33,11 @@ GoRouter createRouter(AuthProvider authProvider) {
 
       if (!isLoggedIn && !isLogin) return '/login';
       if (isLoggedIn && isLogin) return '/';
+
+      if (state.matchedLocation.startsWith('/admin') &&
+          authProvider.user?.role != 'admin') {
+        return '/';
+      }
       return null;
     },
     routes: [
@@ -84,6 +90,10 @@ GoRouter createRouter(AuthProvider authProvider) {
                 ],
               ),
             ],
+          ),
+          GoRoute(
+            path: '/admin/discount-rules',
+            builder: (_, __) => const AdminDiscountRulesPage(),
           ),
         ],
       ),
