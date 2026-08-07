@@ -149,6 +149,31 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
 
   bool _downloadingPdf = false;
   bool _generating = false;
+  bool _refreshing = false;
+
+  Future<void> _refreshStatus() async {
+    setState(() => _refreshing = true);
+    final api = context.read<ApiService>();
+    try {
+      await api.refreshQuotationStatus(widget.itemId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Estado actualizado')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _refreshing = false);
+        _load();
+      }
+    }
+  }
 
   Future<void> _generate() async {
     setState(() => _generating = true);
@@ -201,6 +226,7 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
 
   Widget _buildHeader(Map<String, dynamic> item, bool isDraft) {
     final status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
+    final isFailed = item['status'] == 'failed';
     return LayoutBuilder(builder: (context, constraints) {
       final isNarrow = constraints.maxWidth < 500;
       return Column(
@@ -217,7 +243,7 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
               const SizedBox(width: 12),
               _buildStateChip(status),
               if (!isNarrow) const Spacer(),
-              if (!isNarrow && isDraft && item['status'] != 'failed') ...[
+              if (!isNarrow && isDraft) ...[
                 OutlinedButton.icon(
                   icon: const Icon(Icons.edit, size: 18),
                   label: const Text('Editar'),
@@ -229,28 +255,34 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : FilledButton.icon(
                         icon: const Icon(Icons.rocket_launch, size: 18),
-                        label: const Text('Generar'),
+                        label: Text(isFailed ? 'Reintentar' : 'Generar'),
                         onPressed: _generate,
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: isFailed ? Colors.red : AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
-              ] else if (!isNarrow && isDraft && item['status'] == 'failed')
-                FilledButton.icon(
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Reintentar'),
-                  onPressed: _generating ? null : _generate,
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                )
-              else
-                _downloadingPdf
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : IconButton(
-                        icon: Icon(Icons.download, color: AppColors.primary),
-                        tooltip: 'Descargar PDF',
-                        onPressed: _downloadPdf,
-                      ),
+              ] else if (!isNarrow)
+                ...[
+                  _refreshing
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : OutlinedButton.icon(
+                          icon: const Icon(Icons.sync, size: 18),
+                          label: const Text('Actualizar'),
+                          onPressed: _refreshStatus,
+                        ),
+                  const SizedBox(width: 8),
+                  _downloadingPdf
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : IconButton(
+                          icon: Icon(Icons.download, color: AppColors.primary),
+                          tooltip: 'Descargar PDF',
+                          onPressed: _downloadPdf,
+                        ),
+                ],
             ],
           ),
-          if (isNarrow && isDraft && item['status'] != 'failed') ...[
+          if (isNarrow && isDraft) ...[
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -265,20 +297,36 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : FilledButton.icon(
                         icon: const Icon(Icons.rocket_launch, size: 18),
-                        label: const Text('Generar'),
+                        label: Text(isFailed ? 'Reintentar' : 'Generar'),
                         onPressed: _generate,
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: isFailed ? Colors.red : AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
               ],
             ),
-          ] else if (isNarrow && isDraft && item['status'] == 'failed')
+          ] else if (isNarrow)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: FilledButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Reintentar'),
-                onPressed: _generating ? null : _generate,
-                style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: Row(
+                children: [
+                  _refreshing
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : OutlinedButton.icon(
+                          icon: const Icon(Icons.sync, size: 18),
+                          label: const Text('Actualizar'),
+                          onPressed: _refreshStatus,
+                        ),
+                  const SizedBox(width: 8),
+                  _downloadingPdf
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : IconButton(
+                          icon: Icon(Icons.download, color: AppColors.primary),
+                          tooltip: 'Descargar PDF',
+                          onPressed: _downloadPdf,
+                        ),
+                ],
               ),
             ),
           const SizedBox(height: 6),
@@ -505,7 +553,7 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
         children: [
           _sectionTitle('DETALLES'),
           const SizedBox(height: 16),
-          _detailRow('Estado', _stateLabel(status)),
+          _detailRow(isDraft ? 'Estado' : 'Estado Odoo', _stateLabel(status)),
           const SizedBox(height: 10),
           _detailRow('Tipo', isDraft ? 'Borrador' : 'Cotización'),
           const SizedBox(height: 10),
@@ -567,6 +615,14 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     switch (state) {
       case 'draft':
         return 'Borrador';
+      case 'sent':
+        return 'Enviada';
+      case 'sale':
+        return 'Confirmada';
+      case 'done':
+        return 'Finalizada';
+      case 'cancel':
+        return 'Cancelada';
       case 'generated':
         return 'Generada';
       case 'failed':
@@ -580,6 +636,14 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
     switch (state) {
       case 'draft':
         return Colors.orange;
+      case 'sent':
+        return Colors.blue;
+      case 'sale':
+        return Colors.green;
+      case 'done':
+        return Colors.teal;
+      case 'cancel':
+        return Colors.red;
       case 'generated':
         return Colors.green;
       case 'failed':

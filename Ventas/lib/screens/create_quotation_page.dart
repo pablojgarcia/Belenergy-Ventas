@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -183,6 +184,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     _descriptionController.dispose();
     _newClientNameController.dispose();
     _newClientVatController.dispose();
+    for (final item in _lineItems) {
+      item.discountController?.dispose();
+    }
     _evaluateDebounce?.cancel();
     super.dispose();
   }
@@ -215,6 +219,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   int _version = 1;
+
+  bool get _canSubmit =>
+      (_selectedClient != null || _isNewClient) && _lineItems.isNotEmpty;
 
   Map<String, dynamic> _buildPayload() {
     final payload = <String, dynamic>{
@@ -280,11 +287,13 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     final api = context.read<ApiService>();
     try {
       if (_isEditing) {
-        await api.updateDraft(_draftId!, _buildPayload());
+        final updated = await api.updateDraft(_draftId!, _buildPayload());
+        _version = updated['version'] as int? ?? _version + 1;
       } else {
         final draft = await api.createDraft(_buildPayload());
         _draftId = draft['id'] as String;
         _isEditing = true;
+        _version = draft['version'] as int? ?? 1;
       }
 
       if (!mounted) return;
@@ -319,12 +328,14 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     final api = context.read<ApiService>();
     try {
       if (_isEditing) {
-        await api.updateDraft(_draftId!, _buildPayload());
+        final updated = await api.updateDraft(_draftId!, _buildPayload());
+        _version = updated['version'] as int? ?? _version + 1;
         await api.generateQuotation(_draftId!);
       } else {
         final draft = await api.createDraft(_buildPayload());
         _draftId = draft['id'] as String;
         _isEditing = true;
+        _version = draft['version'] as int? ?? 1;
         await api.generateQuotation(_draftId!);
       }
 
@@ -337,21 +348,28 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      final messages = _parse409Messages(e);
-      if (messages != null && messages.isNotEmpty) {
-        _showViolationDialog(context, messages);
+      final violation = _parse409Violation(e);
+      if (violation != null && violation.$1.isNotEmpty) {
+        _showViolationDialog(
+          context,
+          violation.$1,
+          title: violation.$2 ?? 'Descuento fuera de límite',
+        );
       } else if (e is DioException && e.response != null) {
         final status = e.response?.statusCode;
         final data = e.response?.data;
         String detail;
+        String errorTitle = 'Error $status';
         if (data is Map && data['detail'] is String) {
           detail = data['detail'] as String;
+          final t = data['title'];
+          if (t is String && t.isNotEmpty) errorTitle = t;
         } else if (data is String) {
           detail = data;
         } else {
           detail = e.toString();
         }
-        _showErrorDialog(context, 'Error $status', detail);
+        _showErrorDialog(context, errorTitle, detail);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
@@ -362,27 +380,33 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     }
   }
 
-  List<String>? _parse409Messages(dynamic error) {
+  (List<String>, String?)? _parse409Violation(dynamic error) {
     if (error is DioException && error.response?.statusCode == 409) {
       final data = error.response?.data;
       if (data is Map && data['detail'] is String) {
-        return (data['detail'] as String).split('; ');
+        final messages = (data['detail'] as String).split('; ');
+        final title = data['title'];
+        return (messages, title is String ? title : null);
       }
       if (data is String) {
-        return [data];
+        return ([data], null);
       }
       if (data is Map) {
-        return [data.toString()];
+        return ([data.toString()], null);
       }
     }
     return null;
   }
 
-  Future<void> _showViolationDialog(BuildContext context, List<String> messages) async {
+  Future<void> _showViolationDialog(
+    BuildContext context,
+    List<String> messages, {
+    String title = 'Descuento fuera de límite',
+  }) async {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Descuento fuera de límite'),
+        title: Text(title),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -511,7 +535,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         elevation: 0,
         actions: [
           OutlinedButton.icon(
-            onPressed: _loading ? null : _submit,
+            onPressed: (_loading || !_canSubmit) ? null : _submit,
             icon: _loading
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.save_outlined),
@@ -519,7 +543,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
-            onPressed: _loading ? null : _submitAndGenerate,
+            onPressed: (_loading || !_canSubmit) ? null : _submitAndGenerate,
             icon: _loading
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.rocket_launch),
@@ -896,12 +920,13 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
    Widget _discountField(_LineItem item, int index, bool exceedsLimit) {
      return Column(
-       mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
        children: [
-         TextFormField(
-           initialValue: item.discount > 0 ? item.discount.toStringAsFixed(1) : '',
-           keyboardType: TextInputType.numberWithOptions(decimal: true),
-           textAlign: TextAlign.center,
+           TextFormField(
+            controller: item.discountController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [_discountInputFormatter],
+            textAlign: TextAlign.center,
            style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
            decoration: InputDecoration(
              hintText: '0',
@@ -922,17 +947,25 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.primary, width: 1.5),
              ),
            ),
-           onChanged: (value) {
-             final parsed = double.tryParse(value.replaceAll(',', '.'));
-             setState(() {
-               item.discount = parsed ?? 0.0;
-             });
-             _scheduleEvaluate();
-           },
-         ),
-       ],
-     );
-   }
+            onChanged: (value) {
+              final parsed = double.tryParse(value.replaceAll(',', '.'));
+              final clamped = (parsed ?? 0.0).clamp(0.0, 100.0);
+              setState(() {
+                item.discount = clamped;
+              });
+               if (parsed != null && parsed != clamped) {
+                 item.discountController?.text = clamped.toStringAsFixed(1);
+               }
+              _scheduleEvaluate();
+            },
+          ),
+        ],
+      );
+    }
+
+  final _discountInputFormatter = FilteringTextInputFormatter.allow(
+    RegExp(r'[\d.,]'),
+  );
 
   Widget _buildTotalsCard() {
     final subtotal = _lineItems.fold<double>(0.0, (s, i) => s + i.lineSubtotal);
@@ -1091,15 +1124,13 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                 controller: _newClientVatController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'CUIT (opcional)',
+                  labelText: 'CUIT *',
                   hintText: 'Ej: 20123456789',
                 ),
                 validator: (value) {
                   final vat = (value ?? '').trim();
-                  if (vat.isEmpty) return null;
-                  if (!_isValidCuit(vat)) {
-                    return 'CUIT inválido';
-                  }
+                  if (vat.isEmpty) return 'El CUIT es obligatorio';
+                  if (!_isValidCuit(vat)) return 'CUIT inválido';
                   return null;
                 },
               ),
@@ -1139,9 +1170,18 @@ class _LineItem {
   final Product product;
   int quantity;
   double discount;
+  TextEditingController? discountController;
 
   _LineItem({required this.product, double? quantity, this.discount = 0.0})
-    : quantity = (quantity ?? 1).toInt();
+    : quantity = (quantity ?? 1).toInt() {
+    discountController = TextEditingController(
+      text: discount > 0 ? discount.toStringAsFixed(1) : '',
+    );
+  }
+
+  void dispose() {
+    discountController?.dispose();
+  }
 
   double get taxRate => product.taxesRate;
 

@@ -220,6 +220,16 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> refreshQuotationStatus(String id) async {
+    try {
+      final response = await _dio.post('/quotations/$id/refresh-status');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      debugPrint('Error refreshing quotation status: $e');
+      rethrow;
+    }
+  }
+
   Future<void> syncCustomers() async {
     await _dio.post('/sync/customers');
     await _waitForSync('customers');

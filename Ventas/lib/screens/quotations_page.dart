@@ -77,7 +77,7 @@ class _QuotationsPageState extends State<QuotationsPage> {
       debugPrint('[QUOTATIONS] merged before filter: ${merged.length} items, tab=$tab');
 
       if (tab == 'draft') {
-        merged.removeWhere((i) => i['status'] != 'draft');
+        merged.removeWhere((i) => i['status'] != 'draft' && i['status'] != 'failed');
         debugPrint('[QUOTATIONS] filtered to draft: ${merged.length} items');
       } else if (tab == 'generated') {
         merged.retainWhere((i) {
