@@ -17,6 +17,11 @@ Ventas/build/
 login.json
 scripts/promote_to_admin.py
 
+# Local dev helpers and logs
+Backend/run_local.sh
+Backend/uvicorn_local.log
+logs.zip
+
 # Flutter web build output (copied by CI/CD, not committed)
 Backend/static/*
 !Backend/static/.gitkeep
