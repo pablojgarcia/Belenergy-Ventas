@@ -21,7 +21,7 @@ Sistema de gestión de ventas y cotizaciones integrado con **Odoo v19**.
 
 **Belenergy Ventas** es una aplicación web para la gestión de clientes, cotizaciones y productos, sincronizada en tiempo real con Odoo v19.
 
-**URL de acceso:** [https://ventas.belenergy-arg.workers.dev](https://ventas.belenergy-arg.workers.dev)
+**URL de acceso:** [https://solarapp-production.up.railway.app](https://solarapp-production.up.railway.app)
 
 ### Requisitos
 

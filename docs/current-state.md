@@ -19,7 +19,7 @@ Este documento detalla el estado funcional actual del repositorio de Belenergy-V
 - **Estado:** Provider (`AuthProvider`, `ApiService`).
 
 ## Infraestructura
-- **Backend:** Railway (FastAPI + migraciones Alembic vía `entrypoint.sh`).
-- **Frontend:** Cloudflare Workers (build de Flutter web).
+- **Backend:** Railway (FastAPI + migraciones Alembic en el arranque), proyecto `belenergy-ventas`, servicio `solarapp`.
+- **Frontend:** Flutter web servido por FastAPI desde el mismo servicio (same-origin), compilado en el Dockerfile multi-stage.
 - **Odoo:** Odoo v19 Online como fuente de verdad comercial.
-- **Contenedores:** Dockerfile en `Backend` y `docker-compose.yml` en la raíz.
+- **Contenedores:** Dockerfile multi-stage en la raíz y `docker-compose.yml` en la raíz (Postgres + perfil `api`).
