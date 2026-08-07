@@ -15,7 +15,10 @@ services:
       timeout: 5s
       retries: 5
 
+  # No se levanta con `docker compose up -d`: solo Postgres.
+  # Backend local = run_local.sh (Odoo de prueba). Este contenedor usa el .env de la raiz (produccion).
   api:
+    profiles: ["api"]
     build:
       context: .
       dockerfile: Dockerfile
