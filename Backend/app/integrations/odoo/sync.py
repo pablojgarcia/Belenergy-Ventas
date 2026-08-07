@@ -1,9 +1,41 @@
 import json
 import base64
+import re
+import unicodedata
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ... import models
 from .client import get_odoo_connection
+
+CATEGORY_ALIASES = {
+    "deye": "deye",
+    "huawei": "huawei",
+    "sungrow": "sungrow",
+    "cableado": "cables",
+    "cables": "cables",
+    "fijacion": "estructuras",
+    "estructuras": "estructuras",
+    "ja": "paneles_ja",
+    "paneles ja": "paneles_ja",
+    "astro 575": "paneles_astro_575",
+    "paneles astro 575": "paneles_astro_575",
+    "astro 615": "paneles_astro_615",
+    "paneles astro 615": "paneles_astro_615",
+}
+
+BRAND_KEYWORDS = [
+    ("deye", "deye"),
+    ("huawei", "huawei"),
+    ("sungrow", "sungrow"),
+]
+
+
+def _normalize_name(text: str) -> str:
+    normalized = unicodedata.normalize("NFD", text or "")
+    stripped = "".join(c for c in normalized if not unicodedata.combining(c))
+    lowered = stripped.lower()
+    return re.sub(r"[\s_/\-]+", " ", lowered).strip()
+
 
 
 def sync_customers(db: Session):
@@ -170,21 +202,27 @@ def _build_category_tree(odoo):
     return cat_map
 
 
-def _resolve_product_line(categ_id, cat_map, product_lines_map):
-    if not categ_id:
-        return None
-    current_id = categ_id
-    while current_id:
-        cat = cat_map.get(current_id)
-        if not cat:
-            break
-        key = cat['name'].strip().lower()
-        if key in product_lines_map:
-            return product_lines_map[key]
-        parent = cat.get('parent_id')
-        if not parent:
-            break
-        current_id = parent[0] if isinstance(parent, (list, tuple)) else parent
+def _resolve_product_line(categ_id, cat_map, product_lines_map, product_name=None):
+    if categ_id:
+        current_id = categ_id
+        while current_id:
+            cat = cat_map.get(current_id)
+            if not cat:
+                break
+            key = CATEGORY_ALIASES.get(_normalize_name(cat["name"]))
+            if key and key in product_lines_map:
+                return product_lines_map[key]
+            parent = cat.get("parent_id")
+            if not parent:
+                break
+            current_id = parent[0] if isinstance(parent, (list, tuple)) else parent
+
+    if product_name:
+        normalized = _normalize_name(product_name)
+        for keyword, key in BRAND_KEYWORDS:
+            if keyword in normalized and key in product_lines_map:
+                return product_lines_map[key]
+
     return None
 
 
@@ -239,7 +277,7 @@ def sync_products(db: Session):
         product_line_id = None
         if categ_odoo_id:
             product_line_id = _resolve_product_line(
-                categ_odoo_id, cat_map, product_lines_map
+                categ_odoo_id, cat_map, product_lines_map, product_name=str(p.get('name') or "")
             )
 
         product_data = {
