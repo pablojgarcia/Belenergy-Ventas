@@ -255,6 +255,7 @@ class QuotationOut(BaseModel):
     amount_total: float
     odoo_sale_order_id: int
     odoo_sale_order_name: str | None = None
+    status: str | None = None
     lines: list[QuotationDraftLineOut] = []
     created_by: int
     created_at: datetime

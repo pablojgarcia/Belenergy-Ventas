@@ -7,6 +7,13 @@ import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../widgets/app_table.dart';
 
+String quotationState(Map<String, dynamic> item) {
+  final isDraft = item['_type'] == 'draft';
+  final raw = item['status'] as String? ?? (isDraft ? 'draft' : 'generated');
+  if (!isDraft && raw == 'draft') return 'generated';
+  return raw;
+}
+
 class QuotationsPage extends StatefulWidget {
   const QuotationsPage({super.key});
 
@@ -60,6 +67,7 @@ class _QuotationsPageState extends State<QuotationsPage> {
       final merged = <Map<String, dynamic>>[];
 
       for (final d in drafts) {
+        if (d['status'] == 'generated') continue;
         merged.add({
           ...d,
           '_type': 'draft',
@@ -222,7 +230,7 @@ class _QuotationsPageState extends State<QuotationsPage> {
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       );
                     case 2:
-                      return _buildStateChip(isDraft ? (item['status'] as String? ?? 'draft') : 'generated');
+                      return _buildStateChip(quotationState(item));
                     case 3:
                       return TextButton(
                         onPressed: () => context.push('/quotations/${isDraft ? item['id'] : item['id']}'),
@@ -279,6 +287,14 @@ class _QuotationsPageState extends State<QuotationsPage> {
     switch (state) {
       case 'draft':
         return 'Borrador';
+      case 'sent':
+        return 'Enviada';
+      case 'sale':
+        return 'Confirmada';
+      case 'done':
+        return 'Finalizada';
+      case 'cancel':
+        return 'Cancelada';
       case 'generated':
         return 'Generada';
       case 'failed':
@@ -292,6 +308,14 @@ class _QuotationsPageState extends State<QuotationsPage> {
     switch (state) {
       case 'draft':
         return Colors.orange;
+      case 'sent':
+        return Colors.blue;
+      case 'sale':
+        return Colors.green;
+      case 'done':
+        return Colors.teal;
+      case 'cancel':
+        return Colors.red;
       case 'generated':
         return Colors.green;
       case 'failed':
@@ -311,7 +335,7 @@ class _OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDraft = item['_type'] == 'draft';
-    final state = isDraft ? (item['status'] as String? ?? 'draft') : 'generated';
+    final state = quotationState(item);
     final amountTotal = (item['amount_total'] ?? 0.0).toDouble();
 
     final clientName = item['customer_name'] as String? ?? '';
@@ -363,6 +387,14 @@ class _OrderCard extends StatelessWidget {
     switch (state) {
       case 'draft':
         return 'Borrador';
+      case 'sent':
+        return 'Enviada';
+      case 'sale':
+        return 'Confirmada';
+      case 'done':
+        return 'Finalizada';
+      case 'cancel':
+        return 'Cancelada';
       case 'generated':
         return 'Generada';
       case 'failed':
@@ -376,6 +408,14 @@ class _OrderCard extends StatelessWidget {
     switch (state) {
       case 'draft':
         return Colors.orange;
+      case 'sent':
+        return Colors.blue;
+      case 'sale':
+        return Colors.green;
+      case 'done':
+        return Colors.teal;
+      case 'cancel':
+        return Colors.red;
       case 'generated':
         return Colors.green;
       case 'failed':

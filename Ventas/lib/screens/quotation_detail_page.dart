@@ -225,7 +225,8 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   }
 
   Widget _buildHeader(Map<String, dynamic> item, bool isDraft) {
-    final status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
+    var status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
+    if (item['_type'] != 'draft' && status == 'draft') status = 'generated';
     final isFailed = item['status'] == 'failed';
     return LayoutBuilder(builder: (context, constraints) {
       final isNarrow = constraints.maxWidth < 500;
@@ -545,7 +546,8 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   }
 
   Widget _buildDetailsCard(Map<String, dynamic> item, bool isDraft) {
-    final status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
+    var status = item['status'] as String? ?? (item['_type'] == 'draft' ? 'draft' : 'generated');
+    if (!isDraft && status == 'draft') status = 'generated';
 
     return _card(
       child: Column(
@@ -553,12 +555,12 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
         children: [
           _sectionTitle('DETALLES'),
           const SizedBox(height: 16),
-          _detailRow(isDraft ? 'Estado' : 'Estado Odoo', _stateLabel(status)),
+          _detailRow('Estado', _stateLabel(status)),
           const SizedBox(height: 10),
           _detailRow('Tipo', isDraft ? 'Borrador' : 'Cotización'),
           const SizedBox(height: 10),
           if (!isDraft) ...[
-            _detailRow('N° Odoo', '${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}'),
+            _detailRow('N° Interno', '${item['odoo_sale_order_name'] ?? item['odoo_sale_order_id']}'),
             const SizedBox(height: 10),
           ],
           if (item['created_at'] != null)

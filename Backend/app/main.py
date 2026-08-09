@@ -1,9 +1,9 @@
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import inspect, text
 
 from alembic.config import Config as AlembicConfig
@@ -148,7 +148,45 @@ if "quotation_draft_lines" in inspector.get_table_names():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotation_draft_lines ADD COLUMN seller_type_applied VARCHAR"))
 
+if "quotations" in inspector.get_table_names():
+    q_cols = [c["name"] for c in inspector.get_columns("quotations")]
+    if "status" not in q_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotations ADD COLUMN status VARCHAR"))
+
 app = FastAPI(title="Belenergy API")
+
+DEFAULT_ERROR_TITLES = {
+    400: "Solicitud inválida",
+    401: "No autorizado",
+    403: "Acceso denegado",
+    404: "No encontrado",
+    405: "Método no permitido",
+    409: "Conflicto",
+    422: "Datos inválidos",
+    429: "Demasiadas solicitudes",
+    500: "Error interno del servidor",
+    502: "Error al comunicarse con Odoo",
+}
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = exc.detail
+    title = None
+    if isinstance(detail, dict):
+        title = detail.get("title")
+        message = detail.get("message", "Error")
+    else:
+        message = str(detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": message,
+            "title": title or DEFAULT_ERROR_TITLES.get(exc.status_code, "Error"),
+        },
+        headers=exc.headers,
+    )
 
 setup_rate_limiter(app)
 

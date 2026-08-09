@@ -28,6 +28,12 @@ class DraftService:
             if not customer:
                 raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
+        if new_client_name and not (new_client_vat or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Solicitud inválida", "message": "El CUIT es obligatorio para un cliente nuevo"},
+            )
+
         draft = models.QuotationDraft(
             customer_id=customer_id,
             new_client_name=new_client_name,
@@ -108,6 +114,7 @@ class DraftService:
             date_from=date_from,
             date_to=date_to,
         )
+        drafts = [d for d in drafts if d.status != "generated"]
         customer_ids = list({d.customer_id for d in drafts if d.customer_id})
         customers = {
             c.id: c.name
@@ -135,13 +142,28 @@ class DraftService:
         if not draft:
             raise HTTPException(status_code=404, detail="Borrador no encontrado")
 
-        if draft.status != "draft":
-            raise HTTPException(status_code=409, detail="No se puede modificar un borrador que ya fue generado")
+        if draft.status not in ("draft", "failed"):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "title": "Borrador ya generado",
+                    "message": "No se puede modificar un borrador que ya fue generado",
+                },
+            )
 
         if draft.version != version:
             raise HTTPException(
                 status_code=409,
-                detail="El borrador fue modificado por otro usuario. Recargue e intente nuevamente.",
+                detail={
+                    "title": "Borrador modificado",
+                    "message": "El borrador fue modificado por otro usuario. Recargue e intente nuevamente.",
+                },
+            )
+
+        if new_client_name and not (new_client_vat or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Solicitud inválida", "message": "El CUIT es obligatorio para un cliente nuevo"},
             )
 
         if customer_id is not None:

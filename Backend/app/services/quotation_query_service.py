@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..repositories.quotation_repository import QuotationRepository
+from ..integrations.odoo.sale import get_quotation_state
 
 
 class QuotationQueryService:
@@ -97,4 +98,28 @@ class QuotationQueryService:
         quotation = self.quotation_repo.get_by_id(quotation_id)
         if not quotation:
             raise HTTPException(status_code=404, detail="Cotización no encontrada")
+        return self._enrich(quotation)
+
+    def refresh_status(self, quotation_id: uuid.UUID) -> models.Quotation:
+        quotation = self.quotation_repo.get_by_id(quotation_id)
+        if not quotation:
+            raise HTTPException(status_code=404, detail="Cotización no encontrada")
+
+        try:
+            state = get_quotation_state(quotation.odoo_sale_order_id)
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail={"title": "Error al comunicarse con Odoo", "message": "No se pudo consultar el estado de la cotización en Odoo"},
+            )
+
+        if state is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"title": "No encontrado", "message": "La cotización no existe en Odoo"},
+            )
+
+        quotation.status = state
+        self.db.commit()
+        self.db.refresh(quotation)
         return self._enrich(quotation)

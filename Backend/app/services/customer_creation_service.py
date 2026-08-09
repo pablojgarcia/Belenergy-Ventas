@@ -20,37 +20,53 @@ class CustomerCreationService:
         if not name:
             raise HTTPException(status_code=400, detail="El nombre del cliente nuevo es obligatorio")
 
-        vat = (vat or "").strip() or None
-        if vat:
-            if not validar_cuit(vat):
-                raise HTTPException(status_code=400, detail="El CUIT ingresado no es válido")
+        vat = (vat or "").strip()
+        if not vat:
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Solicitud inválida", "message": "El CUIT es obligatorio para un cliente nuevo"},
+            )
+        if not validar_cuit(vat):
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Solicitud inválida", "message": "El CUIT ingresado no es válido"},
+            )
 
-            existing = self.db.query(models.Customer).filter(
-                models.Customer.cuit == vat
-            ).first()
-            if existing:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Ya existe un cliente con ese CUIT: {existing.name}",
-                )
+        existing = self.db.query(models.Customer).filter(
+            models.Customer.cuit == vat
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "title": "Cliente duplicado",
+                    "message": f"Ya existe un cliente con ese CUIT: {existing.name}",
+                },
+            )
 
-            if check_vat_exists(vat):
-                raise HTTPException(
-                    status_code=409,
-                    detail="Ya existe un cliente con ese CUIT en Odoo",
-                )
+        if check_vat_exists(vat):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "title": "Cliente duplicado",
+                    "message": "Ya existe un cliente con ese CUIT en Odoo",
+                },
+            )
 
         partner_data = {
             "company_name": name,
             "contact_name": name,
-            "vat": vat or "",
+            "vat": vat,
             "vendedor_externo": self.user.email,
         }
 
         try:
             odoo_partner_id = odoo_create_partner(partner_data)
         except ValueError as e:
-            raise HTTPException(status_code=409, detail=str(e))
+            raise HTTPException(
+                status_code=409,
+                detail={"title": "Error al crear el cliente", "message": str(e)},
+            )
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Error al crear el cliente en Odoo: {e}")
 
@@ -58,8 +74,8 @@ class CustomerCreationService:
             "odoo_id": odoo_partner_id,
             "name": name,
             "company_name": name,
-            "vat": vat or "",
-            "cuit": vat or "",
+            "vat": vat,
+            "cuit": vat,
             "salesperson_id": self.user.email,
         }
         customer = self.customer_repo.upsert(odoo_partner_id, local_data)

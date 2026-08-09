@@ -111,7 +111,10 @@ def create_product_line(
         models.ProductLine.key == body.key
     ).first()
     if existing:
-        raise HTTPException(status_code=409, detail="Ya existe una línea con esa clave")
+        raise HTTPException(
+            status_code=409,
+            detail={"title": "Línea duplicada", "message": "Ya existe una línea con esa clave"},
+        )
     line = models.ProductLine(key=body.key, name=body.name, is_active=True)
     db.add(line)
     db.commit()

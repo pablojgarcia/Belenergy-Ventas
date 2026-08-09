@@ -8,6 +8,7 @@ from ..services.draft_service import DraftService
 from ..services.quotation_generation_service import QuotationGenerationService
 from ..services.quotation_query_service import QuotationQueryService
 from ..services.discount_engine import DiscountEngine
+from ..services.pdf_service import PdfService
 from .. import models, schemas
 
 
@@ -141,6 +142,15 @@ def get_quotation(
     current_user: models.User = Depends(get_current_user),
 ):
     return QuotationQueryService(db, current_user).get(quotation_id)
+
+
+@quotations_router.post("/{quotation_id}/refresh-status", response_model=schemas.QuotationOut)
+def refresh_quotation_status(
+    quotation_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return QuotationQueryService(db, current_user).refresh_status(quotation_id)
 
 
 @quotations_router.get("/{quotation_id}/pdf")

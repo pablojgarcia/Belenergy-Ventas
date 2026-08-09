@@ -22,6 +22,9 @@ Backend/run_local.sh
 Backend/uvicorn_local.log
 logs.zip
 
+# Docs de trabajo internas
+docs/politica de descuentos por linea.xlsx
+
 # Flutter web build output (copied by CI/CD, not committed)
 Backend/static/*
 !Backend/static/.gitkeep

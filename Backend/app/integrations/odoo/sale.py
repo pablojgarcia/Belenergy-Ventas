@@ -36,3 +36,11 @@ def create_quotation(partner_id: int, order_lines: list[dict], description: str 
 
     order_id = odoo.env['sale.order'].create(order_vals)
     return order_id
+
+
+def get_quotation_state(odoo_id: int) -> str | None:
+    odoo = get_odoo_connection()
+    sale = odoo.env['sale.order'].read(odoo_id, ['state'])
+    if not sale:
+        return None
+    return sale[0].get('state')

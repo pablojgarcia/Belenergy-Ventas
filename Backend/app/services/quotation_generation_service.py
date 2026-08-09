@@ -31,7 +31,10 @@ class QuotationGenerationService:
             raise HTTPException(status_code=404, detail="Borrador no encontrado")
 
         if draft.status == "generated":
-            raise HTTPException(status_code=409, detail="Este borrador ya fue generado")
+            raise HTTPException(
+                status_code=409,
+                detail={"title": "Borrador ya generado", "message": "Este borrador ya fue generado"},
+            )
 
         if draft.status == "failed":
             draft.status = "draft"
@@ -82,7 +85,10 @@ class QuotationGenerationService:
             if abs(line.unit_price - product.list_price) > 0.001:
                 raise HTTPException(
                     status_code=409,
-                    detail=f"El precio del producto '{product.name}' en la línea #{i + 1} cambió. Recargue el borrador.",
+                    detail={
+                        "title": "Precio desactualizado",
+                        "message": f"El precio del producto '{product.name}' en la línea #{i + 1} cambió. Recargue el borrador.",
+                    },
                 )
 
         engine = DiscountEngine(self.db)
@@ -91,7 +97,10 @@ class QuotationGenerationService:
         violations = [r for r in evaluation if r.get("message")]
         if violations:
             messages = "; ".join(r["message"] for r in violations)
-            raise HTTPException(status_code=409, detail=messages)
+            raise HTTPException(
+                status_code=409,
+                detail={"title": "Descuento fuera de límite", "message": messages},
+            )
 
         amount_untaxed = 0.0
         amount_tax = 0.0
@@ -173,6 +182,7 @@ class QuotationGenerationService:
             amount_total=amount_total,
             odoo_sale_order_id=odoo_id,
             odoo_sale_order_name=odoo_name,
+            status="draft",
             created_by=self.user.id,
         )
         self.quotation_repo.create(quotation)

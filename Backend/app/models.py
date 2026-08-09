@@ -186,6 +186,7 @@ class Quotation(Base):
     amount_total = Column(Float, default=0.0)
     odoo_sale_order_id = Column(Integer, nullable=False)
     odoo_sale_order_name = Column(String(100), nullable=True)
+    status = Column(String(20), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
