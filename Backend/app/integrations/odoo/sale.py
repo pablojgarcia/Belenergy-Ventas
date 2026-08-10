@@ -1,7 +1,13 @@
 from .client import get_odoo_connection
 
 
-def create_quotation(partner_id: int, order_lines: list[dict], description: str = ""):
+def create_quotation(
+    partner_id: int,
+    order_lines: list[dict],
+    description: str = "",
+    user_id: int | None = None,
+    vendedor_externo_partner_id: int | None = None,
+):
     odoo = get_odoo_connection()
 
     partner_count = odoo.env['res.partner'].search_count([('id', '=', partner_id)])
@@ -33,6 +39,10 @@ def create_quotation(partner_id: int, order_lines: list[dict], description: str 
     }
     if description:
         order_vals['note'] = description
+    if user_id:
+        order_vals['user_id'] = user_id
+    if vendedor_externo_partner_id:
+        order_vals['x_studio_vendedor_externo'] = vendedor_externo_partner_id
 
     order_id = odoo.env['sale.order'].create(order_vals)
     return order_id

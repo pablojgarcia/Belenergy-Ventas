@@ -1,4 +1,53 @@
+import logging
+
 from .client import get_odoo_connection
+
+logger = logging.getLogger(__name__)
+
+
+def resolve_app_user_partner_id(email: str) -> int | None:
+    """Resuelve el res.partner que representa al usuario de la app (vendedor externo).
+
+    Busca primero res.users por login (email del user de la app) y toma su partner_id.
+    Si no hay user, cae a res.partner por email y luego por nombre.
+    Nunca lanza: ante cualquier error loguea y devuelve None.
+    """
+    if not email:
+        return None
+    try:
+        odoo = get_odoo_connection()
+        user_ids = odoo.env["res.users"].search([("login", "=", email)])
+        if user_ids:
+            user = odoo.env["res.users"].read(user_ids[0], ["partner_id"])
+            if user and user[0].get("partner_id"):
+                return int(user[0]["partner_id"][0])
+        partner_ids = odoo.env["res.partner"].search([("email", "=", email)])
+        if not partner_ids:
+            partner_ids = odoo.env["res.partner"].search([("name", "=", email)])
+        if partner_ids:
+            return int(partner_ids[0])
+        return None
+    except Exception as e:
+        logger.warning("No se pudo resolver el vendedor externo para '%s': %s", email, e)
+        return None
+
+
+def resolve_res_users_id_by_name(name: str) -> int | None:
+    """Resuelve el res.users (vendedor interno) por nombre exacto.
+
+    Toma el primero si hay varios. Nunca lanza: ante cualquier error loguea y devuelve None.
+    """
+    if not name:
+        return None
+    try:
+        odoo = get_odoo_connection()
+        user_ids = odoo.env["res.users"].search([("name", "=", name)])
+        if user_ids:
+            return int(user_ids[0])
+        return None
+    except Exception as e:
+        logger.warning("No se pudo resolver el vendedor interno '%s': %s", name, e)
+        return None
 
 
 def check_vat_exists(vat: str) -> bool:

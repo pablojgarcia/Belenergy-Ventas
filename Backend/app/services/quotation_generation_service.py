@@ -1,5 +1,6 @@
 import uuid
 import json
+import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,10 @@ from ..repositories.customer_repository import CustomerRepository
 from ..repositories.product_repository import ProductRepository
 from ..integrations.odoo.sale import create_quotation
 from ..integrations.odoo.client import get_odoo_connection
+from ..integrations.odoo.partner import (
+    resolve_app_user_partner_id,
+    resolve_res_users_id_by_name,
+)
 from ..services.customer_creation_service import CustomerCreationService
 from ..services.discount_engine import DiscountEngine
 from ..integrations.odoo.industry import (
@@ -18,6 +23,8 @@ from ..integrations.odoo.industry import (
     auto_industry_for_seller_types,
     effective_seller_type,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class QuotationGenerationService:
@@ -168,6 +175,8 @@ class QuotationGenerationService:
                 partner_id=customer.odoo_id,
                 order_lines=odoo_lines,
                 description=note,
+                user_id=self._resolve_vendedor_interno_id(),
+                vendedor_externo_partner_id=self._resolve_vendedor_externo_id(),
             )
         except ValueError as e:
             draft.status = "failed"
@@ -210,3 +219,25 @@ class QuotationGenerationService:
             "odoo_sale_order_id": odoo_id,
             "odoo_sale_order_name": odoo_name,
         }
+
+    def _resolve_vendedor_externo_id(self) -> int | None:
+        """res.partner que representa al usuario de la app en Odoo (vendedor externo)."""
+        vendedor_id = resolve_app_user_partner_id(self.user.email)
+        if vendedor_id is None:
+            logger.warning(
+                "Vendedor externo no resuelto para el usuario '%s' (%s)",
+                self.user.username,
+                self.user.email,
+            )
+        return vendedor_id
+
+    def _resolve_vendedor_interno_id(self) -> int | None:
+        """res.users (vendedor interno) asignado al usuario de la app."""
+        vendedor_id = resolve_res_users_id_by_name(self.user.vendedor_interno)
+        if vendedor_id is None:
+            logger.warning(
+                "Vendedor interno no resuelto para el usuario '%s' (vendedor_interno=%r)",
+                self.user.username,
+                self.user.vendedor_interno,
+            )
+        return vendedor_id

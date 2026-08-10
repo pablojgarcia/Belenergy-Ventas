@@ -34,11 +34,13 @@ class _FakeOdoo:
             "product.product": self,
             "sale.order": self,
         }
+        self.last_created_vals = None
 
     def search_count(self, domain):
         return 1
 
     def create(self, vals):
+        self.last_created_vals = vals
         return 888888
 
     def read(self, ids, fields):
@@ -104,6 +106,12 @@ def test_generate_creates_customer_then_quotation(client, admin_headers):
     ), patch(
         "app.services.quotation_generation_service.get_odoo_connection",
         return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id",
+        return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name",
+        return_value=None,
     ):
         gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
 
@@ -123,6 +131,82 @@ def test_generate_creates_customer_then_quotation(client, admin_headers):
     assert created["name"] == "Cliente Generado SRL"
     assert created["cuit"] == "30600000000"
     assert created["industry"] == "Agricultura"
+
+
+def test_generate_sets_vendedor_externo_and_vendedor_interno(client, admin_headers):
+    _seed_product()
+    fake = _FakeOdoo()
+
+    resp = client.post(
+        "/quotation-drafts",
+        headers=admin_headers,
+        json={
+            "new_client_name": "Cliente Vendedores SRL",
+            "new_client_vat": "30600000000",
+            "lines": [
+                {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "tax_id": []}
+            ],
+        },
+    )
+    draft_id = resp.json()["id"]
+
+    with patch(
+        "app.services.customer_creation_service.odoo_create_partner", return_value=777777,
+    ), patch(
+        "app.services.customer_creation_service.check_vat_exists", return_value=False,
+    ), patch(
+        "app.integrations.odoo.sale.get_odoo_connection", return_value=fake,
+    ), patch(
+        "app.services.quotation_generation_service.get_odoo_connection", return_value=fake,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=555555,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=444444,
+    ):
+        gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
+
+    assert gen.status_code == 200, gen.text
+    assert fake.last_created_vals is not None
+    assert fake.last_created_vals["user_id"] == 444444
+    assert fake.last_created_vals["x_studio_vendedor_externo"] == 555555
+
+
+def test_generate_skips_vendedores_when_not_resolvable(client, admin_headers):
+    _seed_product()
+    fake = _FakeOdoo()
+
+    resp = client.post(
+        "/quotation-drafts",
+        headers=admin_headers,
+        json={
+            "new_client_name": "Cliente Sin Vendedores SRL",
+            "new_client_vat": "30600000000",
+            "lines": [
+                {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "tax_id": []}
+            ],
+        },
+    )
+    draft_id = resp.json()["id"]
+
+    with patch(
+        "app.services.customer_creation_service.odoo_create_partner", return_value=777777,
+    ), patch(
+        "app.services.customer_creation_service.check_vat_exists", return_value=False,
+    ), patch(
+        "app.integrations.odoo.sale.get_odoo_connection", return_value=fake,
+    ), patch(
+        "app.services.quotation_generation_service.get_odoo_connection", return_value=fake,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
+    ):
+        gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
+
+    assert gen.status_code == 200, gen.text
+    assert fake.last_created_vals is not None
+    assert "user_id" not in fake.last_created_vals
+    assert "x_studio_vendedor_externo" not in fake.last_created_vals
 
 
 def test_generate_with_invalid_cuit_fails(client, admin_headers):
@@ -203,6 +287,10 @@ def test_generate_with_duplicate_cuit_returns_structured_409(client, admin_heade
         "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
     ), patch(
         "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
     ):
         gen1 = client.post(f"/quotation-drafts/{draft1}/generate", headers=admin_headers)
     assert gen1.status_code == 200, gen1.text
@@ -331,6 +419,10 @@ def test_generate_sets_quotation_status_draft(client, admin_headers):
         "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
     ), patch(
         "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
     ):
         gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
     assert gen.status_code == 200, gen.text
@@ -365,6 +457,10 @@ def test_refresh_status_updates_quotation_from_odoo(client, admin_headers):
         "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
     ), patch(
         "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
     ):
         client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
 
@@ -405,6 +501,10 @@ def test_generated_draft_not_in_drafts_list(client, admin_headers):
         "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
     ), patch(
         "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
     ):
         gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
     assert gen.status_code == 200, gen.text
