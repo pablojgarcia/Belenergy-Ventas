@@ -15,6 +15,7 @@ class Client {
   final String zipCode;
   final String country;
   final String website;
+  final String industry;
   final String? salespersonEmail;
 
   Client({
@@ -34,6 +35,7 @@ class Client {
     this.zipCode = '',
     this.country = '',
     this.website = '',
+    this.industry = '',
     this.salespersonEmail,
   });
 
@@ -55,6 +57,7 @@ class Client {
       zipCode: json['zip'] ?? '',
       country: json['country'] ?? '',
       website: json['website'] ?? '',
+      industry: json['industry'] ?? '',
       salespersonEmail: json['salesperson_id'],
     );
   }

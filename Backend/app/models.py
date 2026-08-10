@@ -38,6 +38,7 @@ class Customer(Base):
     vendedor_interno = Column(String)
     salesperson_id = Column(String)
     website = Column(String)
+    industry = Column(String, nullable=True)
 
 
 class Contact(Base):

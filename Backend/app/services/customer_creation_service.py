@@ -82,6 +82,7 @@ class CustomerCreationService:
             "vat": vat,
             "cuit": vat,
             "salesperson_id": self.user.email,
+            "industry": industry_name,
         }
         customer = self.customer_repo.upsert(odoo_partner_id, local_data)
         self.db.flush()

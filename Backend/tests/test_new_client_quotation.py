@@ -78,6 +78,7 @@ def test_generate_creates_customer_then_quotation(client, admin_headers):
         json={
             "new_client_name": "Cliente Generado SRL",
             "new_client_vat": "30600000000",
+            "new_client_industry": "Agricultura",
             "lines": [
                 {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "tax_id": []}
             ],
@@ -91,6 +92,9 @@ def test_generate_creates_customer_then_quotation(client, admin_headers):
     ), patch(
         "app.services.customer_creation_service.check_vat_exists",
         return_value=False,
+    ), patch(
+        "app.services.customer_creation_service.resolve_industry_id",
+        return_value=1,
     ), patch(
         "app.integrations.odoo.sale.create_quotation",
         return_value=888888,
@@ -118,6 +122,7 @@ def test_generate_creates_customer_then_quotation(client, admin_headers):
     created = next(c for c in customers if c["odoo_id"] == 777777)
     assert created["name"] == "Cliente Generado SRL"
     assert created["cuit"] == "30600000000"
+    assert created["industry"] == "Agricultura"
 
 
 def test_generate_with_invalid_cuit_fails(client, admin_headers):
@@ -409,3 +414,73 @@ def test_generated_draft_not_in_drafts_list(client, admin_headers):
 
     quotations = client.get("/quotations", headers=admin_headers).json()
     assert any(q["id"] == draft_id for q in quotations), "La cotización generada debería listarse"
+
+
+def _seed_customers():
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    agro = models.Customer(odoo_id=500001, name="Campo SRL", industry="Agricultura")
+    otro = models.Customer(odoo_id=500002, name="Otra SA", industry="Tecnología")
+    sin = models.Customer(odoo_id=500003, name="Sin Industria SA")
+    db.add_all([agro, otro, sin])
+    db.commit()
+    db.close()
+
+
+def test_customers_list_includes_industry(client, admin_headers):
+    _seed_customers()
+    customers = client.get("/customers", headers=admin_headers).json()
+    by_name = {c["name"]: c for c in customers}
+    assert by_name["Campo SRL"]["industry"] == "Agricultura"
+    assert by_name["Otra SA"]["industry"] == "Tecnología"
+    assert by_name["Sin Industria SA"]["industry"] is None
+
+
+def test_customers_industry_filter(client, admin_headers):
+    _seed_customers()
+    agro = client.get("/customers", headers=admin_headers, params={"industry": "Agricultura"}).json()
+    names = {c["name"] for c in agro}
+    assert names == {"Campo SRL"}
+
+    tech = client.get("/customers", headers=admin_headers, params={"industry": "Tecnología"}).json()
+    assert {c["name"] for c in tech} == {"Otra SA"}
+
+    missing = client.get("/customers", headers=admin_headers, params={"industry": "Inexistente"}).json()
+    assert missing == []
+
+
+def test_customers_industry_filter_scoped_to_salesperson(client, admin_headers):
+    resp = client.post(
+        "/auth/register",
+        headers=admin_headers,
+        json={
+            "username": "vendagro",
+            "email": "vendagro@test.com",
+            "name": "Vendedor Agro",
+            "role": "vendedor",
+            "password": "pass123",
+            "seller_types": ["representante_general", "representante_agro"],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    login = client.post("/auth/login", json={"username": "vendagro", "password": "pass123"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    db.add_all([
+        models.Customer(odoo_id=600001, name="Mio Agro SA", salesperson_id="vendagro@test.com", industry="Agricultura"),
+        models.Customer(odoo_id=600002, name="Mio Tech SA", salesperson_id="vendagro@test.com", industry="Tecnología"),
+        models.Customer(odoo_id=600003, name="De Otro Agro SA", salesperson_id="otro@test.com", industry="Agricultura"),
+    ])
+    db.commit()
+    db.close()
+
+    mine = client.get("/customers", headers=headers, params={"industry": "Agricultura"}).json()
+    assert {c["name"] for c in mine} == {"Mio Agro SA"}
+
+    all_mine = client.get("/customers", headers=headers).json()
+    assert {c["name"] for c in all_mine} == {"Mio Agro SA", "Mio Tech SA"}

@@ -100,9 +100,11 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getCustomers() async {
+  Future<List<Map<String, dynamic>>> getCustomers({String? industry}) async {
     try {
-      final response = await _dio.get('/customers');
+      final response = await _dio.get('/customers', queryParameters: {
+        if (industry != null && industry.isNotEmpty) 'industry': industry,
+      });
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
       debugPrint('Error fetching customers: $e');

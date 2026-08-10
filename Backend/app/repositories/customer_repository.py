@@ -29,6 +29,18 @@ class CustomerRepository:
     def get_all(self) -> list[models.Customer]:
         return self.db.query(models.Customer).all()
 
+    def list(
+        self,
+        salesperson_ids: list[str] | None = None,
+        industry: str | None = None,
+    ) -> list[models.Customer]:
+        query = self.db.query(models.Customer)
+        if salesperson_ids:
+            query = query.filter(models.Customer.salesperson_id.in_(salesperson_ids))
+        if industry:
+            query = query.filter(models.Customer.industry == industry)
+        return query.all()
+
     def upsert(self, odoo_id: int, data: dict) -> models.Customer:
         customer = self.get_by_odoo_id(odoo_id)
         if customer:

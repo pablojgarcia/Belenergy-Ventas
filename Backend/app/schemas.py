@@ -60,6 +60,7 @@ class CustomerBase(BaseModel):
     vendedor_interno: Optional[str] = None
     salesperson_id: Optional[str] = None
     website: Optional[str] = None
+    industry: Optional[str] = None
 
 class CustomerCreate(CustomerBase):
     odoo_id: int

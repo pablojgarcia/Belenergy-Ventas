@@ -45,7 +45,7 @@ def sync_customers(db: Session):
         'id', 'name', 'email', 'phone', 'company_name',
         'street', 'city',
         'state_id', 'zip', 'country_id', 'vat', 'user_id',
-        'x_studio_vendedor_externo', 'website'
+        'x_studio_vendedor_externo', 'website', 'industry_id'
     ]
 
     print("Buscando clientes en Odoo...")
@@ -100,7 +100,8 @@ def sync_customers(db: Session):
             "cuit": str(p.get('vat') or ""),
             "vendedor_interno": interno_val or "",
             "salesperson_id": salesperson_val,
-            "website": str(p.get('website') or "")
+            "website": str(p.get('website') or ""),
+            "industry": str(p.get('industry_id')[1] if p.get('industry_id') else ""),
         }
 
         db.execute(

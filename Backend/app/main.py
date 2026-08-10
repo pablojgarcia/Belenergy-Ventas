@@ -94,6 +94,12 @@ if "orders" in inspector.get_table_names():
 if "taxes" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.Tax.__table__])
 
+if "customers" in inspector.get_table_names():
+    cust_cols = [c["name"] for c in inspector.get_columns("customers")]
+    if "industry" not in cust_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE customers ADD COLUMN industry VARCHAR"))
+
 if "quotation_drafts" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.QuotationDraft.__table__])
 

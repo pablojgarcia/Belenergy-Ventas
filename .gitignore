@@ -19,6 +19,8 @@ scripts/promote_to_admin.py
 
 # Local dev helpers and logs
 Backend/run_local.sh
+Backend/dev.sh
+Backend/.uvicorn.pid
 Backend/uvicorn_local.log
 logs.zip
 

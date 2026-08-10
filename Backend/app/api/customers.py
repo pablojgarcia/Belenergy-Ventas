@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -11,10 +11,15 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 
 @router.get("", response_model=list[schemas.CustomerOut])
-def get_customers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_customers(
+    industry: str | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    repo = CustomerRepository(db)
     if current_user.role == "admin":
-        return CustomerRepository(db).get_all()
-    return CustomerRepository(db).get_by_salesperson_ids([current_user.email, current_user.name])
+        return repo.list(industry=industry)
+    return repo.list(salesperson_ids=[current_user.email, current_user.name], industry=industry)
 
 
 @router.get("/{customer_id}", response_model=schemas.CustomerOut)

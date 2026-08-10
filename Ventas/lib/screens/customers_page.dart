@@ -5,10 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/customer_model.dart';
 import '../models/contact_model.dart';
+import '../models/industry_model.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
 import '../services/api_service.dart';
 import '../widgets/app_table.dart';
+
+const String _kAllIndustries = '__all__';
 
 class CustomersPage extends StatefulWidget {
   const CustomersPage({super.key});
@@ -22,11 +25,14 @@ class _CustomersPageState extends State<CustomersPage> {
   List<Client> _allClients = [];
   List<Client> _filteredClients = [];
   final _searchController = TextEditingController();
+  IndustryOptions? _industryOptions;
+  String? _selectedIndustry;
   bool _loaded = false;
 
   @override
   void initState() {
     super.initState();
+    _loadIndustryOptions();
     _clientsFuture = _fetchClients();
   }
 
@@ -36,9 +42,19 @@ class _CustomersPageState extends State<CustomersPage> {
     super.dispose();
   }
 
+  Future<void> _loadIndustryOptions() async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    try {
+      final options = await api.getIndustryOptions();
+      if (mounted) setState(() => _industryOptions = options);
+    } catch (_) {
+      if (mounted) setState(() => _industryOptions = null);
+    }
+  }
+
   Future<List<Client>> _fetchClients() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
-    final data = await apiService.getCustomers();
+    final data = await apiService.getCustomers(industry: _selectedIndustry);
     final clients = data.map((json) => Client.fromJson(json)).toList();
     if (mounted) {
       setState(() {
@@ -80,6 +96,47 @@ class _CustomersPageState extends State<CustomersPage> {
         foregroundColor: AppColors.textPrimary,
         elevation: 1,
         actions: [
+          if (_industryOptions?.showSelector == true) ...[
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.filter_alt,
+                color: _selectedIndustry != null ? AppColors.primary : AppColors.textSecondary,
+              ),
+              tooltip: 'Filtrar por industria',
+              onSelected: (value) {
+                _selectedIndustry = value == _kAllIndustries ? null : value;
+                setState(() {
+                  _loaded = false;
+                  _clientsFuture = _fetchClients();
+                });
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem<String>(
+                  value: _kAllIndustries,
+                  child: Row(
+                    children: [
+                      if (_selectedIndustry == null)
+                        const Icon(Icons.check, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('Todas las industrias'),
+                    ],
+                  ),
+                ),
+                for (final option in _industryOptions?.industries ?? const <IndustryOption>[])
+                  PopupMenuItem<String>(
+                    value: option.name,
+                    child: Row(
+                      children: [
+                        if (_selectedIndustry == option.name)
+                          const Icon(Icons.check, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(option.name),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
