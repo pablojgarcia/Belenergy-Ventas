@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../models/industry_model.dart';
 import 'storage_service.dart';
 
 class SyncException implements Exception {
@@ -286,12 +287,25 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> evaluateDiscountRules(List<Map<String, dynamic>> lines) async {
+  Future<List<Map<String, dynamic>>> evaluateDiscountRules(List<Map<String, dynamic>> lines, {String? industry}) async {
     try {
-      final response = await _dio.post('/discount-rules/evaluate', data: {'lines': lines});
+      final response = await _dio.post('/discount-rules/evaluate', data: {
+        'lines': lines,
+        if (industry != null && industry.isNotEmpty) 'industry': industry,
+      });
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
       debugPrint('Error evaluating discount rules: $e');
+      rethrow;
+    }
+  }
+
+  Future<IndustryOptions> getIndustryOptions() async {
+    try {
+      final response = await _dio.get('/auth/me/industries');
+      return IndustryOptions.fromJson(Map<String, dynamic>.from(response.data));
+    } catch (e) {
+      debugPrint('Error fetching industry options: $e');
       rethrow;
     }
   }

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text, ForeignKey, Uuid
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, LargeBinary, Text, ForeignKey, Uuid, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -15,7 +15,7 @@ class User(Base):
     role     = Column(String, default='vendedor')
     is_active = Column(Boolean, default=True)
     vendedor_interno = Column(String, nullable=True)
-    seller_type = Column(String, nullable=True, default='vendedor_interno')
+    seller_types = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Customer(Base):
@@ -143,6 +143,7 @@ class QuotationDraft(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True, index=True)
     new_client_name = Column(String, nullable=True)
     new_client_vat = Column(String, nullable=True)
+    new_client_industry = Column(String, nullable=True)
     terms_and_conditions_id = Column(Uuid, ForeignKey("terms_and_conditions.id"), nullable=True)
     status = Column(String(20), default="draft", index=True)
     notes = Column(Text, nullable=True)

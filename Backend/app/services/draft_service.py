@@ -22,7 +22,7 @@ class DraftService:
         self.product_repo = ProductRepository(db)
         self.tax_repo = TaxRepository(db)
 
-    def create(self, customer_id: Optional[int] = None, notes: Optional[str] = None, lines_data: Optional[list] = None, new_client_name: Optional[str] = None, new_client_vat: Optional[str] = None, terms_and_conditions_id: Optional[uuid.UUID] = None) -> models.QuotationDraft:
+    def create(self, customer_id: Optional[int] = None, notes: Optional[str] = None, lines_data: Optional[list] = None, new_client_name: Optional[str] = None, new_client_vat: Optional[str] = None, new_client_industry: Optional[str] = None, terms_and_conditions_id: Optional[uuid.UUID] = None) -> models.QuotationDraft:
         if customer_id:
             customer = self.customer_repo.get_by_id(customer_id)
             if not customer:
@@ -38,6 +38,7 @@ class DraftService:
             customer_id=customer_id,
             new_client_name=new_client_name,
             new_client_vat=new_client_vat,
+            new_client_industry=new_client_industry,
             terms_and_conditions_id=terms_and_conditions_id,
             notes=notes,
             created_by=self.user.id,
@@ -136,6 +137,7 @@ class DraftService:
         version: int,
         new_client_name: Optional[str] = None,
         new_client_vat: Optional[str] = None,
+        new_client_industry: Optional[str] = None,
         terms_and_conditions_id: Optional[uuid.UUID] = None,
     ) -> models.QuotationDraft:
         draft = self.draft_repo.get_by_id(draft_id)
@@ -174,6 +176,7 @@ class DraftService:
         draft.customer_id = customer_id
         draft.new_client_name = new_client_name
         draft.new_client_vat = new_client_vat
+        draft.new_client_industry = new_client_industry
         draft.terms_and_conditions_id = terms_and_conditions_id
         draft.notes = notes
         draft.updated_by = self.user.id

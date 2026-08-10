@@ -13,6 +13,11 @@ from ..integrations.odoo.sale import create_quotation
 from ..integrations.odoo.client import get_odoo_connection
 from ..services.customer_creation_service import CustomerCreationService
 from ..services.discount_engine import DiscountEngine
+from ..integrations.odoo.industry import (
+    user_seller_types,
+    auto_industry_for_seller_types,
+    effective_seller_type,
+)
 
 
 class QuotationGenerationService:
@@ -39,12 +44,21 @@ class QuotationGenerationService:
         if draft.status == "failed":
             draft.status = "draft"
 
+        seller_types = user_seller_types(self.user.seller_types)
+        has_new_client = draft.customer_id is None and bool(draft.new_client_name)
+        industry_name = (
+            (draft.new_client_industry or auto_industry_for_seller_types(seller_types))
+            if has_new_client else None
+        )
+        effective_seller_type_name = effective_seller_type(seller_types, industry_name)
+
         if draft.customer_id is None:
             if draft.new_client_name:
                 try:
                     customer = CustomerCreationService(self.db, self.user).create_new_customer(
                         name=draft.new_client_name,
                         vat=draft.new_client_vat,
+                        industry_name=industry_name,
                     )
                     draft.customer_id = customer.id
                     draft.new_client_name = None
@@ -92,7 +106,7 @@ class QuotationGenerationService:
                 )
 
         engine = DiscountEngine(self.db)
-        evaluation = engine.evaluate(draft, self.user)
+        evaluation = engine.evaluate(draft, self.user, seller_type=effective_seller_type_name)
 
         violations = [r for r in evaluation if r.get("message")]
         if violations:
@@ -128,7 +142,7 @@ class QuotationGenerationService:
 
             line.discount_rule_id = eval_result.get("discount_rule_id") if eval_result else None
             line.max_discount_applied = eval_result.get("max_discount") if eval_result else None
-            line.seller_type_applied = self.user.seller_type or "vendedor_interno"
+            line.seller_type_applied = effective_seller_type_name
 
             odoo_lines.append({
                 "product_id": line.product_odoo_id,

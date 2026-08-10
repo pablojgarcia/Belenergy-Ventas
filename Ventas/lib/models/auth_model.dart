@@ -30,6 +30,7 @@ class UserInfo {
   final String email;
   final String? avatarUrl;
   final String role;
+  final List<String>? sellerTypes;
 
   UserInfo({
     required this.id,
@@ -37,15 +38,20 @@ class UserInfo {
     required this.email,
     this.avatarUrl,
     required this.role,
+    this.sellerTypes,
   });
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
+    final rawTypes = json['seller_types'];
     return UserInfo(
       id: json['id'] ?? 0,
       name: json['name'] ?? json['username'] ?? '',
       email: json['email'] ?? '',
       avatarUrl: json['avatar_url'],
       role: json['role'] ?? 'vendedor',
+      sellerTypes: rawTypes is List
+          ? rawTypes.whereType<String>().toList()
+          : null,
     );
   }
 

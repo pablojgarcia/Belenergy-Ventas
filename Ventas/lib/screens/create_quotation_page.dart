@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/customer_model.dart';
 import '../models/discount_rule_result_model.dart';
+import '../models/industry_model.dart';
 import '../models/product_model.dart';
 import '../models/terms_and_conditions_model.dart';
 import '../services/api_service.dart';
@@ -40,11 +41,14 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   List<TermsAndConditions> _termsList = [];
   Map<int, DiscountRuleResult> _discountRules = {};
   Timer? _evaluateDebounce;
+  IndustryOptions? _industryOptions;
+  String? _selectedIndustry;
 
   @override
   void initState() {
     super.initState();
     _loadTerms();
+    _loadIndustryOptions();
     if (widget.draftId != null) {
       _loadDraft();
     } else if (widget.customerId != null) {
@@ -68,6 +72,16 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     }
   }
 
+  Future<void> _loadIndustryOptions() async {
+    final api = context.read<ApiService>();
+    try {
+      final options = await api.getIndustryOptions();
+      if (mounted) setState(() => _industryOptions = options);
+    } catch (_) {
+      if (mounted) setState(() => _industryOptions = null);
+    }
+  }
+
   Future<void> _evaluateDiscounts() async {
     final api = context.read<ApiService>();
     try {
@@ -76,7 +90,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         'quantity': item.quantity,
         'discount': item.discount,
       }).toList();
-      final data = await api.evaluateDiscountRules(lines);
+      final data = await api.evaluateDiscountRules(lines, industry: _selectedIndustry);
       if (mounted) {
         setState(() {
           _discountRules = {
@@ -145,6 +159,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           _isNewClient = true;
           _newClientNameController.text = newClientName;
           _newClientVatController.text = draft['new_client_vat'] as String? ?? '';
+          final industry = draft['new_client_industry'] as String? ?? '';
+          if (industry.isNotEmpty) _selectedIndustry = industry;
         }
       }
 
@@ -241,6 +257,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       payload['new_client_name'] = _newClientNameController.text.trim();
       final vat = _newClientVatController.text.trim();
       if (vat.isNotEmpty) payload['new_client_vat'] = vat;
+      if (_selectedIndustry != null && _selectedIndustry!.isNotEmpty) {
+        payload['new_client_industry'] = _selectedIndustry;
+      }
     } else {
       payload['customer_id'] = _selectedClient!.id;
     }
@@ -506,6 +525,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           if (result is _PickerClient) {
             _selectedClient = result.client;
             _isNewClient = false;
+            _selectedIndustry = null;
           } else if (result is _PickerNewClient) {
             _selectedClient = null;
             _isNewClient = true;
@@ -522,6 +542,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isPhone = context.isPhone;
+    final canFitButtons = MediaQuery.sizeOf(context).width >= 360;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -533,24 +555,38 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        actions: [
-          OutlinedButton.icon(
-            onPressed: (_loading || !_canSubmit) ? null : _submit,
-            icon: _loading
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.save_outlined),
-            label: const Text('Guardar'),
-          ),
-          const SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: (_loading || !_canSubmit) ? null : _submitAndGenerate,
-            icon: _loading
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.rocket_launch),
-            label: const Text('Generar cotización'),
-          ),
-          const SizedBox(width: 16),
-        ],
+        actions: isPhone
+            ? null
+            : [
+                _buildSaveButton(),
+                const SizedBox(width: 8),
+                _buildGenerateButton(),
+                const SizedBox(width: 16),
+              ],
+        bottom: isPhone
+            ? PreferredSize(
+                preferredSize: Size.fromHeight(canFitButtons ? 64 : 108),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: canFitButtons
+                      ? Row(
+                          children: [
+                            Expanded(child: _buildSaveButton()),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildGenerateButton()),
+                          ],
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(width: double.infinity, child: _buildGenerateButton()),
+                            const SizedBox(height: 8),
+                            SizedBox(width: double.infinity, child: _buildSaveButton()),
+                          ],
+                        ),
+                ),
+              )
+            : null,
       ),
       body: (_selectedClient == null && !_isNewClient) || _loadingClient
           ? Center(
@@ -572,11 +608,31 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     );
   }
 
+  Widget _buildSaveButton() {
+    return OutlinedButton.icon(
+      onPressed: (_loading || !_canSubmit) ? null : _submit,
+      icon: _loading
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.save_outlined),
+      label: const Text('Guardar'),
+    );
+  }
+
+  Widget _buildGenerateButton() {
+    return FilledButton.icon(
+      onPressed: (_loading || !_canSubmit) ? null : _submitAndGenerate,
+      icon: _loading
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.rocket_launch),
+      label: const Text('Generar cotización'),
+    );
+  }
+
   Widget _buildMobileBody() {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
           _buildClientCard(),
           const SizedBox(height: 20),
@@ -689,7 +745,9 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             ),
             if (_selectedTermsId != null) ...[
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed: () {
@@ -707,7 +765,6 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                     icon: const Icon(Icons.visibility, size: 16),
                     label: const Text('Previsualizar'),
                   ),
-                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: () {
                       setState(() {
@@ -735,17 +792,31 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text('Productos', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.textPrimary)),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: _addProduct,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Agregar producto'),
-                ),
-              ],
-            ),
+            if (context.isPhone)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Productos', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.textPrimary)),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _addProduct,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Agregar producto'),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Text('Productos', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.textPrimary)),
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: _addProduct,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Agregar producto'),
+                  ),
+                ],
+              ),
             const SizedBox(height: 20),
             if (_lineItems.isEmpty)
               SizedBox(
@@ -754,6 +825,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                   child: Text('Todavía no agregaste productos.', style: GoogleFonts.inter(color: AppColors.textSecondary)),
                 ),
               )
+            else if (context.isPhone)
+              _buildMobileProductList()
             else
               _buildProductsTable(),
           ],
@@ -767,7 +840,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       final isWide = constraints.maxWidth > 700;
       final table = Column(
         children: [
-          _productTableHeader(isWide),
+          _productTableHeader(),
           ..._lineItems.asMap().entries.map((entry) => _buildProductRow(entry.key, entry.value, isWide)),
         ],
       );
@@ -775,37 +848,20 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     });
   }
 
-  Widget _productTableHeader(bool isWide) {
-    final style = GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary);
-    if (isWide) {
-      return Container(
-        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: const [
-            Expanded(flex: 3, child: Text('Producto', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-            Expanded(flex: 1, child: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-            Expanded(flex: 1, child: Text('Dto %', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-            Expanded(flex: 1, child: Text('Precio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-             Expanded(flex: 1, child: Text('Subtotal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-             Expanded(flex: 1, child: Text('Total', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary))),
-            SizedBox(width: 40),
-          ],
-        ),
-      );
-    }
-     return Container(
+  Widget _productTableHeader() {
+    final style = GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 11, letterSpacing: 0.3, color: AppColors.textSecondary);
+    return Container(
       decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Expanded(flex: 3, child: Text('Producto', style: style)),
-          Expanded(flex: 1, child: Text('Cant', style: style)),
-          Expanded(flex: 1, child: Text('Dto %', style: style)),
-          Expanded(flex: 1, child: Text('Precio', style: style)),
-          Expanded(flex: 1, child: Text('Subtotal', style: style)),
-          Expanded(flex: 1, child: Text('Total', style: style)),
-          SizedBox(width: 40),
+          Expanded(flex: 6, child: Text('Producto', maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(flex: 2, child: Text('Cantidad', textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(flex: 2, child: Text('Dto %', textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(flex: 2, child: Text('Precio', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(flex: 2, child: Text('Subtotal', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(flex: 2, child: Text('Total', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          const Expanded(flex: 1, child: SizedBox()),
         ],
       ),
     );
@@ -817,84 +873,250 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
      final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
      return Container(
        decoration: BoxDecoration(
-         border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.3))),
-         color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
+         border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.4))),
+         color: exceedsLimit ? AppColors.error.withValues(alpha: 0.05) : null,
        ),
-       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
        child: Row(
          children: [
-           Expanded(flex: 3, child: Text(item.product.name, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary))),
-           isWide ? Expanded(flex: 1, child: _qtyStepper(item)) : Expanded(flex: 1, child: _qtyField(item)),
-           Expanded(flex: 1, child: _discountField(item, index, exceedsLimit)),
-           Expanded(flex: 1, child: Padding(
-             padding: const EdgeInsets.symmetric(vertical: 6),
-             child: Text('\$${item.product.listPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-           )),
-           Expanded(flex: 1, child: Padding(
-             padding: const EdgeInsets.symmetric(vertical: 6),
-             child: Text('\$${item.lineSubtotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary)),
-           )),
-           Expanded(flex: 1, child: Padding(
-             padding: const EdgeInsets.symmetric(vertical: 6),
-             child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-           )),
-           SizedBox(width: 40, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () {
-             setState(() => _lineItems.removeAt(index));
-             _scheduleEvaluate();
-           })),
+           Expanded(
+             flex: 6,
+             child: Text(
+               item.product.name,
+               maxLines: 2,
+               overflow: TextOverflow.ellipsis,
+               style: GoogleFonts.inter(fontSize: 13, height: 1.35, color: AppColors.textPrimary),
+             ),
+           ),
+           Expanded(
+             flex: 2,
+             child: Center(
+               child: isWide ? _qtyStepper(item) : _qtyField(item),
+             ),
+           ),
+           Expanded(
+             flex: 2,
+             child: Center(child: _discountField(item, index, exceedsLimit)),
+           ),
+           Expanded(
+             flex: 2,
+             child: Text(
+               _formatMoney(item.product.listPrice),
+               maxLines: 1,
+               overflow: TextOverflow.ellipsis,
+               textAlign: TextAlign.right,
+               style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+             ),
+           ),
+           Expanded(
+             flex: 2,
+             child: Text(
+               _formatMoney(item.lineSubtotal),
+               maxLines: 1,
+               overflow: TextOverflow.ellipsis,
+               textAlign: TextAlign.right,
+               style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+             ),
+           ),
+           Expanded(
+             flex: 2,
+             child: Text(
+               _formatMoney(item.lineTotal),
+               maxLines: 1,
+               overflow: TextOverflow.ellipsis,
+               textAlign: TextAlign.right,
+               style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+             ),
+           ),
+           Expanded(
+             flex: 1,
+             child: IconButton(
+               icon: const Icon(Icons.close, size: 18),
+               padding: EdgeInsets.zero,
+               visualDensity: VisualDensity.compact,
+               tooltip: 'Quitar producto',
+               onPressed: () {
+                 setState(() => _lineItems.removeAt(index));
+                 _scheduleEvaluate();
+               },
+             ),
+           ),
          ],
        ),
      );
    }
 
-  Widget _qtyStepper(_LineItem item) {
-    return Row(
-      children: [
-        _stepperBtn(Icons.remove, () {
-          if (item.quantity > 1) {
-            setState(() => item.quantity--);
-            _scheduleEvaluate();
-          }
-        }),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          ),
-        ),
-        _stepperBtn(Icons.add, () {
-          setState(() => item.quantity++);
-          _scheduleEvaluate();
-        }),
-      ],
-    );
-  }
-
-  Widget _stepperBtn(IconData icon, VoidCallback onPressed) {
-    return SizedBox(
-      width: 28,
-      height: 28,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        icon: Icon(icon, size: 16),
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: AppColors.background,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-      ),
+   Widget _buildMobileProductList() {
+     return Column(
+       children: [
+         for (var i = 0; i < _lineItems.length; i++) ...[
+           if (i > 0) const SizedBox(height: 12),
+           _buildMobileProductCard(i, _lineItems[i]),
+         ],
+       ],
      );
    }
 
-   Widget _qtyField(_LineItem item) {
+   Widget _buildMobileProductCard(int index, _LineItem item) {
+     final rule = _discountRules[index];
+     final maxDisc = rule?.maxDiscount;
+     final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
+     return Container(
+       decoration: BoxDecoration(
+         color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,
+         border: Border.all(
+           color: exceedsLimit ? AppColors.error : AppColors.divider,
+           width: exceedsLimit ? 1.5 : 1,
+         ),
+         borderRadius: BorderRadius.circular(12),
+       ),
+       padding: const EdgeInsets.all(14),
+       child: Column(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+           Row(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
+               Expanded(
+                 child: Text(
+                   item.product.name,
+                   style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                 ),
+               ),
+               IconButton(
+                 icon: const Icon(Icons.close, size: 18),
+                 visualDensity: VisualDensity.compact,
+                 tooltip: 'Quitar producto',
+                 onPressed: () {
+                   setState(() => _lineItems.removeAt(index));
+                   _scheduleEvaluate();
+                 },
+               ),
+             ],
+           ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _mobileFieldLabel('Cantidad'),
+                      const SizedBox(height: 6),
+                      _qtyField(item, mobile: true),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _mobileFieldLabel('Descuento'),
+                      const SizedBox(height: 6),
+                      _discountField(item, index, exceedsLimit, mobile: true),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+           const SizedBox(height: 4),
+           _mobileAmountRow('Precio', '\$${item.product.listPrice.toStringAsFixed(2)}'),
+           _mobileAmountRow('Subtotal', '\$${item.lineSubtotal.toStringAsFixed(2)}'),
+           _mobileAmountRow('Total', '\$${item.lineTotal.toStringAsFixed(2)}', emphasize: true),
+         ],
+       ),
+     );
+   }
+
+   Widget _mobileFieldLabel(String label) {
+     return Text(
+       label,
+       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+     );
+   }
+
+   Widget _mobileAmountRow(String label, String value, {bool emphasize = false}) {
+     return Padding(
+       padding: const EdgeInsets.symmetric(vertical: 4),
+       child: Row(
+         children: [
+           Text(label, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+           const Spacer(),
+           Flexible(
+             child: Text(
+               value,
+               maxLines: 1,
+               overflow: TextOverflow.ellipsis,
+               textAlign: TextAlign.end,
+               style: GoogleFonts.inter(
+                 fontSize: emphasize ? 16 : 14,
+                 fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
+                 color: emphasize ? AppColors.primary : AppColors.textPrimary,
+               ),
+             ),
+           ),
+         ],
+       ),
+     );
+   }
+
+   Widget _qtyStepper(_LineItem item) {
+     return Container(
+       height: 32,
+       decoration: BoxDecoration(
+         color: AppColors.surface,
+         border: Border.all(color: AppColors.divider),
+         borderRadius: BorderRadius.circular(6),
+       ),
+       child: Row(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           _stepperBtn(Icons.remove, () {
+             if (item.quantity > 1) {
+               setState(() => item.quantity--);
+               _scheduleEvaluate();
+             }
+           }),
+           Container(width: 1, height: 16, color: AppColors.divider),
+           SizedBox(
+             width: 28,
+             child: Text('${item.quantity}', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+           ),
+           Container(width: 1, height: 16, color: AppColors.divider),
+           _stepperBtn(Icons.add, () {
+             setState(() => item.quantity++);
+             _scheduleEvaluate();
+           }),
+         ],
+       ),
+     );
+   }
+
+   Widget _stepperBtn(IconData icon, VoidCallback onPressed) {
+     return IconButton(
+       padding: EdgeInsets.zero,
+       constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+       splashRadius: 16,
+       visualDensity: VisualDensity.compact,
+       icon: Icon(icon, size: 16),
+       onPressed: onPressed,
+       style: IconButton.styleFrom(
+         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+       ),
+     );
+   }
+
+   Widget _qtyField(_LineItem item, {bool mobile = false}) {
      return TextFormField(
        initialValue: '${item.quantity}',
        keyboardType: TextInputType.numberWithOptions(decimal: false),
        textAlign: TextAlign.center,
-       style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+       style: GoogleFonts.inter(fontSize: mobile ? 15 : 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
        decoration: InputDecoration(
          isDense: true,
-         contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+         contentPadding: EdgeInsets.symmetric(horizontal: mobile ? 6 : 4, vertical: mobile ? 10 : 8),
          border: OutlineInputBorder(
            borderRadius: BorderRadius.circular(4),
            borderSide: BorderSide(color: AppColors.divider, width: 1),
@@ -918,7 +1140,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
      );
    }
 
-   Widget _discountField(_LineItem item, int index, bool exceedsLimit) {
+   Widget _discountField(_LineItem item, int index, bool exceedsLimit, {bool mobile = false}) {
      return Column(
         mainAxisSize: MainAxisSize.min,
        children: [
@@ -927,13 +1149,13 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             keyboardType: TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [_discountInputFormatter],
             textAlign: TextAlign.center,
-           style: GoogleFonts.inter(fontSize: 12, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
+           style: GoogleFonts.inter(fontSize: mobile ? 14 : 13, color: exceedsLimit ? AppColors.error : AppColors.textPrimary),
            decoration: InputDecoration(
              hintText: '0',
              suffixText: '%',
-             suffixStyle: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
+             suffixStyle: GoogleFonts.inter(fontSize: mobile ? 12 : 11, color: AppColors.textSecondary),
              isDense: true,
-             contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+             contentPadding: EdgeInsets.symmetric(horizontal: mobile ? 6 : 8, vertical: mobile ? 10 : 8),
              border: OutlineInputBorder(
                borderRadius: BorderRadius.circular(4),
                borderSide: BorderSide(color: exceedsLimit ? AppColors.error : AppColors.divider, width: exceedsLimit ? 1.5 : 1),
@@ -967,6 +1189,18 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
     RegExp(r'[\d.,]'),
   );
 
+  String _formatMoney(double value) {
+    final fixed = value.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final intPart = parts[0];
+    final buffer = StringBuffer();
+    for (var i = 0; i < intPart.length; i++) {
+      if (i > 0 && (intPart.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(intPart[i]);
+    }
+    return '\$$buffer.${parts[1]}';
+  }
+
   Widget _buildTotalsCard() {
     final subtotal = _lineItems.fold<double>(0.0, (s, i) => s + i.lineSubtotal);
     final iva = _lineItems.fold<double>(0.0, (s, i) => s + i.lineTax);
@@ -976,7 +1210,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(context.isPhone ? 20 : 24),
         child: Column(
           children: [
             _totalRow('Subtotal', subtotal),
@@ -1134,6 +1368,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                   return null;
                 },
               ),
+              if (_industryOptions?.showSelector == true &&
+                  (_industryOptions?.industries.isNotEmpty ?? false)) ...[
+                const SizedBox(height: 16),
+                _buildIndustryDropdown(),
+              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -1147,6 +1386,33 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildIndustryDropdown() {
+    final options = _industryOptions?.industries ?? const <IndustryOption>[];
+    return DropdownButtonFormField<String>(
+      initialValue: _selectedIndustry,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Industria *',
+        hintText: 'Seleccioná la industria del cliente',
+      ),
+      items: [
+        for (final option in options)
+          DropdownMenuItem(
+            value: option.name,
+            child: Text(option.name, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (value) {
+        setState(() => _selectedIndustry = value);
+        _scheduleEvaluate();
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'La industria es obligatoria';
+        return null;
+      },
     );
   }
 

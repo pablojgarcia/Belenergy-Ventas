@@ -33,8 +33,8 @@ def update_user(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     if body.vendedor_interno is not None:
         user.vendedor_interno = body.vendedor_interno
-    if body.seller_type is not None:
-        user.seller_type = body.seller_type
+    if body.seller_types is not None:
+        user.seller_types = body.seller_types or None
     db.commit()
     db.refresh(user)
     return user

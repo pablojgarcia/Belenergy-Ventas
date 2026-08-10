@@ -7,6 +7,7 @@ from ..database import get_db
 from ..dependencies import get_current_user, get_current_admin
 from ..services.discount_engine import DiscountEngine
 from ..seed_discount_rules import BAND_MAP
+from ..integrations.odoo.industry import user_seller_types, effective_seller_type
 from .. import models, schemas
 
 router = APIRouter(prefix="/discount-rules", tags=["discount-rules"])
@@ -35,7 +36,8 @@ def evaluate_discount_rules(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    seller_type = current_user.seller_type or "vendedor_interno"
+    seller_types = user_seller_types(current_user.seller_types)
+    seller_type = effective_seller_type(seller_types, body.industry)
     lines_data = [
         {"product_id": line.product_id, "quantity": line.quantity, "discount": line.discount}
         for line in body.lines

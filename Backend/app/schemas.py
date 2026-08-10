@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
     name: str = ''
     password: str
     role: str = 'vendedor'
-    seller_type: str = 'vendedor_interno'
+    seller_types: list[str] | None = None
 
 class UserLogin(BaseModel):
     username: str
@@ -24,12 +24,12 @@ class UserOut(BaseModel):
     role: str = 'vendedor'
     is_active: bool
     vendedor_interno: str | None = None
-    seller_type: str | None = None
+    seller_types: list[str] | None = None
     model_config = {"from_attributes": True}
 
 class UserUpdate(BaseModel):
     vendedor_interno: str | None = None
-    seller_type: str | None = None
+    seller_types: list[str] | None = None
 
 class Token(BaseModel):
     access_token: str
@@ -184,6 +184,7 @@ class QuotationDraftCreate(BaseModel):
     customer_id: int | None = None
     new_client_name: str | None = None
     new_client_vat: str | None = None
+    new_client_industry: str | None = None
     terms_and_conditions_id: uuid.UUID | None = None
     notes: str | None = None
     lines: list[QuotationDraftLineInput] = []
@@ -193,6 +194,7 @@ class QuotationDraftUpdate(BaseModel):
     customer_id: int | None = None
     new_client_name: str | None = None
     new_client_vat: str | None = None
+    new_client_industry: str | None = None
     terms_and_conditions_id: uuid.UUID | None = None
     notes: str | None = None
     lines: list[QuotationDraftLineInput] = []
@@ -232,6 +234,7 @@ class QuotationDraftOut(BaseModel):
     customer_name: str | None = None
     new_client_name: str | None = None
     new_client_vat: str | None = None
+    new_client_industry: str | None = None
     terms_and_conditions_id: uuid.UUID | None = None
     status: str = "draft"
     notes: str | None = None
@@ -391,3 +394,14 @@ class DiscountRuleEvaluateLine(BaseModel):
 
 class DiscountRuleEvaluateRequest(BaseModel):
     lines: list[DiscountRuleEvaluateLine]
+    industry: str | None = None
+
+
+class IndustryOption(BaseModel):
+    name: str
+    seller_type: str
+
+
+class IndustryOptionsOut(BaseModel):
+    show_selector: bool
+    industries: list[IndustryOption]

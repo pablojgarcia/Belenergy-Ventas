@@ -87,5 +87,9 @@ def create_partner(partner_data: dict) -> int:
             if partner_ids:
                 vals["x_studio_vendedor_externo"] = partner_ids[0]
 
+    industry_id = partner_data.get("industry_id")
+    if industry_id:
+        vals["industry_id"] = industry_id
+
     partner_id = odoo.env["res.partner"].create(vals)
     return partner_id

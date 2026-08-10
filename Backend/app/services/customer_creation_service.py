@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..repositories.customer_repository import CustomerRepository
 from ..integrations.odoo.partner import create_partner as odoo_create_partner, check_vat_exists
+from ..integrations.odoo.industry import resolve_industry_id
 from ..utils.cuit import validar_cuit
 
 
@@ -15,7 +16,7 @@ class CustomerCreationService:
         self.user = current_user
         self.customer_repo = CustomerRepository(db)
 
-    def create_new_customer(self, name: str, vat: str | None = None) -> models.Customer:
+    def create_new_customer(self, name: str, vat: str | None = None, industry_name: str | None = None) -> models.Customer:
         name = (name or "").strip()
         if not name:
             raise HTTPException(status_code=400, detail="El nombre del cliente nuevo es obligatorio")
@@ -59,6 +60,10 @@ class CustomerCreationService:
             "vat": vat,
             "vendedor_externo": self.user.email,
         }
+
+        industry_id = resolve_industry_id(industry_name) if industry_name else None
+        if industry_id is not None:
+            partner_data["industry_id"] = industry_id
 
         try:
             odoo_partner_id = odoo_create_partner(partner_data)

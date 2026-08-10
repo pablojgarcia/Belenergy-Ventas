@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app import models
 from app.database import Base
 from app.services.discount_engine import DiscountEngine
+from app.integrations.odoo.industry import principal_seller_type
 
 
 def _fresh_db():
@@ -92,7 +93,7 @@ def _seed_user(db, username, seller_type):
             name=username.capitalize(),
             role="vendedor",
             hashed_password="dummy",
-            seller_type=seller_type,
+            seller_types=[seller_type] if seller_type else None,
         )
         db.add(user)
         db.commit()
@@ -225,7 +226,7 @@ class TestDiscountEngine:
 
     def test_default_seller_type_is_vendedor_interno(self):
         user = _seed_user(self.db, "test_user_14", None)
-        assert user.seller_type == "vendedor_interno"
+        assert principal_seller_type(user.seller_types) == "vendedor_interno"
 
     def test_snapshot_has_discount_rule_id(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")

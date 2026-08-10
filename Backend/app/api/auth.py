@@ -50,12 +50,14 @@ def register(request: Request, user_in: schemas.UserCreate, db: Session = Depend
 
     role = "admin" if first_user else user_in.role
 
+    seller_types = user_in.seller_types or ["vendedor_interno"]
+
     user = models.User(
         email=user_in.email,
         username=user_in.username,
         name=user_in.name,
         role=role,
-        seller_type=user_in.seller_type,
+        seller_types=seller_types,
         hashed_password=hash_password(user_in.password),
     )
     user_repo.create(user)
@@ -153,3 +155,14 @@ def refresh(request: Request, token_in: schemas.TokenRefresh, db: Session = Depe
 @router.get("/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/me/industries", response_model=schemas.IndustryOptionsOut)
+def me_industries(current_user: models.User = Depends(get_current_user)):
+    from ..integrations.odoo.industry import user_seller_types, mapped_industries
+    seller_types = user_seller_types(current_user.seller_types)
+    industries = mapped_industries(seller_types)
+    return {
+        "show_selector": len(seller_types) > 1 and len(industries) > 0,
+        "industries": industries,
+    }

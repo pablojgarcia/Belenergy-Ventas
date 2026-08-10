@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..integrations.odoo.industry import principal_seller_type
 
 QTY_CONDITION_LINES = {"paneles_ja", "paneles_astro_575", "paneles_astro_615"}
 
@@ -11,8 +12,9 @@ class DiscountEngine:
     def __init__(self, db: Session):
         self.db = db
 
-    def evaluate(self, draft: models.QuotationDraft, user: models.User) -> list[dict]:
-        seller_type = user.seller_type or "vendedor_interno"
+    def evaluate(self, draft: models.QuotationDraft, user: models.User, seller_type: str | None = None) -> list[dict]:
+        if seller_type is None:
+            seller_type = principal_seller_type(user.seller_types)
         lines_data = [
             {"product_id": line.product_id, "quantity": line.quantity, "discount": line.discount}
             for line in draft.lines

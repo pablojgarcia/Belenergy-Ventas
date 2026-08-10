@@ -174,20 +174,20 @@ def test_admin_endpoints_blocked_for_vendedor(client, admin_headers):
     assert resp.status_code == 403
 
 
-def test_register_with_seller_type(client, admin_headers):
+def test_register_with_seller_types(client, admin_headers):
     resp = client.post("/auth/register", json={
         "email": "agro@test.com",
         "username": "agro_user",
         "name": "Agro User",
         "password": "test123",
-        "seller_type": "representante_agro",
+        "seller_types": ["representante_agro"],
     }, headers=admin_headers)
     assert resp.status_code == 201
     data = resp.json()
-    assert data["seller_type"] == "representante_agro"
+    assert data["seller_types"] == ["representante_agro"]
 
 
-def test_register_default_seller_type_is_vendedor_interno(client, admin_headers):
+def test_register_default_seller_types_is_vendedor_interno(client, admin_headers):
     resp = client.post("/auth/register", json={
         "email": "default@test.com",
         "username": "default_user",
@@ -196,10 +196,10 @@ def test_register_default_seller_type_is_vendedor_interno(client, admin_headers)
     }, headers=admin_headers)
     assert resp.status_code == 201
     data = resp.json()
-    assert data["seller_type"] == "vendedor_interno"
+    assert data["seller_types"] == ["vendedor_interno"]
 
 
-def test_update_user_seller_type(client, admin_headers):
+def test_update_user_seller_types(client, admin_headers):
     register = client.post("/auth/register", json={
         "email": "upd@test.com",
         "username": "upd_user",
@@ -208,7 +208,7 @@ def test_update_user_seller_type(client, admin_headers):
     }, headers=admin_headers)
     user_id = register.json()["id"]
     resp = client.patch(f"/users/{user_id}", json={
-        "seller_type": "representante_general",
+        "seller_types": ["representante_general"],
     }, headers=admin_headers)
     assert resp.status_code == 200
-    assert resp.json()["seller_type"] == "representante_general"
+    assert resp.json()["seller_types"] == ["representante_general"]

@@ -30,6 +30,7 @@ def create_draft(
         lines_data=[l.model_dump() for l in body.lines],
         new_client_name=body.new_client_name,
         new_client_vat=body.new_client_vat,
+        new_client_industry=body.new_client_industry,
         terms_and_conditions_id=body.terms_and_conditions_id,
     )
 
@@ -78,6 +79,7 @@ def update_draft(
         version=body.version,
         new_client_name=body.new_client_name,
         new_client_vat=body.new_client_vat,
+        new_client_industry=body.new_client_industry,
         terms_and_conditions_id=body.terms_and_conditions_id,
     )
 

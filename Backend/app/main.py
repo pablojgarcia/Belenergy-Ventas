@@ -105,6 +105,9 @@ if "quotation_drafts" in inspector.get_table_names():
     if "new_client_vat" not in draft_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_vat VARCHAR"))
+    if "new_client_industry" not in draft_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_industry VARCHAR"))
     if "terms_and_conditions_id" not in draft_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN terms_and_conditions_id UUID"))
@@ -126,9 +129,23 @@ if "discount_rules" not in inspector.get_table_names():
 
 if "users" in inspector.get_table_names():
     user_cols = [c["name"] for c in inspector.get_columns("users")]
-    if "seller_type" not in user_cols:
+    if "seller_types" not in user_cols:
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE users ADD COLUMN seller_type VARCHAR DEFAULT 'vendedor_interno'"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN seller_types JSON"))
+    if "seller_type" in user_cols:
+        from .database import SessionLocal
+        with engine.begin() as conn:
+            missing = conn.execute(
+                text("SELECT id, seller_type FROM users WHERE seller_types IS NULL")
+            ).fetchall()
+        with SessionLocal() as db:
+            for row in missing:
+                user = db.get(models.User, row[0])
+                if user is not None and user.seller_types is None:
+                    user.seller_types = [row[1] or "vendedor_interno"]
+            db.commit()
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users DROP COLUMN seller_type"))
 
 if "products" in inspector.get_table_names():
     prod_cols = [c["name"] for c in inspector.get_columns("products")]
