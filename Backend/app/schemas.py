@@ -345,8 +345,7 @@ class DiscountRuleOut(BaseModel):
     condition_type: str
     min_value: float | None = None
     max_value: float | None = None
-    max_discount: float
-    requires_approval: bool
+    max_discount: float | None = None
     is_active: bool
     created_by: int | None = None
     updated_by: int | None = None
@@ -362,8 +361,7 @@ class DiscountRuleCreate(BaseModel):
     condition_type: str
     min_value: float | None = None
     max_value: float | None = None
-    max_discount: float
-    requires_approval: bool = False
+    max_discount: float | None = None
 
 
 class DiscountRuleUpdate(BaseModel):
@@ -373,7 +371,6 @@ class DiscountRuleUpdate(BaseModel):
     min_value: float | None = None
     max_value: float | None = None
     max_discount: float | None = None
-    requires_approval: bool | None = None
     is_active: bool | None = None
 
 
@@ -382,7 +379,7 @@ class DiscountRuleResult(BaseModel):
     product_name: str
     product_line_key: str | None = None
     max_discount: float | None = None
-    requires_approval: bool = False
+    exceeded: bool = False
     tier: str | None = None
     message: str | None = None
 

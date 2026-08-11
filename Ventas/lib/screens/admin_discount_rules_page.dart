@@ -253,11 +253,11 @@ class _AdminDiscountRulesPageState extends State<AdminDiscountRulesPage> {
               case 3:
                 return Text(_rangeText(r));
               case 4:
-                return Text(_fmtPct(r.maxDiscount),
+                return Text(r.maxDiscount != null ? _fmtPct(r.maxDiscount!) : 'Sin máx',
                     style: const TextStyle(fontWeight: FontWeight.w600));
               case 5:
-                return r.requiresApproval
-                    ? const Icon(Icons.check_circle, size: 18, color: AppColors.warning)
+                return r.maxDiscount == null
+                    ? const Icon(Icons.info, size: 18, color: AppColors.warning)
                     : const Text('—');
               case 6:
                 return _statusChip(r.isActive);
@@ -307,9 +307,9 @@ class _AdminDiscountRulesPageState extends State<AdminDiscountRulesPage> {
                   children: [
                     _infoCol('Condición', _conditionLabel(r.conditionType)),
                     _infoCol('Tramo', _rangeText(r)),
-                    _infoCol('Máx', _fmtPct(r.maxDiscount)),
-                    if (r.requiresApproval)
-                      _infoCol('Aprob.', 'Sí'),
+                    _infoCol('Máx', r.maxDiscount != null ? _fmtPct(r.maxDiscount!) : 'Sin máx'),
+                    if (r.maxDiscount == null)
+                      _infoCol('Aprob.', 'Siempre'),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -606,7 +606,6 @@ class _RuleDialogState extends State<_RuleDialog> {
   late final TextEditingController _minCtrl;
   late final TextEditingController _maxCtrl;
   late final TextEditingController _maxDiscCtrl;
-  late bool _requiresApproval;
 
   @override
   void initState() {
@@ -617,9 +616,8 @@ class _RuleDialogState extends State<_RuleDialog> {
     _productLineId = r?.productLineId ?? (widget.lines.isEmpty ? '' : widget.lines.first.id);
     _conditionType = r?.conditionType ?? _suggestedCondition(selectedLine);
     _maxDiscCtrl = TextEditingController(
-      text: r != null ? _fmtNum(r.maxDiscount) : '',
+      text: r?.maxDiscount != null ? _fmtNum(r!.maxDiscount!) : '',
     );
-    _requiresApproval = r?.requiresApproval ?? false;
 
     if (r != null) {
       final bands = widget.bands.where((b) => b.conditionType == r.conditionType).toList();
@@ -721,12 +719,17 @@ class _RuleDialogState extends State<_RuleDialog> {
       maxV = band.max;
     }
 
-    final maxDisc = parseNum(_maxDiscCtrl.text);
-    if (maxDisc == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresá el porcentaje máximo')),
-      );
-      return;
+    final rawDisc = _maxDiscCtrl.text.trim();
+    double? maxDisc;
+    if (rawDisc.isNotEmpty) {
+      final parsed = parseNum(rawDisc);
+      if (parsed == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ingresá un porcentaje válido')),
+        );
+        return;
+      }
+      maxDisc = parsed;
     }
 
     final payload = {
@@ -736,7 +739,6 @@ class _RuleDialogState extends State<_RuleDialog> {
       'min_value': minV,
       'max_value': maxV,
       'max_discount': maxDisc,
-      'requires_approval': _requiresApproval,
     };
 
     try {
@@ -832,21 +834,19 @@ class _RuleDialogState extends State<_RuleDialog> {
               TextFormField(
                 controller: _maxDiscCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Máx % de descuento', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Máx % de descuento',
+                  hintText: 'Vacío = sin máximo (siempre aprobación)',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) {
-                  final val = double.tryParse((v ?? '').trim().replaceAll(',', '.'));
+                  final text = (v ?? '').trim();
+                  if (text.isEmpty) return null;
+                  final val = double.tryParse(text.replaceAll(',', '.'));
                   if (val == null) return 'Ingresá un número';
                   if (val < 0 || val > 100) return 'Entre 0 y 100';
                   return null;
                 },
-              ),
-              const SizedBox(height: 4),
-              CheckboxListTile(
-                value: _requiresApproval,
-                onChanged: (v) => setState(() => _requiresApproval = v ?? false),
-                title: Text('Requiere aprobación', style: GoogleFonts.inter(fontSize: 14)),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
               ),
             ],
           ),

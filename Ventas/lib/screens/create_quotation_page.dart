@@ -43,6 +43,10 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   Timer? _evaluateDebounce;
   IndustryOptions? _industryOptions;
   String? _selectedIndustry;
+  bool _enforceDescriptionOnSend = false;
+
+  bool get _hasExceededDiscount =>
+      _discountRules.values.any((r) => r.exceeded);
 
   @override
   void initState() {
@@ -292,6 +296,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   Future<void> _submit() async {
+    _enforceDescriptionOnSend = false;
     if (!_validateForms()) return;
     if (_lineItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -333,6 +338,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   }
 
   Future<void> _submitAndGenerate() async {
+    _enforceDescriptionOnSend = true;
     if (!_validateForms()) return;
     if (_lineItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -636,11 +642,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         children: [
           _buildClientCard(),
           const SizedBox(height: 20),
+          _buildProductsCard(),
+          const SizedBox(height: 20),
           _buildDescriptionCard(),
           const SizedBox(height: 20),
           _buildTermsCard(),
-          const SizedBox(height: 20),
-          _buildProductsCard(),
           const SizedBox(height: 20),
           _buildTotalsCard(),
         ],
@@ -653,11 +659,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       key: _formKey,
       child: ListView(
         children: [
+          _buildProductsCard(),
+          const SizedBox(height: 24),
           _buildDescriptionCard(),
           const SizedBox(height: 24),
           _buildTermsCard(),
-          const SizedBox(height: 24),
-          _buildProductsCard(),
           const SizedBox(height: 24),
           _buildTotalsCard(),
         ],
@@ -682,11 +688,21 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
               decoration: const InputDecoration(
                 hintText: 'Descripción de la cotización',
               ),
+              validator: _validateDescription,
             ),
           ],
         ),
       ),
     );
+  }
+
+  String? _validateDescription(String? v) {
+    if (_enforceDescriptionOnSend &&
+        _hasExceededDiscount &&
+        (v == null || v.trim().isEmpty)) {
+      return 'La descripción es obligatoria cuando el descuento supera el máximo permitido';
+    }
+    return null;
   }
 
   Widget _buildTermsCard() {
@@ -869,8 +885,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
    Widget _buildProductRow(int index, _LineItem item, bool isWide) {
      final rule = _discountRules[index];
-     final maxDisc = rule?.maxDiscount;
-     final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
+     final exceedsLimit = rule?.exceeded ?? false;
      return Container(
        decoration: BoxDecoration(
          border: Border(bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.4))),
@@ -959,8 +974,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
 
    Widget _buildMobileProductCard(int index, _LineItem item) {
      final rule = _discountRules[index];
-     final maxDisc = rule?.maxDiscount;
-     final exceedsLimit = maxDisc != null && item.discount > maxDisc + 0.001;
+     final exceedsLimit = rule?.exceeded ?? false;
      return Container(
        decoration: BoxDecoration(
          color: exceedsLimit ? AppColors.error.withValues(alpha: 0.06) : null,

@@ -1,11 +1,9 @@
-import 'dart:convert';
-
 class DiscountRuleResult {
   final int lineIndex;
   final String productName;
   final String? productLineKey;
   final double? maxDiscount;
-  final bool requiresApproval;
+  final bool exceeded;
   final String? tier;
   final String? message;
 
@@ -14,7 +12,7 @@ class DiscountRuleResult {
     required this.productName,
     this.productLineKey,
     this.maxDiscount,
-    this.requiresApproval = false,
+    this.exceeded = false,
     this.tier,
     this.message,
   });
@@ -27,7 +25,7 @@ class DiscountRuleResult {
       maxDiscount: json['max_discount'] != null
           ? (json['max_discount'] as num).toDouble()
           : null,
-      requiresApproval: json['requires_approval'] as bool? ?? false,
+      exceeded: json['exceeded'] as bool? ?? false,
       tier: json['tier'] as String?,
       message: json['message'] as String?,
     );
@@ -39,7 +37,7 @@ class DiscountRuleResult {
       'product_name': productName,
       'product_line_key': productLineKey,
       'max_discount': maxDiscount,
-      'requires_approval': requiresApproval,
+      'exceeded': exceeded,
       'tier': tier,
       'message': message,
     };

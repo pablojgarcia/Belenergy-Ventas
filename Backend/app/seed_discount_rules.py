@@ -15,39 +15,35 @@ PRODUCT_LINES = [
 
 SELLER_TYPES = ["vendedor_interno", "representante_general", "representante_agro"]
 
+# Matriz de politica_de_descuentos_por_linea.xlsx (monto; por línea de producto).
+# Campaña no tiene máximo automático: max_discount=None e is_active=False
+# (se reactiva manualmente si hay lógica de campaña).
 AMOUNT_RULES = {
     "vendedor_interno": {
-        "deye": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "huawei": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "sungrow": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "estructuras": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "cables": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "paneles_ja": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "paneles_astro_575": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "paneles_astro_615": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
+        "deye": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
+        "huawei": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 15.0, "gt_50000": 15.0, "campaña": None},
+        "sungrow": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 20.0, "gt_50000": 30.0, "campaña": None},
+        "estructuras": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 20.0, "gt_50000": 30.0, "campaña": None},
+        "cables": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
     },
     "representante_general": {
-        "deye": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "huawei": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "sungrow": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "estructuras": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "cables": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "paneles_ja": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "paneles_astro_575": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
-        "paneles_astro_615": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0},
+        "deye": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
+        "huawei": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 15.0, "gt_50000": 20.0, "campaña": None},
+        "sungrow": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 20.0, "gt_50000": 30.0, "campaña": None},
+        "estructuras": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 20.0, "gt_50000": 30.0, "campaña": None},
+        "cables": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
     },
     "representante_agro": {
-        "deye": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "huawei": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "sungrow": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "estructuras": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "cables": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "paneles_ja": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "paneles_astro_575": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
-        "paneles_astro_615": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0},
+        "deye": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0, "campaña": None},
+        "huawei": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0, "campaña": None},
+        "sungrow": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 30.0, "campaña": None},
+        "estructuras": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 30.0, "campaña": None},
+        "cables": {"lt_500": 0.0, "lt_5000": 5.0, "lt_10000": 15.0, "gt_50000": 20.0, "campaña": None},
     },
 }
 
+# TODO: confirmar con el equipo si la diferencia de Huawei en "USD 50.000+" es intencional:
+# Vendedores Internos 15% vs Representantes General 20% (planilla cargada tal cual).
 QTY_RULES = {
     "vendedor_interno": {
         "paneles_ja": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
@@ -72,6 +68,7 @@ BAND_MAP = {
         "lt_5000": (500.0, 5000.0),
         "lt_10000": (5000.0, 50000.0),
         "gt_50000": (50000.0, None),
+        "campaña": (None, None),
     },
     "qty": {
         "lt_18": (1.0, 18.0),
@@ -96,6 +93,7 @@ def seed_product_lines(db: Session):
 
 def seed_discount_rules(db: Session):
     for seller_type in SELLER_TYPES:
+        # Amount bands (incluye campaña)
         for line_key, amount_bands in AMOUNT_RULES[seller_type].items():
             product_line = db.query(models.ProductLine).filter(
                 models.ProductLine.key == line_key
@@ -104,9 +102,8 @@ def seed_discount_rules(db: Session):
                 continue
 
             for band_name, max_disc in amount_bands.items():
-                if max_disc is None:
-                    continue
                 min_val, max_val = BAND_MAP["amount"][band_name]
+                is_campaign = band_name == "campaña"
                 existing = db.query(models.DiscountRule).filter(
                     models.DiscountRule.seller_type == seller_type,
                     models.DiscountRule.product_line_id == product_line.id,
@@ -123,9 +120,10 @@ def seed_discount_rules(db: Session):
                         max_value=max_val,
                         max_discount=max_disc,
                         requires_approval=False,
-                        is_active=True,
+                        is_active=not is_campaign,
                     ))
 
+        # Qty bands
         for line_key, qty_bands in QTY_RULES[seller_type].items():
             product_line = db.query(models.ProductLine).filter(
                 models.ProductLine.key == line_key
@@ -135,7 +133,6 @@ def seed_discount_rules(db: Session):
 
             for band_name, max_disc in qty_bands.items():
                 min_val, max_val = BAND_MAP["qty"][band_name]
-                requires_approval = band_name == "container"
                 existing = db.query(models.DiscountRule).filter(
                     models.DiscountRule.seller_type == seller_type,
                     models.DiscountRule.product_line_id == product_line.id,
@@ -150,9 +147,24 @@ def seed_discount_rules(db: Session):
                         condition_type="qty",
                         min_value=min_val,
                         max_value=max_val,
-                        max_discount=max_disc if max_disc is not None else 0.0,
-                        requires_approval=requires_approval,
+                        max_discount=max_disc,
+                        requires_approval=False,
                         is_active=True,
                     ))
+
+    # Migración idempotente en DBs existentes: tramos sin máximo automático (None).
+    # Container (qty >= 720): antes se seedeaba con max_discount=0.0.
+    db.query(models.DiscountRule).filter(
+        models.DiscountRule.condition_type == "qty",
+        models.DiscountRule.min_value == 720.0,
+        models.DiscountRule.max_discount != None,
+    ).update({models.DiscountRule.max_discount: None})
+
+    # Campaña (amount con min/max nulos): si existiera con valor numérico, se pasa a None.
+    db.query(models.DiscountRule).filter(
+        models.DiscountRule.condition_type == "amount",
+        models.DiscountRule.min_value.is_(None),
+        models.DiscountRule.max_value.is_(None),
+    ).update({models.DiscountRule.max_discount: None, models.DiscountRule.is_active: False})
 
     db.commit()

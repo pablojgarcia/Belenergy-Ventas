@@ -17,7 +17,10 @@ from ..integrations.odoo.partner import (
     resolve_res_users_id_by_name,
 )
 from ..services.customer_creation_service import CustomerCreationService
-from ..services.discount_engine import DiscountEngine
+from ..services.discount_engine import (
+    DiscountEngine,
+    order_requires_approval,
+)
 from ..integrations.odoo.industry import (
     user_seller_types,
     auto_industry_for_seller_types,
@@ -115,12 +118,15 @@ class QuotationGenerationService:
         engine = DiscountEngine(self.db)
         evaluation = engine.evaluate(draft, self.user, seller_type=effective_seller_type_name)
 
-        violations = [r for r in evaluation if r.get("message")]
-        if violations:
-            messages = "; ".join(r["message"] for r in violations)
+        requires_approval = order_requires_approval(evaluation)
+        motivo = (draft.notes or "").strip()
+        if requires_approval and not motivo:
             raise HTTPException(
-                status_code=409,
-                detail={"title": "Descuento fuera de límite", "message": messages},
+                status_code=400,
+                detail={
+                    "title": "Solicitud inválida",
+                    "message": "La descripción es obligatoria cuando el descuento supera el máximo permitido",
+                },
             )
 
         amount_untaxed = 0.0
@@ -177,6 +183,8 @@ class QuotationGenerationService:
                 description=note,
                 user_id=self._resolve_vendedor_interno_id(),
                 vendedor_externo_partner_id=self._resolve_vendedor_externo_id(),
+                requiere_aprobacion=requires_approval,
+                motivo_aprobacion=motivo,
             )
         except ValueError as e:
             draft.status = "failed"

@@ -209,6 +209,168 @@ def test_generate_skips_vendedores_when_not_resolvable(client, admin_headers):
     assert "x_studio_vendedor_externo" not in fake.last_created_vals
 
 
+def test_create_quotation_always_sends_approval_fields(client):
+    from app.integrations.odoo.sale import create_quotation
+    fake = _FakeOdoo()
+    with patch("app.integrations.odoo.sale.get_odoo_connection", return_value=fake):
+        create_quotation(
+            partner_id=1,
+            order_lines=[{"product_id": 1, "quantity": 1, "price_unit": 1000.0}],
+            description="Nota",
+            requiere_aprobacion=False,
+            motivo_aprobacion="",
+        )
+    assert fake.last_created_vals is not None
+    assert fake.last_created_vals["x_studio_requiere_aprobacion"] is False
+    assert fake.last_created_vals["x_studio_motivo_aprobacion_1"] == ""
+
+
+def test_create_quotation_sends_approval_fields_when_exceeded(client):
+    from app.integrations.odoo.sale import create_quotation
+    fake = _FakeOdoo()
+    with patch("app.integrations.odoo.sale.get_odoo_connection", return_value=fake):
+        create_quotation(
+            partner_id=1,
+            order_lines=[{"product_id": 1, "quantity": 1, "price_unit": 1000.0}],
+            description="Nota",
+            requiere_aprobacion=True,
+            motivo_aprobacion="El descuento de la línea #1 supera el máximo.",
+        )
+    assert fake.last_created_vals is not None
+    assert fake.last_created_vals["x_studio_requiere_aprobacion"] is True
+    assert fake.last_created_vals["x_studio_motivo_aprobacion_1"] == "El descuento de la línea #1 supera el máximo."
+
+
+def test_generate_does_not_block_on_exceeded_discount(client, admin_headers):
+    _seed_product()
+    fake = _FakeOdoo()
+
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    line = models.ProductLine(key="deye", name="Línea DEYE", is_active=True)
+    db.add(line)
+    db.commit()
+    db.refresh(line)
+
+    product = db.query(models.Product).filter(models.Product.odoo_id == 999001).first()
+    product.product_line_id = line.id
+    db.commit()
+
+    db.add(models.DiscountRule(
+        seller_type="vendedor_interno",
+        product_line_id=line.id,
+        condition_type="amount",
+        min_value=500.0,
+        max_value=5000.0,
+        max_discount=5.0,
+        requires_approval=False,
+        is_active=True,
+    ))
+    db.commit()
+    db.close()
+
+    resp = client.post(
+        "/quotation-drafts",
+        headers=admin_headers,
+        json={
+            "new_client_name": "Cliente Excede Descuento SRL",
+            "new_client_vat": "30600000000",
+            "notes": "Descuento especial aprobado por gerencia",
+            "lines": [
+                {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "discount": 34.0, "tax_id": []}
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    draft_id = resp.json()["id"]
+
+    with patch(
+        "app.services.customer_creation_service.odoo_create_partner", return_value=777777,
+    ), patch(
+        "app.services.customer_creation_service.check_vat_exists", return_value=False,
+    ), patch(
+        "app.integrations.odoo.sale.get_odoo_connection", return_value=fake,
+    ), patch(
+        "app.services.quotation_generation_service.get_odoo_connection", return_value=fake,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
+    ):
+        gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
+
+    assert gen.status_code == 200, gen.text
+    assert fake.last_created_vals is not None
+    assert fake.last_created_vals["x_studio_requiere_aprobacion"] is True
+    assert fake.last_created_vals["x_studio_motivo_aprobacion_1"] == "Descuento especial aprobado por gerencia"
+
+
+def test_generate_blocks_when_exceeded_without_description(client, admin_headers):
+    _seed_product()
+
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    line = models.ProductLine(key="deye", name="Línea DEYE", is_active=True)
+    db.add(line)
+    db.commit()
+    db.refresh(line)
+
+    product = db.query(models.Product).filter(models.Product.odoo_id == 999001).first()
+    product.product_line_id = line.id
+    db.commit()
+
+    db.add(models.DiscountRule(
+        seller_type="vendedor_interno",
+        product_line_id=line.id,
+        condition_type="amount",
+        min_value=500.0,
+        max_value=5000.0,
+        max_discount=5.0,
+        requires_approval=False,
+        is_active=True,
+    ))
+    db.commit()
+    db.close()
+
+    resp = client.post(
+        "/quotation-drafts",
+        headers=admin_headers,
+        json={
+            "new_client_name": "Cliente Excede Sin Desc SRL",
+            "new_client_vat": "30600000000",
+            "lines": [
+                {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "discount": 34.0, "tax_id": []}
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    draft_id = resp.json()["id"]
+
+    with patch(
+        "app.services.customer_creation_service.odoo_create_partner", return_value=777777,
+    ), patch(
+        "app.services.customer_creation_service.check_vat_exists", return_value=False,
+    ), patch(
+        "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
+    ):
+        gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
+
+    assert gen.status_code == 400
+    body = gen.json()
+    assert body["title"] == "Solicitud inválida"
+    assert "descripción es obligatoria" in body["detail"].lower()
+
+
 def test_generate_with_invalid_cuit_fails(client, admin_headers):
     _seed_product()
 

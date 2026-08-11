@@ -60,7 +60,6 @@ def test_create_rule_and_clear_open_band(client, admin_headers):
             "min_value": 50000.0,
             "max_value": 60000.0,
             "max_discount": 15.0,
-            "requires_approval": False,
         },
         headers=admin_headers,
     )
@@ -95,7 +94,6 @@ def test_list_rules_include_inactive(client, admin_headers):
             "min_value": 0.0,
             "max_value": 500.0,
             "max_discount": 0.0,
-            "requires_approval": False,
         },
         headers=admin_headers,
     ).json()

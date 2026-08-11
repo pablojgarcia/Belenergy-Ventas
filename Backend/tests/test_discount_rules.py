@@ -184,8 +184,8 @@ class TestDiscountEngine:
         user = _seed_user(self.db, "test_user_9", "vendedor_interno")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
-        assert results[0]["requires_approval"] is True
-        assert results[0]["max_discount"] == 0.0
+        assert results[0]["exceeded"] is True
+        assert results[0]["max_discount"] is None
 
     def test_agro_medio_pallet(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
@@ -305,8 +305,8 @@ class TestDiscountEngineEvaluateLines:
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 0.0}]
         results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
-        assert results[0]["requires_approval"] is True
-        assert results[0]["max_discount"] == 0.0
+        assert results[0]["exceeded"] is True
+        assert results[0]["max_discount"] is None
 
     def test_discount_exceeds_max_returns_violation(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
@@ -371,3 +371,97 @@ class TestDiscountEngineEvaluateLines:
         results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
         assert results[0]["max_discount"] == 20.0
         assert results[1]["max_discount"] == 15.0
+
+
+class TestDiscountEngineExceeded:
+    def setup_method(self):
+        self.db_engine, self.Session, self.db_path = _fresh_db()
+        self.db = self.Session()
+        _seed_product_lines(self.db)
+        _seed_discount_rules(self.db)
+        self.engine = DiscountEngine(self.db)
+
+    def teardown_method(self):
+        self.db.close()
+        self.db_engine.dispose()
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_exceeded_true_when_discount_over_max(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 15.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["exceeded"] is True
+        assert results[0]["message"] is not None
+
+    def test_exceeded_false_when_discount_within_max(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 10.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["exceeded"] is False
+        assert results[0]["message"] is None
+
+    def test_exceeded_true_34_percent_over_5_percent(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 34.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["exceeded"] is True
+        assert "34.0%" in results[0]["message"]
+
+    def test_null_max_discount_always_exceeded_even_with_zero_discount(self):
+        prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
+        lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] is None
+        assert results[0]["exceeded"] is True
+        assert results[0]["message"] is not None
+        assert "sin descuento máximo automático" in results[0]["message"]
+
+    def test_null_max_discount_exceeded_with_high_discount(self):
+        prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
+        lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 25.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["max_discount"] is None
+        assert results[0]["exceeded"] is True
+
+    def test_inactive_campaign_not_matched(self):
+        prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
+        lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        assert results[0]["exceeded"] is False
+        assert results[0]["max_discount"] == 11.0
+
+
+class TestOrderApprovalAggregates:
+    def test_order_requires_approval_false_when_none_exceeded(self):
+        from app.services.discount_engine import order_motivo_aprobacion, order_requires_approval
+        lines = [
+            {"line_index": 0, "exceeded": False, "message": None},
+            {"line_index": 1, "exceeded": False, "message": None},
+        ]
+        assert order_requires_approval(lines) is False
+        assert order_motivo_aprobacion(lines) == ""
+
+    def test_order_requires_approval_true_when_any_exceeded(self):
+        from app.services.discount_engine import order_requires_approval
+        lines = [
+            {"line_index": 0, "exceeded": False, "message": None},
+            {"line_index": 1, "exceeded": True, "message": "descuento excedido"},
+        ]
+        assert order_requires_approval(lines) is True
+
+    def test_order_motivo_aprobacion_joins_multiple_lines(self):
+        from app.services.discount_engine import order_motivo_aprobacion
+        lines = [
+            {"line_index": 0, "exceeded": True, "message": "Línea 1 excede"},
+            {"line_index": 1, "exceeded": True, "message": "Línea 2 excede"},
+            {"line_index": 2, "exceeded": False, "message": None},
+        ]
+        motivo = order_motivo_aprobacion(lines)
+        assert "Línea 1 excede" in motivo
+        assert "Línea 2 excede" in motivo
+
+    def test_order_requires_approval_defensive_empty(self):
+        from app.services.discount_engine import order_motivo_aprobacion, order_requires_approval
+        assert order_requires_approval([]) is False
+        assert order_motivo_aprobacion([]) == ""

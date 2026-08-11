@@ -7,6 +7,8 @@ def create_quotation(
     description: str = "",
     user_id: int | None = None,
     vendedor_externo_partner_id: int | None = None,
+    requiere_aprobacion: bool = False,
+    motivo_aprobacion: str = "",
 ):
     odoo = get_odoo_connection()
 
@@ -44,7 +46,11 @@ def create_quotation(
     if vendedor_externo_partner_id:
         order_vals['x_studio_vendedor_externo'] = vendedor_externo_partner_id
 
+    order_vals['x_studio_requiere_aprobacion'] = bool(requiere_aprobacion)
+    order_vals['x_studio_motivo_aprobacion_1'] = motivo_aprobacion
+
     order_id = odoo.env['sale.order'].create(order_vals)
+
     return order_id
 
 

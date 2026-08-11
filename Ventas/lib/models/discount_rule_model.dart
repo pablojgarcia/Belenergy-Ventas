@@ -7,8 +7,7 @@ class DiscountRule {
   final String conditionType;
   final double? minValue;
   final double? maxValue;
-  final double maxDiscount;
-  final bool requiresApproval;
+  final double? maxDiscount;
   final bool isActive;
 
   const DiscountRule({
@@ -20,8 +19,7 @@ class DiscountRule {
     required this.conditionType,
     this.minValue,
     this.maxValue,
-    required this.maxDiscount,
-    this.requiresApproval = false,
+    this.maxDiscount,
     this.isActive = true,
   });
 
@@ -35,8 +33,7 @@ class DiscountRule {
       conditionType: json['condition_type'] as String? ?? '',
       minValue: (json['min_value'] as num?)?.toDouble(),
       maxValue: (json['max_value'] as num?)?.toDouble(),
-      maxDiscount: (json['max_discount'] as num?)?.toDouble() ?? 0,
-      requiresApproval: json['requires_approval'] as bool? ?? false,
+      maxDiscount: (json['max_discount'] as num?)?.toDouble(),
       isActive: json['is_active'] as bool? ?? true,
     );
   }
@@ -52,7 +49,6 @@ class DiscountRule {
       'min_value': minValue,
       'max_value': maxValue,
       'max_discount': maxDiscount,
-      'requires_approval': requiresApproval,
       'is_active': isActive,
     };
   }

@@ -225,8 +225,8 @@ class DiscountRule(Base):
     condition_type = Column(String, nullable=False)
     min_value = Column(Float, nullable=True)
     max_value = Column(Float, nullable=True)
-    max_discount = Column(Float, nullable=False)
-    requires_approval = Column(Boolean, default=False)
+    max_discount = Column(Float, nullable=True, comment="Nullable; cuando es None significa que el tramo no tiene máximo automático. Requiere aprobación manual para todas las líneas del tramo.")
+    requires_approval = Column(Boolean, default=False)  # TODO(deuda técnica): columna huérfana tras deprecación de requires_approval en el API/seed; eliminar cuando se complete la migración de base de datos.
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, nullable=True)
     updated_by = Column(Integer, nullable=True)

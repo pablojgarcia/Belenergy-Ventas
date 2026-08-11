@@ -8,6 +8,16 @@ from ..integrations.odoo.industry import principal_seller_type
 QTY_CONDITION_LINES = {"paneles_ja", "paneles_astro_575", "paneles_astro_615"}
 
 
+def order_requires_approval(lines: list[dict]) -> bool:
+    """True si alguna línea del resultado de evaluación excede su máximo (o no tiene máximo)."""
+    return any(bool(r.get("exceeded")) for r in lines)
+
+
+def order_motivo_aprobacion(lines: list[dict]) -> str:
+    """Motivos (mensajes) de las líneas que exceden, unidos por saltos de línea."""
+    return "\n".join(r["message"] for r in lines if r.get("exceeded") and r.get("message"))
+
+
 class DiscountEngine:
     def __init__(self, db: Session):
         self.db = db
@@ -108,20 +118,22 @@ class DiscountEngine:
                 continue
 
             max_discount = applicable.max_discount
-            requires_approval = applicable.requires_approval
+            exceeded = (max_discount is None) or (entry["discount"] > max_discount + 0.001)
             tier = self._describe_tier(applicable, entry["quantity"], amount_untaxed)
 
-            if requires_approval:
-                message = (
-                    "Este tramo requiere aprobación manual. "
-                    "El descuento automático máximo no aplica."
-                )
-            elif entry["discount"] > max_discount + 0.001:
-                message = (
-                    f"El descuento de la línea #{i + 1} ('{product.name}') es "
-                    f"{entry['discount']:.1f}% pero el máximo para este tramo es "
-                    f"{max_discount:.1f}%."
-                )
+            if exceeded:
+                if max_discount is None:
+                    message = (
+                        f"El descuento de la línea #{i + 1} ('{product.name}') "
+                        f"corresponde al tramo '{tier}', que requiere aprobación manual "
+                        f"(sin descuento máximo automático definido)."
+                    )
+                else:
+                    message = (
+                        f"El descuento de la línea #{i + 1} ('{product.name}') es "
+                        f"{entry['discount']:.1f}% pero el máximo para este tramo es "
+                        f"{max_discount:.1f}%."
+                    )
             else:
                 message = None
 
@@ -131,7 +143,7 @@ class DiscountEngine:
                     "product_name": product.name or "",
                     "product_line_key": product_line.key,
                     "max_discount": max_discount,
-                    "requires_approval": requires_approval,
+                    "exceeded": exceeded,
                     "tier": tier,
                     "message": message,
                     "discount_rule_id": applicable.id,

@@ -133,6 +133,17 @@ if "product_lines" not in inspector.get_table_names():
 if "discount_rules" not in inspector.get_table_names():
     Base.metadata.create_all(bind=engine, tables=[models.DiscountRule.__table__])
 
+if "discount_rules" in inspector.get_table_names():
+    dr_cols = [c["name"] for c in inspector.get_columns("discount_rules")]
+    if "max_discount" in dr_cols:
+        max_discount_nullable = next(
+            (c.get("nullable") for c in inspector.get_columns("discount_rules") if c["name"] == "max_discount"),
+            None,
+        )
+        if max_discount_nullable is False:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE discount_rules ALTER COLUMN max_discount DROP NOT NULL"))
+
 if "users" in inspector.get_table_names():
     user_cols = [c["name"] for c in inspector.get_columns("users")]
     if "seller_types" not in user_cols:
