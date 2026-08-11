@@ -39,6 +39,51 @@ Incluye un backend en FastAPI y un cliente móvil/web en Flutter.
 - Modo de desarrollo: `Ventas/lib/config/app_config.dart` controla `bypassAuthentication`.
 - Servicio de autenticación: `Ventas/lib/services/auth_service.dart`.
 
+## Quickstart con Docker (Mac / Windows / Linux)
+
+La forma más rápida de correr el stack completo (Postgres + backend + frontend web) con un solo comando, sin instalar Python ni Flutter.
+
+**Prerrequisito:** tener Docker instalado.
+- **Mac / Windows:** [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+- **Linux:** Docker Engine + plugin `docker compose` v2 (ya incluido en paquetes modernos).
+
+```bash
+# 1. Clonar y entrar
+git clone https://github.com/pablojgarcia/Belenergy-Ventas.git
+cd Belenergy-Ventas
+
+# 2. (Opcional) Configurar variables: puertos, credenciales de Odoo, etc.
+cp .env.example .env
+
+# 3. Levantar todo (el primer build compila el frontend y tarda unos minutos)
+docker compose up -d
+```
+
+Accedé a la app en:
+- **Aplicación (frontend + backend):** http://localhost:8000 — login por defecto `admin` / `admin123`.
+- **Health check:** http://localhost:8000/health
+
+Para detener o administrar:
+
+```bash
+docker compose down          # detener (conserva los datos)
+docker compose logs -f       # ver logs en vivo
+docker compose up -d --build # re-construir tras cambios de backend/UI
+docker compose down -v       # detener Y borrar la base de datos (pgdata)
+```
+
+> Las migraciones de DB, el admin inicial y las reglas de descuento se crean solos en el primer arranque. Los datos quedan persistidos en el volumen `pgdata`.
+
+### Notas
+
+- **Frontend y backend corren juntos (same-origin):** el Dockerfile multi-stage compila el frontend Flutter y FastAPI lo sirve como SPA en el mismo puerto. No hace falta configurar CORS ni URLs del frontend.
+- **Cambios a código requieren rebuild** (esta ruta no tiene hot-reload). Para desarrollo con hot reload usar los pasos manuales de la sección [Configuración local](#configuración-local).
+- **Odoo:** la sincronización de clientes/productos y el alta de cotizaciones necesitan credenciales Odoo válidas (`ODOO_URL`, `ODOO_DB`, `ODOO_USER`, `ODOO_PASSWORD`) en tu `.env`. Sin ellas la app abre y el login funciona, pero esas funciones fallarán.
+- **Puertos:** por defecto la app expone `8000` y Postgres `5432` (edita `API_PORT`/`DB_PORT` en `.env` si hay conflicto con otros servicios locales).
+- Alternativamente podés usar la `Makefile`: `make up` (construye + levanta, igual que `docker compose up -d --build`), `make down`, `make logs`, `make rebuild`, `make reset`.
+
+---
+
 ## Configuración local
 
 ### Pre-requisitos
