@@ -62,20 +62,17 @@ def test_leaf_takes_priority_over_parent():
     assert _resolve_product_line(100, cat_map, _lines_map()) == "line-deye"
 
 
-def test_accessories_by_brand_fallback():
+def test_accessories_never_resolve_no_brand_fallback():
     assert _resolve_product_line(
-        9, _cat_map(), _lines_map(), product_name="Huawei SDongleA-05"
-    ) == "line-huawei"
-    assert _resolve_product_line(
-        9, _cat_map(), _lines_map(), product_name="Kit de 3 TI Sungrow 250A"
-    ) == "line-sungrow"
+        9, _cat_map(), _lines_map()
+    ) is None
 
 
 def test_no_match_returns_none():
     assert _resolve_product_line(
-        9, _cat_map(), _lines_map(), product_name="Smart Meter Eastron SDM 120 CTM"
+        9, _cat_map(), _lines_map()
     ) is None
-    assert _resolve_product_line(None, _cat_map(), _lines_map(), product_name=None) is None
+    assert _resolve_product_line(None, _cat_map(), _lines_map()) is None
 
 
 def test_inactive_line_not_used():

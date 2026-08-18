@@ -23,13 +23,6 @@ CATEGORY_ALIASES = {
     "paneles astro 615": "paneles_astro_615",
 }
 
-BRAND_KEYWORDS = [
-    ("deye", "deye"),
-    ("huawei", "huawei"),
-    ("sungrow", "sungrow"),
-]
-
-
 def _normalize_name(text: str) -> str:
     normalized = unicodedata.normalize("NFD", text or "")
     stripped = "".join(c for c in normalized if not unicodedata.combining(c))
@@ -203,7 +196,7 @@ def _build_category_tree(odoo):
     return cat_map
 
 
-def _resolve_product_line(categ_id, cat_map, product_lines_map, product_name=None):
+def _resolve_product_line(categ_id, cat_map, product_lines_map):
     if categ_id:
         current_id = categ_id
         while current_id:
@@ -217,12 +210,6 @@ def _resolve_product_line(categ_id, cat_map, product_lines_map, product_name=Non
             if not parent:
                 break
             current_id = parent[0] if isinstance(parent, (list, tuple)) else parent
-
-    if product_name:
-        normalized = _normalize_name(product_name)
-        for keyword, key in BRAND_KEYWORDS:
-            if keyword in normalized and key in product_lines_map:
-                return product_lines_map[key]
 
     return None
 
@@ -305,7 +292,7 @@ def sync_products(db: Session):
         product_line_id = None
         if categ_odoo_id:
             product_line_id = _resolve_product_line(
-                categ_odoo_id, cat_map, product_lines_map, product_name=str(p.get('name') or "")
+                categ_odoo_id, cat_map, product_lines_map
             )
 
         product_data = {

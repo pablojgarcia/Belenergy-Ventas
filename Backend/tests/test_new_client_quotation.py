@@ -14,11 +14,38 @@ def _seed_product():
     engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
     Session = sessionmaker(bind=engine)
     db = Session()
+
+    line = db.query(models.ProductLine).filter(models.ProductLine.key == "test_line").first()
+    if not line:
+        line = models.ProductLine(key="test_line", name="Línea de Test", is_active=True)
+        db.add(line)
+        db.commit()
+        db.refresh(line)
+
+    for seller_type in ("vendedor_interno", "representante_general", "representante_agro"):
+        rule = db.query(models.DiscountRule).filter(
+            models.DiscountRule.seller_type == seller_type,
+            models.DiscountRule.product_line_id == line.id,
+        ).first()
+        if not rule:
+            db.add(models.DiscountRule(
+                seller_type=seller_type,
+                product_line_id=line.id,
+                condition_type="amount",
+                min_value=0.0,
+                max_value=None,
+                max_discount=0.0,
+                requires_approval=False,
+                is_active=True,
+            ))
+    db.commit()
+
     product = models.Product(
         name="Panel Solar 500W",
         odoo_id=999001,
         default_code="PANEL-500",
         list_price=1000.0,
+        product_line_id=line.id,
     )
     db.add(product)
     db.commit()

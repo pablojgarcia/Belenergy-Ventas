@@ -104,9 +104,15 @@ class DiscountEngine:
                         "product_name": product.name or "",
                         "product_line_key": None,
                         "max_discount": None,
-                        "requires_approval": False,
+                        "exceeded": True,
+                        "requires_approval": True,
                         "tier": None,
-                        "message": None,
+                        "message": (
+                            f"El producto '{product.name}' no tiene línea de "
+                            f"producto asignada o su línea está inactiva "
+                            f"(producto mal catalogado): requiere aprobación manual."
+                        ),
+                        "discount_rule_id": None,
                     }
                 )
                 continue
@@ -127,9 +133,14 @@ class DiscountEngine:
                         "product_name": product.name or "",
                         "product_line_key": product_line.key,
                         "max_discount": None,
-                        "requires_approval": False,
+                        "exceeded": True,
+                        "requires_approval": True,
                         "tier": None,
-                        "message": None,
+                        "message": (
+                            f"El producto '{product.name}' no tiene una regla de "
+                            f"descuento aplicable para el tipo de vendedor: "
+                            f"requiere aprobación manual."
+                        ),
                         "discount_rule_id": None,
                     }
                 )
