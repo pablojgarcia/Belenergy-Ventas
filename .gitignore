@@ -13,6 +13,7 @@ Ventas/build/
 *.pyc
 *.db
 *.db-journal
+INFO
 
 login.json
 scripts/promote_to_admin.py

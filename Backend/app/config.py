@@ -9,6 +9,7 @@ Configuracion via variables de entorno.
 """
 
 import os
+from typing import Optional
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -19,6 +20,10 @@ class Settings(BaseSettings):
     ODOO_PASSWORD: str = os.getenv("ODOO_PASSWORD")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "9d0d3dc37a2660d64bf276215182f174049503d179104b2dff87259365cf72e0")
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    # Id de `stock.warehouse` de Odoo. Si se setea, el stock sincronizado
+    # (virtual_available) se calcula para ese almacén; si no, se usa el default
+    # de la compañía. Ver nota en sync.py: _product_search_context.
+    ODOO_WAREHOUSE_ID: Optional[int] = None
 
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), "../../.env")

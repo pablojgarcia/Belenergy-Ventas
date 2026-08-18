@@ -79,6 +79,7 @@ class Product(Base):
     sale_ok = Column(Boolean, default=True)
     taxes_id = Column(Text, nullable=True)
     image = Column(LargeBinary, nullable=True)
+    virtual_available = Column(Float, default=0.0)
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"

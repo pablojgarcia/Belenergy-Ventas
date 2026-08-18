@@ -4,7 +4,7 @@ import re
 import unicodedata
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from ... import models
+from ... import models, config
 from .client import get_odoo_connection
 
 CATEGORY_ALIASES = {
@@ -227,14 +227,36 @@ def _resolve_product_line(categ_id, cat_map, product_lines_map, product_name=Non
     return None
 
 
+def _product_search_context():
+    """Contexto Odoo para la consulta de stock de productos.
+
+    Si ODOO_WAREHOUSE_ID está configurado, se fuerza el cálculo de stock para
+    ese almacén. Si no, se usa el default de la compañía (contexto del usuario
+    Odoo logueado, que es lo que Odoo aplica por defecto).
+
+    ⚠️ AVISO AL EQUIPO: forzar un almacén cambia el resultado del cálculo de
+    stock. Hoy la app no configura ningún almacén, así que se usa el default;
+    si la empresa pasa a operar con más de un depósito, definir esta variable
+    en .env (id de `stock.warehouse`) y revisar que el semáforo refleje el
+    almacén correcto.
+    """
+    if config.settings.ODOO_WAREHOUSE_ID:
+        return {"warehouse_id": config.settings.ODOO_WAREHOUSE_ID}
+    return None
+
+
 def sync_products(db: Session):
     odoo = get_odoo_connection()
 
+    # `virtual_available` es el campo nativo de Odoo (A la mano + Entrante −
+    # Saliente, ya calculado por Odoo). NO combinar manualmente qty_available +
+    # incoming_qty − outgoing_qty: duplica lógica y se desincroniza con las
+    # reglas de stock de Odoo.
     fields = [
         'id', 'name', 'default_code', 'barcode', 'list_price',
         'standard_price', 'type', 'categ_id', 'uom_id',
         'description_sale', 'active', 'sale_ok', 'image_1920',
-        'taxes_id'
+        'taxes_id', 'virtual_available'
     ]
 
     print("Cargando precios de lista USD Lista de Precios...")
@@ -257,7 +279,12 @@ def sync_products(db: Session):
     cat_map = _build_category_tree(odoo)
 
     print("Buscando productos en Odoo...")
-    products_data = odoo.env['product.template'].search_read([('active', '=', True)], fields)
+    search_context = _product_search_context()
+    products_data = odoo.env['product.template'].search_read(
+        [('active', '=', True)], fields, context=search_context
+    ) if search_context else odoo.env['product.template'].search_read(
+        [('active', '=', True)], fields
+    )
     print(f"Encontrados {len(products_data)} productos. Procesando...")
 
     for p in products_data:
@@ -297,6 +324,7 @@ def sync_products(db: Session):
             "sale_ok": bool(p.get('sale_ok', True)),
             "taxes_id": json.dumps(taxes_ids),
             "image": image_bytes,
+            "virtual_available": float(p.get('virtual_available') or 0.0),
         }
 
         db.execute(

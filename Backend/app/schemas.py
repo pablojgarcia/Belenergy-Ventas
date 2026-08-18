@@ -108,6 +108,7 @@ class ProductBase(BaseModel):
     taxes_display: str = ""
     taxes_rate: float = 0.0
     sale_ok: Optional[bool] = True
+    virtual_available: float = 0.0
 
 class ProductCreate(ProductBase):
     odoo_id: int

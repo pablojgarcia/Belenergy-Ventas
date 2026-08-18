@@ -13,6 +13,7 @@ import '../models/terms_and_conditions_model.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
+import '../widgets/stock_semaphore_indicator.dart';
 
 class CreateQuotationPage extends StatefulWidget {
   final String? customerId;
@@ -644,11 +645,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           const SizedBox(height: 20),
           _buildProductsCard(),
           const SizedBox(height: 20),
+          _buildTotalsCard(),
+          const SizedBox(height: 20),
           _buildDescriptionCard(),
           const SizedBox(height: 20),
           _buildTermsCard(),
-          const SizedBox(height: 20),
-          _buildTotalsCard(),
         ],
       ),
     );
@@ -661,11 +662,11 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
         children: [
           _buildProductsCard(),
           const SizedBox(height: 24),
+          _buildTotalsCard(),
+          const SizedBox(height: 24),
           _buildDescriptionCard(),
           const SizedBox(height: 24),
           _buildTermsCard(),
-          const SizedBox(height: 24),
-          _buildTotalsCard(),
         ],
       ),
     );
@@ -1553,6 +1554,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                           itemBuilder: (ctx, i) {
                             final p = _filtered[i];
                             return ListTile(
+                              leading: StockSemaphoreIndicator(stock: p.virtualAvailable),
                               title: Text(p.name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
                               subtitle: Row(
                                 children: [
