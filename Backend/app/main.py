@@ -351,8 +351,20 @@ if os.path.isdir(STATIC_DIR):
             return resp
         if os.path.isfile(file_path):
             resp = FileResponse(file_path)
-            if full_path == "index.html":
-                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            name = os.path.basename(full_path or "")
+            if (
+                full_path == "index.html"
+                or name in (
+                    "main.dart.js",
+                    "flutter_bootstrap.js",
+                    "flutter_service_worker.js",
+                    "AssetManifest.bin",
+                    "AssetManifest.bin.json",
+                    "FontManifest.json",
+                )
+                or name.endswith(".js")
+            ):
+                resp.headers["Cache-Control"] = "no-cache, must-revalidate"
             return resp
         resp = FileResponse(os.path.join(STATIC_DIR, "index.html"))
         resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
