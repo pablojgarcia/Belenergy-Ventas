@@ -233,6 +233,7 @@ class _AdminDiscountRulesPageState extends State<AdminDiscountRulesPage> {
             AppColumn(title: 'Condición', width: 100),
             AppColumn(title: 'Tramo', flex: 2),
             AppColumn(title: 'Máx', width: 70),
+            AppColumn(title: 'Prior.', width: 70),
             AppColumn(title: 'Aprob.', width: 80),
             AppColumn(title: 'Estado', width: 90),
             AppColumn(title: 'Acciones', width: 120),
@@ -256,12 +257,14 @@ class _AdminDiscountRulesPageState extends State<AdminDiscountRulesPage> {
                 return Text(r.maxDiscount != null ? _fmtPct(r.maxDiscount!) : 'Sin máx',
                     style: const TextStyle(fontWeight: FontWeight.w600));
               case 5:
+                return Text('${r.priority}');
+              case 6:
                 return r.maxDiscount == null
                     ? const Icon(Icons.info, size: 18, color: AppColors.warning)
                     : const Text('—');
-              case 6:
-                return _statusChip(r.isActive);
               case 7:
+                return _statusChip(r.isActive);
+              case 8:
                 return _ruleActions(r);
               default:
                 return const SizedBox();
@@ -308,6 +311,7 @@ class _AdminDiscountRulesPageState extends State<AdminDiscountRulesPage> {
                     _infoCol('Condición', _conditionLabel(r.conditionType)),
                     _infoCol('Tramo', _rangeText(r)),
                     _infoCol('Máx', r.maxDiscount != null ? _fmtPct(r.maxDiscount!) : 'Sin máx'),
+                    _infoCol('Prior.', '${r.priority}'),
                     if (r.maxDiscount == null)
                       _infoCol('Aprob.', 'Siempre'),
                   ],
@@ -606,6 +610,7 @@ class _RuleDialogState extends State<_RuleDialog> {
   late final TextEditingController _minCtrl;
   late final TextEditingController _maxCtrl;
   late final TextEditingController _maxDiscCtrl;
+  late final TextEditingController _priorityCtrl;
 
   @override
   void initState() {
@@ -618,6 +623,7 @@ class _RuleDialogState extends State<_RuleDialog> {
     _maxDiscCtrl = TextEditingController(
       text: r?.maxDiscount != null ? _fmtNum(r!.maxDiscount!) : '',
     );
+    _priorityCtrl = TextEditingController(text: '${r?.priority ?? 0}');
 
     if (r != null) {
       final bands = widget.bands.where((b) => b.conditionType == r.conditionType).toList();
@@ -639,6 +645,7 @@ class _RuleDialogState extends State<_RuleDialog> {
     _minCtrl.dispose();
     _maxCtrl.dispose();
     _maxDiscCtrl.dispose();
+    _priorityCtrl.dispose();
     super.dispose();
   }
 
@@ -739,6 +746,7 @@ class _RuleDialogState extends State<_RuleDialog> {
       'min_value': minV,
       'max_value': maxV,
       'max_discount': maxDisc,
+      'priority': int.tryParse(_priorityCtrl.text.trim()) ?? 0,
     };
 
     try {
@@ -845,6 +853,23 @@ class _RuleDialogState extends State<_RuleDialog> {
                   final val = double.tryParse(text.replaceAll(',', '.'));
                   if (val == null) return 'Ingresá un número';
                   if (val < 0 || val > 100) return 'Entre 0 y 100';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _priorityCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                    signed: true, decimal: false),
+                decoration: const InputDecoration(
+                  labelText: 'Prioridad',
+                  hintText: 'Mayor gana cuando varias reglas coinciden',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  final text = (v ?? '').trim();
+                  if (text.isEmpty) return null;
+                  if (int.tryParse(text) == null) return 'Ingresá un entero';
                   return null;
                 },
               ),

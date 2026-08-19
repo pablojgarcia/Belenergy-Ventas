@@ -228,6 +228,7 @@ class DiscountRule(Base):
     max_value = Column(Float, nullable=True)
     max_discount = Column(Float, nullable=True, comment="Nullable; cuando es None significa que el tramo no tiene máximo automático. Requiere aprobación manual para todas las líneas del tramo.")
     requires_approval = Column(Boolean, default=False)  # TODO(deuda técnica): columna huérfana tras deprecación de requires_approval en el API/seed; eliminar cuando se complete la migración de base de datos.
+    priority = Column(Integer, default=0, nullable=False, server_default="0", comment="Mayor valor se evalúa primero cuando varias reglas coinciden.")
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, nullable=True)
     updated_by = Column(Integer, nullable=True)

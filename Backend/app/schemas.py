@@ -347,6 +347,7 @@ class DiscountRuleOut(BaseModel):
     min_value: float | None = None
     max_value: float | None = None
     max_discount: float | None = None
+    priority: int = 0
     is_active: bool
     created_by: int | None = None
     updated_by: int | None = None
@@ -363,6 +364,7 @@ class DiscountRuleCreate(BaseModel):
     min_value: float | None = None
     max_value: float | None = None
     max_discount: float | None = None
+    priority: int = 0
 
 
 class DiscountRuleUpdate(BaseModel):
@@ -373,6 +375,7 @@ class DiscountRuleUpdate(BaseModel):
     max_value: float | None = None
     max_discount: float | None = None
     is_active: bool | None = None
+    priority: int | None = None
 
 
 class DiscountRuleResult(BaseModel):

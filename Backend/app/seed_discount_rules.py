@@ -121,6 +121,7 @@ def seed_discount_rules(db: Session):
                         max_discount=max_disc,
                         requires_approval=False,
                         is_active=not is_campaign,
+                        priority=10,
                     ))
 
         # Qty bands
@@ -150,6 +151,7 @@ def seed_discount_rules(db: Session):
                         max_discount=max_disc,
                         requires_approval=False,
                         is_active=True,
+                        priority=20,
                     ))
 
     # Migración idempotente en DBs existentes: tramos sin máximo automático (None).
@@ -166,5 +168,16 @@ def seed_discount_rules(db: Session):
         models.DiscountRule.min_value.is_(None),
         models.DiscountRule.max_value.is_(None),
     ).update({models.DiscountRule.max_discount: None, models.DiscountRule.is_active: False})
+
+    # Prioridades por defecto para reglas creadas antes de la columna priority
+    # (solo si quedaron en 0, preservando ajustes manuales).
+    db.query(models.DiscountRule).filter(
+        models.DiscountRule.condition_type == "amount",
+        models.DiscountRule.priority == 0,
+    ).update({models.DiscountRule.priority: 10})
+    db.query(models.DiscountRule).filter(
+        models.DiscountRule.condition_type == "qty",
+        models.DiscountRule.priority == 0,
+    ).update({models.DiscountRule.priority: 20})
 
     db.commit()

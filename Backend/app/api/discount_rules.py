@@ -80,6 +80,7 @@ def create_discount_rule(
         min_value=body.min_value,
         max_value=body.max_value,
         max_discount=body.max_discount,
+        priority=body.priority,
         is_active=True,
         created_by=current_user.id,
         updated_by=current_user.id,
@@ -196,6 +197,8 @@ def update_discount_rule(
         rule.max_value = body.max_value
     if "max_discount" in fields:
         rule.max_discount = body.max_discount
+    if "priority" in fields:
+        rule.priority = body.priority
     if "is_active" in fields:
         rule.is_active = body.is_active
 

@@ -8,6 +8,7 @@ class DiscountRule {
   final double? minValue;
   final double? maxValue;
   final double? maxDiscount;
+  final int priority;
   final bool isActive;
 
   const DiscountRule({
@@ -20,6 +21,7 @@ class DiscountRule {
     this.minValue,
     this.maxValue,
     this.maxDiscount,
+    this.priority = 0,
     this.isActive = true,
   });
 
@@ -34,6 +36,7 @@ class DiscountRule {
       minValue: (json['min_value'] as num?)?.toDouble(),
       maxValue: (json['max_value'] as num?)?.toDouble(),
       maxDiscount: (json['max_discount'] as num?)?.toDouble(),
+      priority: json['priority'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
     );
   }
@@ -49,6 +52,7 @@ class DiscountRule {
       'min_value': minValue,
       'max_value': maxValue,
       'max_discount': maxDiscount,
+      'priority': priority,
       'is_active': isActive,
     };
   }

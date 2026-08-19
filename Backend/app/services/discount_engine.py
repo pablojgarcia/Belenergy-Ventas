@@ -5,8 +5,6 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..integrations.odoo.industry import principal_seller_type
 
-QTY_CONDITION_LINES = {"paneles_ja", "paneles_astro_575", "paneles_astro_615"}
-
 
 def order_requires_approval(lines: list[dict]) -> bool:
     """True si alguna línea del resultado de evaluación excede su máximo (o no tiene máximo)."""
@@ -123,7 +121,6 @@ class DiscountEngine:
                 rules,
                 entry["quantity"],
                 amount_untaxed,
-                product_line.key,
             )
 
             if applicable is None:
@@ -182,7 +179,11 @@ class DiscountEngine:
         return results
 
     def _get_cached_rules(self, seller_type: str, line_ids: list):
-        """Reglas de descuento con cache Redis (TTL 300s). Fallback a DB."""
+        """Reglas de descuento con cache Redis (TTL 300s). Fallback a DB.
+
+        Ordenadas por `priority DESC` (luego `created_at`): el motor toma la
+        primera regla que matchea, y la prioridad explícita decide cuál gana.
+        """
         try:
             from types import SimpleNamespace
 
@@ -209,6 +210,10 @@ class DiscountEngine:
                 models.DiscountRule.product_line_id.in_(line_ids),
                 models.DiscountRule.is_active == True,
             )
+            .order_by(
+                models.DiscountRule.priority.desc(),
+                models.DiscountRule.created_at,
+            )
             .all()
         )
 
@@ -226,6 +231,7 @@ class DiscountEngine:
                         "min_value": r.min_value,
                         "max_value": r.max_value,
                         "max_discount": r.max_discount,
+                        "priority": r.priority,
                         "is_active": r.is_active,
                     }
                     for r in rules
@@ -240,25 +246,16 @@ class DiscountEngine:
         rules: list[models.DiscountRule],
         quantity: float,
         amount_untaxed: float,
-        product_line_key: str,
     ) -> Optional[models.DiscountRule]:
-        if product_line_key in QTY_CONDITION_LINES:
-            return self._first_match(rules, "qty", quantity, amount_untaxed)
-        return self._first_match(rules, "amount", quantity, amount_untaxed)
+        """Devuelve la primera regla (según `priority`) que matchea su condición.
 
-    def _first_match(
-        self,
-        rules: list[models.DiscountRule],
-        condition_type: str,
-        quantity: float,
-        amount_untaxed: float,
-    ) -> Optional[models.DiscountRule]:
+        Cada regla declara su propia condición (`qty`, `amount`, ...); no hay
+        condiciones fijas por línea de producto.
+        """
         for rule in rules:
-            if rule.condition_type != condition_type:
-                continue
-            if condition_type == "qty" and self._qty_matches(rule, quantity):
+            if rule.condition_type == "qty" and self._qty_matches(rule, quantity):
                 return rule
-            if condition_type == "amount" and self._amount_matches(rule, amount_untaxed):
+            if rule.condition_type == "amount" and self._amount_matches(rule, amount_untaxed):
                 return rule
         return None
 

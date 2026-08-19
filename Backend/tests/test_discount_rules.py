@@ -367,6 +367,119 @@ class TestDiscountEngineEvaluateLines:
         assert results[0]["exceeded"] is True
         assert results[0]["message"] is not None
 
+    def test_qty_rule_on_non_panel_line_within_tramo(self):
+        prod = _seed_product(self.db, "Empalme para riel", "EMP-01", 10.0, "estructuras")
+        estructuras = self.db.query(models.ProductLine).filter(
+            models.ProductLine.key == "estructuras").first()
+        self.db.query(models.DiscountRule).filter(
+            models.DiscountRule.product_line_id == estructuras.id
+        ).update({models.DiscountRule.is_active: False})
+        self.db.add(models.DiscountRule(
+            seller_type="representante_agro",
+            product_line_id=estructuras.id,
+            condition_type="qty",
+            min_value=1.0,
+            max_value=3.0,
+            max_discount=90.0,
+            requires_approval=False,
+            is_active=True,
+            priority=20,
+        ))
+        self.db.commit()
+        lines_data = [{"product_id": prod.id, "quantity": 2, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["max_discount"] == 90.0
+        assert results[0]["exceeded"] is False
+        assert results[0]["message"] is None
+
+    def test_qty_rule_on_non_panel_line_over_max(self):
+        prod = _seed_product(self.db, "Empalme para riel", "EMP-01", 10.0, "estructuras")
+        estructuras = self.db.query(models.ProductLine).filter(
+            models.ProductLine.key == "estructuras").first()
+        self.db.query(models.DiscountRule).filter(
+            models.DiscountRule.product_line_id == estructuras.id
+        ).update({models.DiscountRule.is_active: False})
+        self.db.add(models.DiscountRule(
+            seller_type="representante_agro",
+            product_line_id=estructuras.id,
+            condition_type="qty",
+            min_value=1.0,
+            max_value=3.0,
+            max_discount=90.0,
+            requires_approval=False,
+            is_active=True,
+            priority=20,
+        ))
+        self.db.commit()
+        lines_data = [{"product_id": prod.id, "quantity": 2, "discount": 95.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["max_discount"] == 90.0
+        assert results[0]["exceeded"] is True
+        assert "90.0%" in results[0]["message"]
+
+    def test_qty_rule_outside_tramo_no_amount_requires_approval(self):
+        prod = _seed_product(self.db, "Empalme para riel", "EMP-01", 10.0, "estructuras")
+        estructuras = self.db.query(models.ProductLine).filter(
+            models.ProductLine.key == "estructuras").first()
+        self.db.query(models.DiscountRule).filter(
+            models.DiscountRule.product_line_id == estructuras.id
+        ).update({models.DiscountRule.is_active: False})
+        self.db.add(models.DiscountRule(
+            seller_type="representante_agro",
+            product_line_id=estructuras.id,
+            condition_type="qty",
+            min_value=1.0,
+            max_value=3.0,
+            max_discount=90.0,
+            requires_approval=False,
+            is_active=True,
+            priority=20,
+        ))
+        self.db.commit()
+        lines_data = [{"product_id": prod.id, "quantity": 4, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["max_discount"] is None
+        assert results[0]["exceeded"] is True
+        assert "no tiene una regla de descuento aplicable" in results[0]["message"]
+
+    def test_higher_priority_qty_wins_over_amount_rule(self):
+        prod = _seed_product(self.db, "Empalme para riel", "EMP-01", 10.0, "estructuras")
+        estructuras = self.db.query(models.ProductLine).filter(
+            models.ProductLine.key == "estructuras").first()
+        self.db.query(models.DiscountRule).filter(
+            models.DiscountRule.product_line_id == estructuras.id
+        ).update({models.DiscountRule.is_active: False})
+        self.db.add(models.DiscountRule(
+            seller_type="representante_agro",
+            product_line_id=estructuras.id,
+            condition_type="amount",
+            min_value=0.0,
+            max_value=None,
+            max_discount=5.0,
+            requires_approval=False,
+            is_active=True,
+            priority=10,
+        ))
+        self.db.add(models.DiscountRule(
+            seller_type="representante_agro",
+            product_line_id=estructuras.id,
+            condition_type="qty",
+            min_value=1.0,
+            max_value=3.0,
+            max_discount=90.0,
+            requires_approval=False,
+            is_active=True,
+            priority=20,
+        ))
+        self.db.commit()
+        lines_data = [{"product_id": prod.id, "quantity": 2, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["max_discount"] == 90.0
+
+        lines_data = [{"product_id": prod.id, "quantity": 5, "discount": 0.0}]
+        results = self.engine.evaluate_lines(lines_data, "representante_agro")
+        assert results[0]["max_discount"] == 5.0
+
     def test_amount_line_ignores_qty_rules(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         deye_line = self.db.query(models.ProductLine).filter(models.ProductLine.key == "deye").first()
