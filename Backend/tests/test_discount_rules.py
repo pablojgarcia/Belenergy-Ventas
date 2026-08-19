@@ -117,7 +117,7 @@ class TestDiscountEngine:
     def test_amount_band_lt_500(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-3K-G", "SUN-3K-G", 200.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 2, "unit_price": 200.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_1", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_1", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 0.0
@@ -125,7 +125,7 @@ class TestDiscountEngine:
     def test_amount_band_lt_5000(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 10, "unit_price": 300.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_2", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_2", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 11.0
@@ -133,7 +133,7 @@ class TestDiscountEngine:
     def test_amount_band_gte_10000(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-10K-G", "SUN-10K-G", 500.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 25, "unit_price": 500.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_3", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_3", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 11.0
@@ -141,7 +141,7 @@ class TestDiscountEngine:
     def test_amount_band_gte_50000(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-50K-G", "SUN-50K-G", 2000.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 30, "unit_price": 2000.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_4", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_4", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 20.0
@@ -157,7 +157,7 @@ class TestDiscountEngine:
     def test_qty_band_pallet(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 36, "unit_price": 500.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_6", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_6", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 11.0
@@ -165,7 +165,7 @@ class TestDiscountEngine:
     def test_qty_band_5_pallets(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 180, "unit_price": 500.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_7", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_7", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 15.0
@@ -173,7 +173,7 @@ class TestDiscountEngine:
     def test_qty_band_10_pallets(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 360, "unit_price": 500.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_8", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_8", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 20.0
@@ -181,7 +181,7 @@ class TestDiscountEngine:
     def test_qty_band_container_requires_approval(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 720, "unit_price": 500.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_9", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_9", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["exceeded"] is True
@@ -198,7 +198,7 @@ class TestDiscountEngine:
     def test_amount_without_discount_is_list_price(self):
         prod = _seed_product(self.db, "Cable 6mm", "CBSOLAM-6MM-PT 100", 50.0, "cables")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 100, "unit_price": 50.0, "discount": 0.0}])
-        user = _seed_user(self.db, "test_user_11", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_11", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 11.0
@@ -206,7 +206,7 @@ class TestDiscountEngine:
     def test_discount_exceeds_max_returns_violation(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 10, "unit_price": 300.0, "discount": 15.0}])
-        user = _seed_user(self.db, "test_user_12", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_12", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["message"] is not None
@@ -218,7 +218,7 @@ class TestDiscountEngine:
         prod.product_line_id = None
         self.db.commit()
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 10, "unit_price": 100.0, "discount": 50.0}])
-        user = _seed_user(self.db, "test_user_13", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_13", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] is None
@@ -226,14 +226,14 @@ class TestDiscountEngine:
         assert results[0]["message"] is not None
         assert "no tiene línea de producto asignada" in results[0]["message"]
 
-    def test_default_seller_type_is_vendedor_interno(self):
+    def test_default_seller_type_is_representante_general(self):
         user = _seed_user(self.db, "test_user_14", None)
-        assert principal_seller_type(user.seller_types) == "vendedor_interno"
+        assert principal_seller_type(user.seller_types) == "representante_general"
 
     def test_snapshot_has_discount_rule_id(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 10, "unit_price": 300.0, "discount": 10.0}])
-        user = _seed_user(self.db, "test_user_15", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_15", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         assert results[0]["max_discount"] == 11.0
@@ -242,7 +242,7 @@ class TestDiscountEngine:
     def test_no_discount_within_max_allows_generate(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         draft = _seed_draft(self.db, 1, [{"product_id": prod.id, "quantity": 10, "unit_price": 300.0, "discount": 10.0}])
-        user = _seed_user(self.db, "test_user_16", "vendedor_interno")
+        user = _seed_user(self.db, "test_user_16", "representante_general")
         engine = DiscountEngine(self.db)
         results = engine.evaluate(draft, user)
         violations = [r for r in results if r.get("message")]
@@ -282,13 +282,13 @@ class TestDiscountEngineEvaluateLines:
     def test_amount_band_lt_5000(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] == 11.0
 
-    def test_amount_4000_vendedor_interno(self):
+    def test_amount_4000_representante_general(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 400.0, "deye")
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] == 11.0
 
     def test_amount_4000_representante_agro(self):
@@ -300,20 +300,20 @@ class TestDiscountEngineEvaluateLines:
     def test_qty_band_pallet(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 36, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] == 11.0
 
     def test_qty_band_container_requires_approval(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["exceeded"] is True
         assert results[0]["max_discount"] is None
 
     def test_discount_exceeds_max_returns_violation(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 15.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["message"] is not None
         assert "15.0%" in results[0]["message"]
         assert "11.0%" in results[0]["message"]
@@ -323,7 +323,7 @@ class TestDiscountEngineEvaluateLines:
         prod.product_line_id = None
         self.db.commit()
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 50.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] is None
         assert results[0]["exceeded"] is True
         assert results[0]["message"] is not None
@@ -335,7 +335,7 @@ class TestDiscountEngineEvaluateLines:
         deye_line.is_active = False
         self.db.commit()
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] is None
         assert results[0]["exceeded"] is True
         assert "línea está inactiva" in results[0]["message"]
@@ -343,7 +343,7 @@ class TestDiscountEngineEvaluateLines:
     def test_active_line_without_match_requires_approval(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 0.5, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] is None
         assert results[0]["exceeded"] is True
         assert "no tiene una regla de descuento aplicable" in results[0]["message"]
@@ -355,14 +355,14 @@ class TestDiscountEngineEvaluateLines:
             {"product_id": prod1.id, "quantity": 10, "discount": 0.0},
             {"product_id": prod2.id, "quantity": 36, "discount": 0.0},
         ]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] == 11.0
         assert results[1]["max_discount"] == 11.0
 
     def test_panel_qty_outside_bands_no_amount_fallback_requires_approval(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 0.5, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] is None
         assert results[0]["exceeded"] is True
         assert results[0]["message"] is not None
@@ -484,7 +484,7 @@ class TestDiscountEngineEvaluateLines:
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         deye_line = self.db.query(models.ProductLine).filter(models.ProductLine.key == "deye").first()
         self.db.add(models.DiscountRule(
-            seller_type="vendedor_interno",
+            seller_type="representante_general",
             product_line_id=deye_line.id,
             condition_type="qty",
             min_value=1.0,
@@ -495,7 +495,7 @@ class TestDiscountEngineEvaluateLines:
         ))
         self.db.commit()
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] == 11.0
 
     def test_amount_line_total_includes_panel_lines(self):
@@ -505,7 +505,7 @@ class TestDiscountEngineEvaluateLines:
             {"product_id": prod1.id, "quantity": 10, "discount": 0.0},
             {"product_id": prod2.id, "quantity": 180, "discount": 0.0},
         ]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] == 20.0
         assert results[1]["max_discount"] == 15.0
 
@@ -527,14 +527,14 @@ class TestDiscountEngineExceeded:
     def test_exceeded_true_when_discount_over_max(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 15.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["exceeded"] is True
         assert results[0]["message"] is not None
 
     def test_exceeded_false_when_discount_within_max(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 10.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["exceeded"] is False
         assert results[0]["message"] is None
 
@@ -548,7 +548,7 @@ class TestDiscountEngineExceeded:
     def test_null_max_discount_always_exceeded_even_with_zero_discount(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] is None
         assert results[0]["exceeded"] is True
         assert results[0]["message"] is not None
@@ -557,14 +557,14 @@ class TestDiscountEngineExceeded:
     def test_null_max_discount_exceeded_with_high_discount(self):
         prod = _seed_product(self.db, "Panel JA 615W", "JAM66D45", 500.0, "paneles_ja")
         lines_data = [{"product_id": prod.id, "quantity": 720, "discount": 25.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["max_discount"] is None
         assert results[0]["exceeded"] is True
 
     def test_inactive_campaign_not_matched(self):
         prod = _seed_product(self.db, "Inversor Deye SUN-5K-G", "SUN-5K-G", 300.0, "deye")
         lines_data = [{"product_id": prod.id, "quantity": 10, "discount": 0.0}]
-        results = self.engine.evaluate_lines(lines_data, "vendedor_interno")
+        results = self.engine.evaluate_lines(lines_data, "representante_general")
         assert results[0]["exceeded"] is False
         assert results[0]["max_discount"] == 11.0
 

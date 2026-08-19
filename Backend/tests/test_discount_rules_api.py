@@ -54,7 +54,7 @@ def test_create_rule_and_clear_open_band(client, admin_headers):
     resp = client.post(
         "/discount-rules",
         json={
-            "seller_type": "vendedor_interno",
+            "seller_type": "representante_general",
             "product_line_id": line["id"],
             "condition_type": "amount",
             "min_value": 50000.0,
@@ -88,7 +88,7 @@ def test_list_rules_include_inactive(client, admin_headers):
     rule = client.post(
         "/discount-rules",
         json={
-            "seller_type": "vendedor_interno",
+            "seller_type": "representante_general",
             "product_line_id": line["id"],
             "condition_type": "amount",
             "min_value": 0.0,

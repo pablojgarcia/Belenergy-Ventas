@@ -13,19 +13,12 @@ PRODUCT_LINES = [
     {"key": "paneles_astro_615", "name": "Paneles Astro 615"},
 ]
 
-SELLER_TYPES = ["vendedor_interno", "representante_general", "representante_agro"]
+SELLER_TYPES = ["representante_general", "representante_agro"]
 
 # Matriz de politica_de_descuentos_por_linea.xlsx (monto; por línea de producto).
 # Campaña no tiene máximo automático: max_discount=None e is_active=False
 # (se reactiva manualmente si hay lógica de campaña).
 AMOUNT_RULES = {
-    "vendedor_interno": {
-        "deye": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
-        "huawei": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 15.0, "gt_50000": 15.0, "campaña": None},
-        "sungrow": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 20.0, "gt_50000": 30.0, "campaña": None},
-        "estructuras": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 20.0, "gt_50000": 30.0, "campaña": None},
-        "cables": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
-    },
     "representante_general": {
         "deye": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 11.0, "gt_50000": 20.0, "campaña": None},
         "huawei": {"lt_500": 0.0, "lt_5000": 11.0, "lt_10000": 15.0, "gt_50000": 20.0, "campaña": None},
@@ -45,7 +38,7 @@ AMOUNT_RULES = {
 # TODO: confirmar con el equipo si la diferencia de Huawei en "USD 50.000+" es intencional:
 # Vendedores Internos 15% vs Representantes General 20% (planilla cargada tal cual).
 QTY_RULES = {
-    "vendedor_interno": {
+    "representante_general": {
         "paneles_ja": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
         "paneles_astro_575": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
         "paneles_astro_615": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},

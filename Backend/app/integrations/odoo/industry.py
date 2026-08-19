@@ -15,22 +15,25 @@ SELLER_TYPE_TO_INDUSTRY = {
 _industry_cache: dict[str, int] = {}
 
 
+DEFAULT_SELLER_TYPE = "representante_general"
+
+
 def user_seller_types(seller_types: list[str] | None) -> list[str]:
-    """Devuelve la lista de seller_types del usuario, normalizada (default interno)."""
+    """Devuelve la lista de seller_types del usuario, normalizada (default general)."""
     if seller_types:
         cleaned = [s for s in seller_types if s]
         if cleaned:
             return cleaned
-    return ["vendedor_interno"]
+    return [DEFAULT_SELLER_TYPE]
 
 
 def principal_seller_type(seller_types: list[str] | None) -> str:
-    """Seller type principal (el primero de la lista), default interno."""
+    """Seller type principal (el primero de la lista), default general."""
     if seller_types:
         cleaned = [s for s in seller_types if s]
         if cleaned:
             return cleaned[0]
-    return "vendedor_interno"
+    return DEFAULT_SELLER_TYPE
 
 
 def mapped_industries(seller_types: list[str]) -> list[dict]:
@@ -73,7 +76,7 @@ def effective_seller_type(seller_types: list[str], industry_name: str | None) ->
         return mapped
     if seller_types:
         return seller_types[0]
-    return "vendedor_interno"
+    return DEFAULT_SELLER_TYPE
 
 
 INDUSTRY_MODELS = ("res.partner.industry", "res.industry")

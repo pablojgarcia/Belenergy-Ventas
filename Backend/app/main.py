@@ -159,7 +159,7 @@ if "users" in inspector.get_table_names():
             for row in missing:
                 user = db.get(models.User, row[0])
                 if user is not None and user.seller_types is None:
-                    user.seller_types = [row[1] or "vendedor_interno"]
+                    user.seller_types = [row[1] or "representante_general"]
             db.commit()
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users DROP COLUMN seller_type"))

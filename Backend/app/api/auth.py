@@ -18,6 +18,7 @@ from ..auth import (
 from ..dependencies import get_current_user, get_current_admin
 from ..rate_limit import limit
 from ..repositories.user_repository import UserRepository
+from ..integrations.odoo.industry import DEFAULT_SELLER_TYPE
 from .. import models, schemas
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -50,7 +51,7 @@ def register(request: Request, user_in: schemas.UserCreate, db: Session = Depend
 
     role = "admin" if first_user else user_in.role
 
-    seller_types = user_in.seller_types or ["vendedor_interno"]
+    seller_types = user_in.seller_types or [DEFAULT_SELLER_TYPE]
 
     user = models.User(
         email=user_in.email,

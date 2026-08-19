@@ -22,11 +22,11 @@ def test_user_seller_types_prefers_list():
 
 
 def test_user_seller_types_ignores_empty_list():
-    assert user_seller_types([]) == ["vendedor_interno"]
+    assert user_seller_types([]) == ["representante_general"]
 
 
 def test_user_seller_types_default_internal():
-    assert user_seller_types(None) == ["vendedor_interno"]
+    assert user_seller_types(None) == ["representante_general"]
 
 
 def test_principal_seller_type_first_element():
@@ -34,8 +34,8 @@ def test_principal_seller_type_first_element():
 
 
 def test_principal_seller_type_default_internal():
-    assert principal_seller_type(None) == "vendedor_interno"
-    assert principal_seller_type([]) == "vendedor_interno"
+    assert principal_seller_type(None) == "representante_general"
+    assert principal_seller_type([]) == "representante_general"
 
 
 def test_mapped_industries_single():
@@ -85,7 +85,7 @@ def test_effective_seller_type_without_industry_uses_principal():
 
 
 def test_effective_seller_type_fallback_internal():
-    assert effective_seller_type([], None) == "vendedor_interno"
+    assert effective_seller_type([], None) == "representante_general"
 
 
 def test_mapping_has_known_seller_type():

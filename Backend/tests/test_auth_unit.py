@@ -187,7 +187,7 @@ def test_register_with_seller_types(client, admin_headers):
     assert data["seller_types"] == ["representante_agro"]
 
 
-def test_register_default_seller_types_is_vendedor_interno(client, admin_headers):
+def test_register_default_seller_types_is_representante_general(client, admin_headers):
     resp = client.post("/auth/register", json={
         "email": "default@test.com",
         "username": "default_user",
@@ -196,7 +196,7 @@ def test_register_default_seller_types_is_vendedor_interno(client, admin_headers
     }, headers=admin_headers)
     assert resp.status_code == 201
     data = resp.json()
-    assert data["seller_types"] == ["vendedor_interno"]
+    assert data["seller_types"] == ["representante_general"]
 
 
 def test_update_user_seller_types(client, admin_headers):

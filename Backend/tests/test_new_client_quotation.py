@@ -22,7 +22,7 @@ def _seed_product():
         db.commit()
         db.refresh(line)
 
-    for seller_type in ("vendedor_interno", "representante_general", "representante_agro"):
+    for seller_type in ("representante_general", "representante_agro"):
         rule = db.query(models.DiscountRule).filter(
             models.DiscountRule.seller_type == seller_type,
             models.DiscountRule.product_line_id == line.id,
@@ -298,7 +298,7 @@ def test_generate_does_not_block_on_exceeded_discount(client, admin_headers):
     db.commit()
 
     db.add(models.DiscountRule(
-        seller_type="vendedor_interno",
+        seller_type="representante_general",
         product_line_id=line.id,
         condition_type="amount",
         min_value=500.0,
@@ -363,7 +363,7 @@ def test_generate_blocks_when_exceeded_without_description(client, admin_headers
     db.commit()
 
     db.add(models.DiscountRule(
-        seller_type="vendedor_interno",
+        seller_type="representante_general",
         product_line_id=line.id,
         condition_type="amount",
         min_value=500.0,

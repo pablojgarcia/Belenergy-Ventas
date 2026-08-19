@@ -10,7 +10,6 @@ import '../widgets/app_table.dart';
 
 const _sellerOptions = [
   ('', 'Todos'),
-  ('vendedor_interno', 'Vendedor interno'),
   ('representante_general', 'Representante general'),
   ('representante_agro', 'Representante agro'),
 ];
@@ -617,7 +616,7 @@ class _RuleDialogState extends State<_RuleDialog> {
     super.initState();
     final r = widget.rule;
     final selectedLine = widget.lines.where((l) => l.id == r?.productLineId).firstOrNull;
-    _sellerType = r?.sellerType ?? 'vendedor_interno';
+    _sellerType = r?.sellerType ?? 'representante_general';
     _productLineId = r?.productLineId ?? (widget.lines.isEmpty ? '' : widget.lines.first.id);
     _conditionType = r?.conditionType ?? _suggestedCondition(selectedLine);
     _maxDiscCtrl = TextEditingController(
@@ -785,7 +784,7 @@ class _RuleDialogState extends State<_RuleDialog> {
                     .where((o) => o.$1.isNotEmpty)
                     .map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2)))
                     .toList(),
-                onChanged: (v) => setState(() => _sellerType = v ?? 'vendedor_interno'),
+                onChanged: (v) => setState(() => _sellerType = v ?? 'representante_general'),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
