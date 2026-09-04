@@ -12,7 +12,7 @@ from alembic import command as alembic_command
 from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
-from .api import auth, products, customers, quotations, taxes, sync, health, users, terms_and_conditions, discount_rules
+from .api import auth, products, customers, quotations, taxes, sync, health, users, terms_and_conditions, discount_rules, cache
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
 
@@ -338,6 +338,7 @@ app.include_router(discount_rules.router)
 app.include_router(drafts_router)
 app.include_router(quotations_router)
 app.include_router(users.router)
+app.include_router(cache.router)
 
 # SPA catch-all (must be last)
 if os.path.isdir(STATIC_DIR):

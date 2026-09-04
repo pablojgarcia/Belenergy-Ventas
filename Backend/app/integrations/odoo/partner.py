@@ -15,17 +15,40 @@ def resolve_app_user_partner_id(email: str) -> int | None:
     if not email:
         return None
     try:
+        from ...services.cache_service import cache_get, cache_set
+
+        cache_key = f"odoo_partner:{email}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return int(cached)
+    except Exception:
+        pass
+    try:
         odoo = get_odoo_connection()
         user_ids = odoo.env["res.users"].search([("login", "=", email)])
         if user_ids:
             user = odoo.env["res.users"].read(user_ids[0], ["partner_id"])
             if user and user[0].get("partner_id"):
-                return int(user[0]["partner_id"][0])
+                result = int(user[0]["partner_id"][0])
+                try:
+                    from ...services.cache_service import cache_set
+
+                    cache_set(f"odoo_partner:{email}", result)
+                except Exception:
+                    pass
+                return result
         partner_ids = odoo.env["res.partner"].search([("email", "=", email)])
         if not partner_ids:
             partner_ids = odoo.env["res.partner"].search([("name", "=", email)])
         if partner_ids:
-            return int(partner_ids[0])
+            result = int(partner_ids[0])
+            try:
+                from ...services.cache_service import cache_set
+
+                cache_set(f"odoo_partner:{email}", result)
+            except Exception:
+                pass
+            return result
         return None
     except Exception as e:
         logger.warning("No se pudo resolver el vendedor externo para '%s': %s", email, e)
@@ -40,10 +63,26 @@ def resolve_res_users_id_by_name(name: str) -> int | None:
     if not name:
         return None
     try:
+        from ...services.cache_service import cache_get, cache_set
+
+        cache_key = f"odoo_user:{name}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return int(cached)
+    except Exception:
+        pass
+    try:
         odoo = get_odoo_connection()
         user_ids = odoo.env["res.users"].search([("name", "=", name)])
         if user_ids:
-            return int(user_ids[0])
+            result = int(user_ids[0])
+            try:
+                from ...services.cache_service import cache_set
+
+                cache_set(f"odoo_user:{name}", result)
+            except Exception:
+                pass
+            return result
         return None
     except Exception as e:
         logger.warning("No se pudo resolver el vendedor interno '%s': %s", name, e)

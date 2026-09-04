@@ -95,11 +95,15 @@ class QuotationGenerationService:
             raise HTTPException(status_code=400, detail="El borrador debe tener al menos una línea")
 
         lines = draft.lines
+        # Batch: 1 query para todos los productos (antes: 2 queries por línea).
+        products_map = self.product_repo.get_by_ids(
+            [line.product_id for line in lines]
+        )
         for i, line in enumerate(lines):
             if line.quantity <= 0:
                 raise HTTPException(status_code=400, detail=f"La línea #{i + 1} debe tener cantidad mayor a cero")
 
-            product = self.product_repo.get_by_id(line.product_id)
+            product = products_map.get(line.product_id)
             if not product:
                 raise HTTPException(status_code=404, detail=f"Producto ID {line.product_id} no encontrado")
 
@@ -133,7 +137,7 @@ class QuotationGenerationService:
         amount_tax = 0.0
         odoo_lines = []
         for i, line in enumerate(lines):
-            product = self.product_repo.get_by_id(line.product_id)
+            product = products_map.get(line.product_id)
             if not product:
                 raise HTTPException(status_code=404, detail=f"Producto ID {line.product_id} no encontrado")
 

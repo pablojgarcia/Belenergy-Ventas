@@ -87,6 +87,12 @@ def create_discount_rule(
     db.add(rule)
     db.commit()
     db.refresh(rule)
+    try:
+        from ..services.cache_service import cache_invalidate
+
+        cache_invalidate(f"discount_rules:{rule.seller_type}")
+    except Exception:
+        pass
     return rule
 
 
@@ -196,6 +202,12 @@ def update_discount_rule(
     rule.updated_by = current_user.id
     db.commit()
     db.refresh(rule)
+    try:
+        from ..services.cache_service import cache_invalidate
+
+        cache_invalidate(f"discount_rules:{rule.seller_type}")
+    except Exception:
+        pass
     return rule
 
 
@@ -211,7 +223,14 @@ def delete_discount_rule(
     if not rule:
         raise HTTPException(status_code=404, detail="Regla no encontrada")
 
+    seller_type = rule.seller_type
     rule.is_active = False
     rule.updated_by = current_user.id
     db.commit()
+    try:
+        from ..services.cache_service import cache_invalidate
+
+        cache_invalidate(f"discount_rules:{seller_type}")
+    except Exception:
+        pass
     return {"deleted": True}

@@ -12,15 +12,28 @@ def create_quotation(
 ):
     odoo = get_odoo_connection()
 
-    partner_count = odoo.env['res.partner'].search_count([('id', '=', partner_id)])
-    if partner_count == 0:
+    # Validación en batch: 2 RPC en total en vez de N+1.
+    partner_rows = odoo.env['res.partner'].search_read(
+        [('id', '=', partner_id)], ['id'], limit=1
+    )
+    if not partner_rows:
         raise ValueError("El cliente no existe en Odoo")
+
+    product_ids = list({line['product_id'] for line in order_lines})
+    existing_ids = set()
+    if product_ids:
+        existing_ids = {
+            row['id']
+            for row in odoo.env['product.product'].search_read(
+                [('id', 'in', product_ids)], ['id']
+            )
+        }
+    missing = set(product_ids) - existing_ids
+    if missing:
+        raise ValueError(f"Productos no existen en Odoo: {sorted(missing)}")
 
     lines = []
     for line in order_lines:
-        product_count = odoo.env['product.product'].search_count([('id', '=', line['product_id'])])
-        if product_count == 0:
-            raise ValueError(f"Producto ID {line['product_id']} no existe en Odoo")
 
         line_vals = {
             'product_id': line['product_id'],

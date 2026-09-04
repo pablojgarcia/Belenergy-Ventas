@@ -46,13 +46,27 @@ class DraftService:
         self.draft_repo.create(draft)
 
         if lines_data:
+            products_map = self.product_repo.get_by_ids(
+                [ld.get("product_id") for ld in lines_data]
+            )
+            all_tax_ids = list(
+                {
+                    tid
+                    for ld in lines_data
+                    for tid in (ld.get("tax_id") or [])
+                }
+            )
+            tax_amounts = {}
+            if all_tax_ids:
+                for t in self.tax_repo.get_by_odoo_ids(all_tax_ids):
+                    tax_amounts[t.odoo_id] = t.amount
             for line_data in lines_data:
-                product = self.product_repo.get_by_id(line_data.get("product_id"))
+                product = products_map.get(line_data.get("product_id"))
                 product_odoo_id = product.odoo_id if product else None
-                tax_rate = 0.0
-                if line_data.get("tax_id"):
-                    taxes = self.tax_repo.get_by_odoo_ids(line_data["tax_id"])
-                    tax_rate = sum(t.amount for t in taxes)
+                tax_rate = sum(
+                    tax_amounts.get(tid, 0.0)
+                    for tid in (line_data.get("tax_id") or [])
+                )
                 line = models.QuotationDraftLine(
                     draft_id=draft.id,
                     product_id=line_data["product_id"],
@@ -183,14 +197,23 @@ class DraftService:
         draft.version += 1
 
         self.line_repo.delete_by_draft_id(draft_id)
+        products_map = self.product_repo.get_by_ids(
+            [ld.get("product_id") for ld in lines_data]
+        )
+        all_tax_ids = list(
+            {tid for ld in lines_data for tid in (ld.get("tax_id") or [])}
+        )
+        tax_amounts = {}
+        if all_tax_ids:
+            for t in self.tax_repo.get_by_odoo_ids(all_tax_ids):
+                tax_amounts[t.odoo_id] = t.amount
         for line_data in lines_data:
-            product = self.product_repo.get_by_id(line_data["product_id"])
+            product = products_map.get(line_data["product_id"])
             product_odoo_id = product.odoo_id if product else None
 
-            tax_rate = 0.0
-            if line_data.get("tax_id"):
-                taxes = self.tax_repo.get_by_odoo_ids(line_data["tax_id"])
-                tax_rate = sum(t.amount for t in taxes)
+            tax_rate = sum(
+                tax_amounts.get(tid, 0.0) for tid in (line_data.get("tax_id") or [])
+            )
 
             line = models.QuotationDraftLine(
                 draft_id=draft_id,

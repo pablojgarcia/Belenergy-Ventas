@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from .. import models
 
 
@@ -17,6 +17,16 @@ class ProductRepository:
             models.Product.id == product_id
         ).first()
 
+    def get_by_ids(self, product_ids: list[int]) -> dict[int, models.Product]:
+        if not product_ids:
+            return {}
+        return {
+            p.id: p
+            for p in self.db.query(models.Product)
+            .filter(models.Product.id.in_(product_ids))
+            .all()
+        }
+
     def search(
         self,
         active: bool = True,
@@ -24,9 +34,15 @@ class ProductRepository:
         search: Optional[str] = None,
         categ_id: Optional[str] = None,
     ) -> list[models.Product]:
-        q = self.db.query(models.Product).filter(
-            models.Product.active == active,
-            models.Product.sale_ok == sale_ok,
+        # La columna image (LargeBinary) no se usa en el listado y puede
+        # pesar MBs: se excluye para no transferirla en cada request.
+        q = (
+            self.db.query(models.Product)
+            .options(defer(models.Product.image))
+            .filter(
+                models.Product.active == active,
+                models.Product.sale_ok == sale_ok,
+            )
         )
         if search:
             q = q.filter(models.Product.name.ilike(f"%{search}%"))
