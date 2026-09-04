@@ -39,6 +39,18 @@ class _FakeOdoo:
     def search_count(self, domain):
         return 1
 
+    def search_read(self, domain, fields, limit=None):
+        for field, op, value in domain:
+            if field == "id" and op == "=":
+                rows = [{"id": value}]
+                break
+            if field == "id" and op == "in":
+                rows = [{"id": i} for i in value]
+                break
+        else:
+            rows = [{"id": 1}]
+        return rows[:limit] if limit else rows
+
     def create(self, vals):
         self.last_created_vals = vals
         return 888888
