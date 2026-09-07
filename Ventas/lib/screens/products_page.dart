@@ -26,13 +26,23 @@ class _ProductsPageState extends State<ProductsPage> {
   @override
   void initState() {
     super.initState();
+    context.read<ApiService>().listsRefreshNotifier.addListener(_onListsRefresh);
     _productsFuture = _fetchProducts();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    try {
+      context.read<ApiService>().listsRefreshNotifier.removeListener(_onListsRefresh);
+    } catch (_) {}
     super.dispose();
+  }
+
+  void _onListsRefresh() {
+    if (mounted) setState(() {
+      _productsFuture = _fetchProducts();
+    });
   }
 
   Future<List<Product>> _fetchProducts() async {

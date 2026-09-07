@@ -6,7 +6,7 @@ import os
 # Asegurar que el directorio raíz del proyecto está en el path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.services.odoo_sync import get_odoo_connection
+from app.integrations.odoo.client import get_odoo_connection
 from app.config import settings
 
 def test_odoo_connection_basic():

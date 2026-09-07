@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     # (virtual_available) se calcula para ese almacén; si no, se usa el default
     # de la compañía. Ver nota en sync.py: _product_search_context.
     ODOO_WAREHOUSE_ID: Optional[int] = None
+    # Cron nocturno de sincronización (APScheduler, hora local de Buenos Aires).
+    SYNC_CRON_HOUR: int = int(os.getenv("SYNC_CRON_HOUR", "2"))
+    SYNC_CRON_MINUTE: int = int(os.getenv("SYNC_CRON_MINUTE", "30"))
+    # Destinatarios de la notificación al terminar la corrida del cron
+    # (emails separados por coma). Si no se setea, se usan los usuarios con
+    # role=admin de la tabla users.
+    SYNC_NOTIFY_TO: Optional[str] = None
 
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), "../../.env")

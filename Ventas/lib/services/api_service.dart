@@ -12,12 +12,53 @@ class SyncException implements Exception {
   String toString() => message;
 }
 
+class SyncStatus {
+  final String status;
+  final String name;
+  final String? stage;
+  final int? total;
+  final int? processed;
+  final String? error;
+  final String? startedAt;
+  final String? finishedAt;
+  final double? elapsed;
+
+  SyncStatus({
+    required this.status,
+    required this.name,
+    this.stage,
+    this.total,
+    this.processed,
+    this.error,
+    this.startedAt,
+    this.finishedAt,
+    this.elapsed,
+  });
+
+  factory SyncStatus.fromJson(Map<String, dynamic> json) => SyncStatus(
+        status: json['status'] as String? ?? 'idle',
+        name: json['name'] as String? ?? '',
+        stage: json['stage'] as String?,
+        total: json['total'] as int?,
+        processed: json['processed'] as int?,
+        error: json['error'] as String?,
+        startedAt: json['started_at'] as String?,
+        finishedAt: json['finished_at'] as String?,
+        elapsed: (json['elapsed'] as num?)?.toDouble(),
+      );
+
+  bool get isRunning => status == 'running';
+  bool get isCompleted => status == 'completed';
+  bool get isFailed => status == 'failed';
+}
+
 class ApiService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
 
   VoidCallback? onAuthFailure;
   final ordersRefreshNotifier = ValueNotifier<int>(0);
+  final listsRefreshNotifier = ValueNotifier<int>(0);
 
   final String? overrideBaseUrl;
   static const bool _sameOrigin = bool.fromEnvironment('SAME_ORIGIN', defaultValue: false);
@@ -233,30 +274,13 @@ class ApiService {
     }
   }
 
-  Future<void> syncCustomers() async {
-    await _dio.post('/sync/customers');
-    await _waitForSync('customers');
+  Future<void> triggerSync(String type) async {
+    await _dio.post('/sync/$type');
   }
 
-  Future<void> syncProducts() async {
-    await _dio.post('/sync/products');
-    await _waitForSync('products');
-  }
-
-  Future<void> _waitForSync(String type) async {
-    const timeout = Duration(minutes: 10);
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final response = await _dio.get('/sync/status/$type');
-      final data = Map<String, dynamic>.from(response.data);
-      final state = data['status'] as String? ?? 'running';
-      if (state == 'completed') return;
-      if (state == 'failed') {
-        throw SyncException(data['error'] as String? ?? 'La sincronización falló');
-      }
-      await Future.delayed(const Duration(seconds: 2));
-    }
-    throw SyncException('La sincronización tardó demasiado');
+  Future<SyncStatus> syncStatus(String type) async {
+    final response = await _dio.get('/sync/status/$type');
+    return SyncStatus.fromJson(Map<String, dynamic>.from(response.data));
   }
 
   Future<List<Map<String, dynamic>>> getTaxes() async {

@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -13,8 +14,10 @@ from .database import Base, engine, get_db
 from .auth import hash_password
 from . import models
 from .api import auth, products, customers, quotations, taxes, sync, health, users, terms_and_conditions, discount_rules, cache
+from .api.sync import mark_interrupted_runs
 from .api.quotations import drafts_router, quotations_router
 from .rate_limit import limit, setup_rate_limiter
+from .scheduler import start_sync_scheduler
 
 
 STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
@@ -191,7 +194,16 @@ if "quotations" in inspector.get_table_names():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotations ADD COLUMN status VARCHAR"))
 
-app = FastAPI(title="Belenergy API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Re-marcar corridas que quedaron "running" (redeploy durante un sync) y
+    # programar el cron nocturno. Si Odoo no está configurado, no se programa.
+    mark_interrupted_runs()
+    start_sync_scheduler()
+    yield
+
+
+app = FastAPI(title="Belenergy API", lifespan=lifespan)
 
 DEFAULT_ERROR_TITLES = {
     400: "Solicitud inválida",

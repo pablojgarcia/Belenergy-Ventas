@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:dio/dio.dart';
 import '../services/auth_provider.dart';
 import '../utils/theme.dart';
 import '../utils/responsive.dart';
@@ -247,63 +246,6 @@ class _ProfileDialog extends StatefulWidget {
 }
 
 class _ProfileDialogState extends State<_ProfileDialog> {
-  bool _syncingCustomers = false;
-  bool _syncingProducts = false;
-
-  Future<void> _syncCustomers() async {
-    setState(() => _syncingCustomers = true);
-    try {
-      await context.read<ApiService>().syncCustomers();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Clientes sincronizados correctamente')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final msg = e is DioException
-          ? _extractError(e)
-          : e is SyncException
-              ? e.message
-              : 'Error al sincronizar clientes';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
-      );
-    } finally {
-      if (mounted) setState(() => _syncingCustomers = false);
-    }
-  }
-
-  Future<void> _syncProducts() async {
-    setState(() => _syncingProducts = true);
-    try {
-      await context.read<ApiService>().syncProducts();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Productos sincronizados correctamente')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final msg = e is DioException
-          ? _extractError(e)
-          : e is SyncException
-              ? e.message
-              : 'Error al sincronizar productos';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
-      );
-    } finally {
-      if (mounted) setState(() => _syncingProducts = false);
-    }
-  }
-
-  String _extractError(DioException e) {
-    try {
-      return e.response?.data?['detail'] ?? 'Error de conexión';
-    } catch (_) {
-      return 'Error de conexión';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = widget.user?.role == 'admin';
@@ -332,26 +274,18 @@ class _ProfileDialogState extends State<_ProfileDialog> {
               const Divider(),
               Text('Administración', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _SyncButton(
-                      label: 'Sincronizar clientes',
-                      icon: Icons.sync_alt,
-                      loading: _syncingCustomers,
-                      onPressed: _syncCustomers,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _SyncButton(
-                      label: 'Sincronizar productos',
-                      icon: Icons.sync,
-                      loading: _syncingProducts,
-                      onPressed: _syncProducts,
-                    ),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.go('/admin/sync');
+                },
+                icon: const Icon(Icons.sync_rounded, color: AppColors.primary),
+                label: Text('Sincronizar datos', style: GoogleFonts.inter(color: AppColors.primary)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -397,63 +331,6 @@ class _ProfileSheet extends StatefulWidget {
 }
 
 class _ProfileSheetState extends State<_ProfileSheet> {
-  bool _syncingCustomers = false;
-  bool _syncingProducts = false;
-
-  Future<void> _syncCustomers() async {
-    setState(() => _syncingCustomers = true);
-    try {
-      await context.read<ApiService>().syncCustomers();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Clientes sincronizados correctamente')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final msg = e is DioException
-          ? _extractError(e)
-          : e is SyncException
-              ? e.message
-              : 'Error al sincronizar clientes';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
-      );
-    } finally {
-      if (mounted) setState(() => _syncingCustomers = false);
-    }
-  }
-
-  Future<void> _syncProducts() async {
-    setState(() => _syncingProducts = true);
-    try {
-      await context.read<ApiService>().syncProducts();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Productos sincronizados correctamente')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final msg = e is DioException
-          ? _extractError(e)
-          : e is SyncException
-              ? e.message
-              : 'Error al sincronizar productos';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
-      );
-    } finally {
-      if (mounted) setState(() => _syncingProducts = false);
-    }
-  }
-
-  String _extractError(DioException e) {
-    try {
-      return e.response?.data?['detail'] ?? 'Error de conexión';
-    } catch (_) {
-      return 'Error de conexión';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = widget.user?.role == 'admin';
@@ -484,26 +361,18 @@ class _ProfileSheetState extends State<_ProfileSheet> {
               const Divider(),
               Text('Administración', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _SyncButton(
-                      label: 'Sincronizar clientes',
-                      icon: Icons.sync_alt,
-                      loading: _syncingCustomers,
-                      onPressed: _syncCustomers,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _SyncButton(
-                      label: 'Sincronizar productos',
-                      icon: Icons.sync,
-                      loading: _syncingProducts,
-                      onPressed: _syncProducts,
-                    ),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.go('/admin/sync');
+                },
+                icon: const Icon(Icons.sync_rounded, color: AppColors.primary),
+                label: Text('Sincronizar datos', style: GoogleFonts.inter(color: AppColors.primary)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -534,45 +403,6 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SyncButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool loading;
-  final VoidCallback onPressed;
-
-  const _SyncButton({
-    required this.label,
-    required this.icon,
-    required this.loading,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 80,
-      child: OutlinedButton(
-        onPressed: loading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-        ),
-        child: loading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: AppColors.primary, size: 22),
-                  const SizedBox(height: 6),
-                  Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
-                ],
-              ),
       ),
     );
   }

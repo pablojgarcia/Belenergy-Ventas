@@ -11,6 +11,7 @@ bcrypt==4.0.1
 odoorpc
 slowapi>=0.1.9
 redis>=5.0.0
+apscheduler>=3.10,<4
 
 # Testing
 pytest>=8.0

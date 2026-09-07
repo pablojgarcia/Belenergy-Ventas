@@ -280,7 +280,11 @@ class QuotationGenerateResponse(BaseModel):
 class SyncStatusOut(BaseModel):
     status: str
     name: Optional[str] = None
+    stage: Optional[str] = None
+    total: Optional[int] = None
+    processed: Optional[int] = None
     error: Optional[str] = None
+    triggered_by: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     elapsed: Optional[float] = None

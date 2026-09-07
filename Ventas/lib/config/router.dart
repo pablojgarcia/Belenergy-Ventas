@@ -9,6 +9,7 @@ import '../screens/create_quotation_page.dart';
 import '../screens/quotations_page.dart';
 import '../screens/quotation_detail_page.dart';
 import '../screens/admin_discount_rules_page.dart';
+import '../screens/sync_page.dart';
 import '../widgets/responsive_shell.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
@@ -94,6 +95,10 @@ GoRouter createRouter(AuthProvider authProvider) {
           GoRoute(
             path: '/admin/discount-rules',
             builder: (_, __) => const AdminDiscountRulesPage(),
+          ),
+          GoRoute(
+            path: '/admin/sync',
+            builder: (_, __) => const SyncPage(),
           ),
         ],
       ),

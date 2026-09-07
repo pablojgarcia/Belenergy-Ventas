@@ -245,3 +245,19 @@ class DiscountRule(Base):
     @property
     def product_line_name(self) -> str | None:
         return self.product_line.name if self.product_line else None
+
+
+class SyncRun(Base):
+    __tablename__ = "sync_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sync_type = Column(String, nullable=False, index=True)
+    status = Column(String, nullable=False)
+    stage = Column(String, nullable=True)
+    total = Column(Integer, nullable=True)
+    processed = Column(Integer, nullable=True)
+    error = Column(Text, nullable=True)
+    triggered_by = Column(String, default="manual")
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    elapsed = Column(Float, nullable=True)

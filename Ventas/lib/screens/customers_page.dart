@@ -32,6 +32,9 @@ class _CustomersPageState extends State<CustomersPage> {
   @override
   void initState() {
     super.initState();
+    try {
+      context.read<ApiService>().listsRefreshNotifier.addListener(_onListsRefresh);
+    } catch (_) {}
     _loadIndustryOptions();
     _clientsFuture = _fetchClients();
   }
@@ -39,7 +42,16 @@ class _CustomersPageState extends State<CustomersPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    try {
+      context.read<ApiService>().listsRefreshNotifier.removeListener(_onListsRefresh);
+    } catch (_) {}
     super.dispose();
+  }
+
+  void _onListsRefresh() {
+    if (mounted) setState(() {
+      _clientsFuture = _fetchClients();
+    });
   }
 
   Future<void> _loadIndustryOptions() async {

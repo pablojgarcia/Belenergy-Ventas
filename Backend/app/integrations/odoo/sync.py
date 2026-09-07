@@ -1,12 +1,17 @@
 import json
 import base64
 import re
+import logging
 import unicodedata
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import ProgrammingError
 from ... import models, config
 from .client import get_odoo_connection
 from .industry import classify_industry
+
+logger = logging.getLogger(__name__)
 
 CATEGORY_ALIASES = {
     "deye": "deye",
@@ -31,9 +36,60 @@ def _normalize_name(text: str) -> str:
     return re.sub(r"[\s_/\-]+", " ", lowered).strip()
 
 
+def _delta_since(db: Session, sync_type: str) -> datetime | None:
+    """Última corrida completada del tipo, para el sync incremental (write_date)."""
+    try:
+        row = (
+            db.query(models.SyncRun)
+            .filter(models.SyncRun.sync_type == sync_type, models.SyncRun.status == "completed")
+            .order_by(models.SyncRun.finished_at.desc())
+            .first()
+        )
+    except ProgrammingError:
+        # La tabla sync_runs no existe (DB de primera generación o test aislado):
+        # primer sync completo.
+        db.rollback()
+        return None
+    if not row or not row.finished_at:
+        return None
+    return row.finished_at
 
-def sync_customers(db: Session):
+
+def _delta_cutoff(last: datetime | None) -> str | None:
+    """Cutoff UTC naive para el filtro write_date de Odoo, con margen de 2 minutos.
+
+    El margen evita perder registros escritos exactamente en la frontera de la
+    corrida anterior; el costo es re-processar (upsert) lo del último tramo.
+    """
+    if not last:
+        return None
+    aware = last if last.tzinfo else last.replace(tzinfo=timezone.utc)
+    cutoff = (aware.astimezone(timezone.utc) - timedelta(minutes=2)).replace(tzinfo=None, microsecond=0)
+    return cutoff.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _bulk_upsert(db: Session, model, rows: list[dict], chunk: int = 500) -> int:
+    """INSERT ... ON CONFLICT DO UPDATE en un statement multi-row por batch."""
+    if not rows:
+        return 0
+    index_elements = ["odoo_id"]
+    total = 0
+    for i in range(0, len(rows), chunk):
+        batch = rows[i:i + chunk]
+        stmt = pg_insert(model).values(batch)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=index_elements,
+            set_={k: stmt.excluded[k] for k in batch[0].keys()},
+        )
+        db.execute(stmt)
+        total += len(batch)
+    return total
+
+
+
+def sync_customers(db: Session, progress=None):
     odoo = get_odoo_connection()
+    _progress = progress or (lambda **kwargs: None)
 
     fields = [
         'id', 'name', 'email', 'phone', 'company_name',
@@ -42,9 +98,15 @@ def sync_customers(db: Session):
         'x_studio_vendedor_externo', 'website', 'industry_id'
     ]
 
-    print("Buscando clientes en Odoo...")
-    partners_data = odoo.env['res.partner'].search_read([], fields)
+    since = _delta_cutoff(_delta_since(db, "customers"))
+    domain = [("write_date", ">", since)] if since else []
+    if since:
+        print(f"Sync incremental de clientes desde {since}...")
+    else:
+        print("Buscando clientes en Odoo (sync completo)...")
+    partners_data = odoo.env['res.partner'].search_read(domain, fields)
     print(f"Encontrados {len(partners_data)} clientes. Procesando...")
+    _progress(total=len(partners_data), processed=0)
 
     vendedor_ids = set()
     interno_ids = set()
@@ -68,7 +130,8 @@ def sync_customers(db: Session):
         for u in internos_info:
             internos_map[u['id']] = u['name'] or ""
 
-    for p in partners_data:
+    rows = []
+    for idx, p in enumerate(partners_data):
         vendedor = p.get('x_studio_vendedor_externo')
         salesperson_val = None
         if vendedor and isinstance(vendedor, (list, tuple)):
@@ -79,7 +142,7 @@ def sync_customers(db: Session):
         if interno and isinstance(interno, (list, tuple)):
             interno_val = internos_map.get(interno[0])
 
-        customer_data = {
+        rows.append({
             "odoo_id": int(p['id']),
             "name": str(p.get('name') or ""),
             "email": str(p.get('email') or ""),
@@ -96,31 +159,38 @@ def sync_customers(db: Session):
             "salesperson_id": salesperson_val,
             "website": str(p.get('website') or ""),
             "industry": classify_industry(str(p.get('industry_id')[1] if p.get('industry_id') else "")),
-        }
+        })
+        if (idx + 1) % 200 == 0:
+            _progress(processed=idx + 1)
 
-        db.execute(
-            pg_insert(models.Customer)
-            .values(**customer_data)
-            .on_conflict_do_update(
-                index_elements=['odoo_id'],
-                set_=customer_data,
-            )
-        )
-
+    _bulk_upsert(db, models.Customer, rows)
     db.commit()
+    _progress(stage="guardado", processed=len(rows))
     print("Sincronización completada en la base de datos.")
 
     print("Sincronizando contactos...")
     partner_ids = [p['id'] for p in partners_data]
     contact_fields = ['id', 'name', 'email', 'phone', 'parent_id']
+    if since:
+        contact_domain = [
+            ('type', '=', 'contact'),
+            '|',
+            ('write_date', '>', since),
+            ('parent_id', 'in', partner_ids),
+        ]
+    else:
+        contact_domain = [('parent_id', 'in', partner_ids), ('type', '=', 'contact')]
     contacts_data = odoo.env['res.partner'].search_read(
-        [('parent_id', 'in', partner_ids), ('type', '=', 'contact')],
+        contact_domain,
         contact_fields
     )
     print(f"Encontrados {len(contacts_data)} contactos.")
+    _progress(stage="contactos", total=len(contacts_data), processed=0)
 
     odoo_to_customer = {c.odoo_id: c.id for c in db.query(models.Customer).all()}
 
+    contact_rows = []
+    synced_odoo_ids = set()
     for c in contacts_data:
         parent = c.get('parent_id')
         if not parent or not isinstance(parent, (list, tuple)):
@@ -130,57 +200,55 @@ def sync_customers(db: Session):
         if not local_customer_id:
             continue
 
-        contact_data = {
+        contact_rows.append({
             "odoo_id": int(c['id']),
             "customer_id": local_customer_id,
             "name": str(c.get('name') or ""),
             "email": str(c.get('email') or ""),
             "phone": str(c.get('phone') or ""),
-        }
+        })
+        synced_odoo_ids.add(c['id'])
 
-        db.execute(
-            pg_insert(models.Contact)
-            .values(**contact_data)
-            .on_conflict_do_update(
-                index_elements=['odoo_id'],
-                set_=contact_data,
-            )
-        )
+    _bulk_upsert(db, models.Contact, contact_rows)
 
-    synced_odoo_ids = {c['id'] for c in contacts_data if c.get('parent_id') and isinstance(c['parent_id'], (list, tuple))}
-    db.query(models.Contact).filter(
-        models.Contact.customer_id.in_(odoo_to_customer.values()),
-        ~models.Contact.odoo_id.in_(synced_odoo_ids),
-    ).delete(synchronize_session=False)
+    # Limpieza de huérfanos SOLO sobre partners de esta corrida: con sync
+    # incremental no podemos borrar contactos de partners que no se re-procesaron.
+    touched_customer_ids = {
+        cid for pid, cid in odoo_to_customer.items()
+        if cid is not None and pid in partner_ids
+    }
+    if touched_customer_ids:
+        db.query(models.Contact).filter(
+            models.Contact.customer_id.in_(touched_customer_ids),
+            ~models.Contact.odoo_id.in_(synced_odoo_ids),
+        ).delete(synchronize_session=False)
 
     db.commit()
+    _progress(stage="completado", processed=len(contact_rows))
     print("Sincronización de contactos completada.")
 
 
-def sync_taxes(db: Session):
+def sync_taxes(db: Session, progress=None):
     odoo = get_odoo_connection()
+    _progress = progress or (lambda **kwargs: None)
 
     tax_fields = ['id', 'name', 'amount', 'type_tax_use']
     taxes_data = odoo.env['account.tax'].search_read([], tax_fields)
     print(f"Sincronizando {len(taxes_data)} impuestos...")
+    _progress(total=len(taxes_data), processed=0)
 
+    rows = []
     for t in taxes_data:
-        tax_data = {
+        rows.append({
             "odoo_id": int(t['id']),
             "name": str(t.get('name') or f"Impuesto {t['id']}"),
             "amount": float(t.get('amount') or 0.0),
             "type_tax_use": str(t.get('type_tax_use') or 'sale'),
-        }
-        db.execute(
-            pg_insert(models.Tax)
-            .values(**tax_data)
-            .on_conflict_do_update(
-                index_elements=['odoo_id'],
-                set_=tax_data,
-            )
-        )
+        })
 
+    _bulk_upsert(db, models.Tax, rows)
     db.commit()
+    _progress(stage="completado", processed=len(rows))
     print("Sincronización de impuestos completada.")
 
 
@@ -233,8 +301,9 @@ def _product_search_context():
     return None
 
 
-def sync_products(db: Session):
+def sync_products(db: Session, progress=None):
     odoo = get_odoo_connection()
+    _progress = progress or (lambda **kwargs: None)
 
     # `virtual_available` es el campo nativo de Odoo (A la mano + Entrante −
     # Saliente, ya calculado por Odoo). NO combinar manualmente qty_available +
@@ -268,14 +337,53 @@ def sync_products(db: Session):
 
     print("Buscando productos en Odoo...")
     search_context = _product_search_context()
-    products_data = odoo.env['product.template'].search_read(
-        [('active', '=', True)], fields, context=search_context
-    ) if search_context else odoo.env['product.template'].search_read(
-        [('active', '=', True)], fields
-    )
+    since = _delta_cutoff(_delta_since(db, "products"))
+    if since:
+        print(f"Sync incremental de productos desde {since}...")
+        changed_ids = set(
+            odoo.env['product.template'].search([('write_date', '>', since)])
+        )
+        # Los movimientos de stock NO tocan write_date del template (virtual_available
+        # es calculado), así que sumamos templates con movimiento reciente.
+        try:
+            moves = odoo.env['product.stock.move'].search_read(
+                [('date', '>=', since)], ['product_id']
+            )
+            variant_ids = {
+                m['product_id'][0] for m in moves
+                if isinstance(m.get('product_id'), (list, tuple))
+            }
+            if variant_ids:
+                variants = odoo.env['product.product'].read(
+                    list(variant_ids), ['product_tmpl_id']
+                )
+                for v in variants:
+                    tmpl = v.get('product_tmpl_id')
+                    if not tmpl:
+                        continue
+                    changed_ids.add(tmpl[0] if isinstance(tmpl, (list, tuple)) else tmpl)
+        except Exception as e:
+            logger.warning("No se pudo calcular el delta de stock (%s); solo por write_date", e)
+        if changed_ids:
+            products_data = odoo.env['product.template'].search_read(
+                [('id', 'in', list(changed_ids))], fields,
+                context=search_context,
+            ) if search_context else odoo.env['product.template'].search_read(
+                [('id', 'in', list(changed_ids))], fields
+            )
+        else:
+            products_data = []
+    else:
+        products_data = odoo.env['product.template'].search_read(
+            [('active', '=', True)], fields, context=search_context
+        ) if search_context else odoo.env['product.template'].search_read(
+            [('active', '=', True)], fields
+        )
     print(f"Encontrados {len(products_data)} productos. Procesando...")
+    _progress(total=len(products_data), processed=0)
 
-    for p in products_data:
+    rows = []
+    for idx, p in enumerate(products_data):
         raw_image = p.get('image_1920')
         image_bytes = base64.b64decode(raw_image) if raw_image else None
 
@@ -296,7 +404,7 @@ def sync_products(db: Session):
                 categ_odoo_id, cat_map, product_lines_map
             )
 
-        product_data = {
+        rows.append({
             "odoo_id": int(p['id']),
             "name": str(p.get('name') or ""),
             "default_code": str(p.get('default_code') or ""),
@@ -313,16 +421,11 @@ def sync_products(db: Session):
             "taxes_id": json.dumps(taxes_ids),
             "image": image_bytes,
             "virtual_available": float(p.get('virtual_available') or 0.0),
-        }
+        })
+        if (idx + 1) % 200 == 0:
+            _progress(processed=idx + 1)
 
-        db.execute(
-            pg_insert(models.Product)
-            .values(**product_data)
-            .on_conflict_do_update(
-                index_elements=['odoo_id'],
-                set_=product_data,
-            )
-        )
-
+    _bulk_upsert(db, models.Product, rows)
     db.commit()
+    _progress(stage="completado", processed=len(rows))
     print("Sincronización de productos completada.")
