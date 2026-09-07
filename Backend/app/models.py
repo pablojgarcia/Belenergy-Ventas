@@ -146,6 +146,7 @@ class QuotationDraft(Base):
     new_client_name = Column(String, nullable=True)
     new_client_vat = Column(String, nullable=True)
     new_client_industry = Column(String, nullable=True)
+    new_client_is_company = Column(Boolean, nullable=True)
     terms_and_conditions_id = Column(Uuid, ForeignKey("terms_and_conditions.id"), nullable=True)
     status = Column(String(20), default="draft", index=True)
     notes = Column(Text, nullable=True)

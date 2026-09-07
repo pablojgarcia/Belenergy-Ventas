@@ -69,6 +69,7 @@ class QuotationGenerationService:
                         name=draft.new_client_name,
                         vat=draft.new_client_vat,
                         industry_name=industry_name,
+                        is_company=draft.new_client_is_company if draft.new_client_is_company is not None else True,
                     )
                     draft.customer_id = customer.id
                     draft.new_client_name = None

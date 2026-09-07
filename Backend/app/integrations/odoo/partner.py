@@ -123,10 +123,22 @@ def create_partner(partner_data: dict) -> int:
 
     company_name = partner_data.get("company_name") or ""
     contact_name = partner_data.get("contact_name") or ""
+    is_company = bool(partner_data.get("is_company", True))
 
-    vals = {
-        "name": company_name or contact_name or "Sin nombre",
-        "company_name": company_name,
+    if is_company:
+        vals = {
+            "name": company_name or contact_name or "Sin nombre",
+            "company_name": company_name,
+            "company_type": "company",
+        }
+    else:
+        vals = {
+            "name": contact_name or company_name or "Sin nombre",
+            "company_name": "",
+            "company_type": "person",
+        }
+
+    vals.update({
         "email": partner_data.get("email") or "",
         "phone": partner_data.get("phone") or "",
         "street": partner_data.get("street") or "",
@@ -134,10 +146,7 @@ def create_partner(partner_data: dict) -> int:
         "zip": partner_data.get("zip") or "",
         "vat": partner_data.get("vat") or "",
         "customer_rank": 1,
-    }
-
-    if company_name:
-        vals["company_type"] = "company"
+    })
 
     state_name = partner_data.get("state")
     if state_name:

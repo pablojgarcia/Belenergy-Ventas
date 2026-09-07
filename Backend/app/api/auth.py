@@ -160,10 +160,14 @@ def me(current_user: models.User = Depends(get_current_user)):
 
 @router.get("/me/industries", response_model=schemas.IndustryOptionsOut)
 def me_industries(current_user: models.User = Depends(get_current_user)):
-    from ..integrations.odoo.industry import user_seller_types, mapped_industries
+    from ..integrations.odoo.industry import (
+        user_seller_types,
+        mapped_industries,
+        SELECTOR_SELLER_TYPES,
+    )
     seller_types = user_seller_types(current_user.seller_types)
     industries = mapped_industries(seller_types)
     return {
-        "show_selector": len(seller_types) > 1 and len(industries) > 0,
+        "show_selector": SELECTOR_SELLER_TYPES.issubset(seller_types),
         "industries": industries,
     }

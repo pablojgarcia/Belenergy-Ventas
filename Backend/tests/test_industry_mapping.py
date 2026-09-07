@@ -2,8 +2,11 @@ from unittest.mock import MagicMock
 
 from app.integrations.odoo import industry as industry_module
 from app.integrations.odoo.industry import (
+    GENERAL_INDUSTRY_NAME,
     SELLER_TYPE_TO_INDUSTRY,
+    SELECTOR_SELLER_TYPES,
     auto_industry_for_seller_types,
+    classify_industry,
     clear_industry_cache,
     effective_seller_type,
     industry_to_seller_type,
@@ -45,11 +48,31 @@ def test_mapped_industries_single():
 
 def test_mapped_industries_multi_no_duplicates():
     result = mapped_industries(["representante_agro", "representante_agro", "representante_general"])
-    assert result == [{"name": "Agricultura", "seller_type": "representante_agro"}]
+    assert result == [
+        {"name": "Agricultura", "seller_type": "representante_agro"},
+        {"name": "General", "seller_type": "representante_general"},
+    ]
 
 
-def test_mapped_industries_empty_for_unmapped():
-    assert mapped_industries(["representante_general"]) == []
+def test_mapped_industries_general_for_general_seller():
+    assert mapped_industries(["representante_general"]) == [
+        {"name": "General", "seller_type": "representante_general"}
+    ]
+
+
+def test_classify_industry_maps_known_industry():
+    assert classify_industry("Agricultura") == "Agricultura"
+
+
+def test_classify_industry_defaults_to_general():
+    assert classify_industry("Construcción") == "General"
+    assert classify_industry(None) == "General"
+
+
+def test_selector_seller_types_shape():
+    assert SELECTOR_SELLER_TYPES == frozenset(
+        {"representante_general", "representante_agro"}
+    )
 
 
 def test_auto_industry_single_seller_type():

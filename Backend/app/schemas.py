@@ -187,6 +187,7 @@ class QuotationDraftCreate(BaseModel):
     new_client_name: str | None = None
     new_client_vat: str | None = None
     new_client_industry: str | None = None
+    new_client_is_company: bool | None = None
     terms_and_conditions_id: uuid.UUID | None = None
     notes: str | None = None
     lines: list[QuotationDraftLineInput] = []
@@ -197,6 +198,7 @@ class QuotationDraftUpdate(BaseModel):
     new_client_name: str | None = None
     new_client_vat: str | None = None
     new_client_industry: str | None = None
+    new_client_is_company: bool | None = None
     terms_and_conditions_id: uuid.UUID | None = None
     notes: str | None = None
     lines: list[QuotationDraftLineInput] = []
@@ -237,6 +239,7 @@ class QuotationDraftOut(BaseModel):
     new_client_name: str | None = None
     new_client_vat: str | None = None
     new_client_industry: str | None = None
+    new_client_is_company: bool | None = None
     terms_and_conditions_id: uuid.UUID | None = None
     status: str = "draft"
     notes: str | None = None

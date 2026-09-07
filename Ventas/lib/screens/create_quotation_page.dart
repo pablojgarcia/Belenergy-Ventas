@@ -44,6 +44,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
   Timer? _evaluateDebounce;
   IndustryOptions? _industryOptions;
   String? _selectedIndustry;
+  bool _newClientIsCompany = true;
   bool _enforceDescriptionOnSend = false;
 
   bool get _hasExceededDiscount =>
@@ -166,6 +167,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           _newClientVatController.text = draft['new_client_vat'] as String? ?? '';
           final industry = draft['new_client_industry'] as String? ?? '';
           if (industry.isNotEmpty) _selectedIndustry = industry;
+          _newClientIsCompany = (draft['new_client_is_company'] as bool?) ?? true;
         }
       }
 
@@ -265,6 +267,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
       if (_selectedIndustry != null && _selectedIndustry!.isNotEmpty) {
         payload['new_client_industry'] = _selectedIndustry;
       }
+      payload['new_client_is_company'] = _newClientIsCompany;
     } else {
       payload['customer_id'] = _selectedClient!.id;
     }
@@ -533,6 +536,7 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
             _selectedClient = result.client;
             _isNewClient = false;
             _selectedIndustry = null;
+            _newClientIsCompany = true;
           } else if (result is _PickerNewClient) {
             _selectedClient = null;
             _isNewClient = true;
@@ -1383,6 +1387,8 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16),
+              _buildEntityTypeRadio(),
               if (_industryOptions?.showSelector == true &&
                   (_industryOptions?.industries.isNotEmpty ?? false)) ...[
                 const SizedBox(height: 16),
@@ -1401,6 +1407,28 @@ class _CreateQuotationPageState extends State<CreateQuotationPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEntityTypeRadio() {
+    return Row(
+      children: [
+        const Text('Tipo de cliente:'),
+        const SizedBox(width: 12),
+        Expanded(
+          child: SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: true, label: Text('Empresa')),
+              ButtonSegment(value: false, label: Text('Persona')),
+            ],
+            selected: {_newClientIsCompany},
+            onSelectionChanged: (selection) {
+              setState(() => _newClientIsCompany = selection.first);
+            },
+            showSelectedIcon: false,
+          ),
+        ),
+      ],
     );
   }
 

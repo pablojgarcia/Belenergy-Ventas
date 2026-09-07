@@ -31,6 +31,7 @@ def create_draft(
         new_client_name=body.new_client_name,
         new_client_vat=body.new_client_vat,
         new_client_industry=body.new_client_industry,
+        new_client_is_company=body.new_client_is_company,
         terms_and_conditions_id=body.terms_and_conditions_id,
     )
 
@@ -80,6 +81,7 @@ def update_draft(
         new_client_name=body.new_client_name,
         new_client_vat=body.new_client_vat,
         new_client_industry=body.new_client_industry,
+        new_client_is_company=body.new_client_is_company,
         terms_and_conditions_id=body.terms_and_conditions_id,
     )
 

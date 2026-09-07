@@ -172,6 +172,95 @@ def test_generate_creates_customer_then_quotation(client, admin_headers):
     assert created["industry"] == "Agricultura"
 
 
+def test_generate_general_industry_skips_odoo_industry(client, admin_headers):
+    _seed_product()
+    seen = {}
+
+    def fake_create(partner_data):
+        seen.update(partner_data)
+        return 777777
+
+    resp = client.post(
+        "/quotation-drafts",
+        headers=admin_headers,
+        json={
+            "new_client_name": "Cliente General SA",
+            "new_client_vat": "30600000000",
+            "new_client_industry": "General",
+            "lines": [
+                {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "tax_id": []}
+            ],
+        },
+    )
+    draft_id = resp.json()["id"]
+
+    with patch(
+        "app.services.customer_creation_service.odoo_create_partner", side_effect=fake_create,
+    ), patch(
+        "app.services.customer_creation_service.check_vat_exists", return_value=False,
+    ), patch(
+        "app.services.customer_creation_service.resolve_industry_id",
+    ) as resolve, patch(
+        "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
+    ):
+        gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
+
+    assert gen.status_code == 200, gen.text
+    resolve.assert_not_called()
+    assert "industry_id" not in seen
+
+    customers = client.get("/customers", headers=admin_headers).json()
+    created = next(c for c in customers if c["odoo_id"] == 777777)
+    assert created["industry"] == "General"
+
+
+def test_generate_persona_passes_is_company_false(client, admin_headers):
+    _seed_product()
+    seen = {}
+
+    def fake_create(partner_data):
+        seen.update(partner_data)
+        return 777777
+
+    resp = client.post(
+        "/quotation-drafts",
+        headers=admin_headers,
+        json={
+            "new_client_name": "Juan Pérez",
+            "new_client_vat": "30600000000",
+            "new_client_is_company": False,
+            "lines": [
+                {"product_id": 1, "quantity": 1, "unit_price": 1000.0, "tax_id": []}
+            ],
+        },
+    )
+    draft_id = resp.json()["id"]
+
+    with patch(
+        "app.services.customer_creation_service.odoo_create_partner", side_effect=fake_create,
+    ), patch(
+        "app.services.customer_creation_service.check_vat_exists", return_value=False,
+    ), patch(
+        "app.integrations.odoo.sale.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.get_odoo_connection", return_value=_FakeOdoo(),
+    ), patch(
+        "app.services.quotation_generation_service.resolve_app_user_partner_id", return_value=None,
+    ), patch(
+        "app.services.quotation_generation_service.resolve_res_users_id_by_name", return_value=None,
+    ):
+        gen = client.post(f"/quotation-drafts/{draft_id}/generate", headers=admin_headers)
+
+    assert gen.status_code == 200, gen.text
+    assert seen["is_company"] is False
+
+
 def test_generate_sets_vendedor_externo_and_vendedor_interno(client, admin_headers):
     _seed_product()
     fake = _FakeOdoo()

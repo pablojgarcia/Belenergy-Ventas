@@ -11,6 +11,12 @@ SELLER_TYPE_TO_INDUSTRY = {
     "representante_agro": "Agricultura",
 }
 
+# Clasificación binaria de la app: toda industria que no sea una Odoo mapeada es "General".
+GENERAL_INDUSTRY_NAME = "General"
+
+# El selector de industria solo aparece para usuarios que tienen ambos roles de venta.
+SELECTOR_SELLER_TYPES = frozenset({"representante_general", "representante_agro"})
+
 # Cache in-memory: name de industria -> odoo_id (res.partner.industry / res.industry).
 _industry_cache: dict[str, int] = {}
 
@@ -36,6 +42,11 @@ def principal_seller_type(seller_types: list[str] | None) -> str:
     return DEFAULT_SELLER_TYPE
 
 
+def classify_industry(value: str | None) -> str:
+    """Clasificación binaria: 'Agricultura' si es una industria Odoo mapeada; si no, 'General'."""
+    return value if value in SELLER_TYPE_TO_INDUSTRY.values() else GENERAL_INDUSTRY_NAME
+
+
 def mapped_industries(seller_types: list[str]) -> list[dict]:
     """Industrias mapeadas para los seller_types del usuario, en orden y sin duplicados."""
     result: list[dict] = []
@@ -45,6 +56,8 @@ def mapped_industries(seller_types: list[str]) -> list[dict]:
         if name and name not in seen:
             seen.add(name)
             result.append({"name": name, "seller_type": st})
+    if "representante_general" in seller_types and GENERAL_INDUSTRY_NAME not in seen:
+        result.append({"name": GENERAL_INDUSTRY_NAME, "seller_type": "representante_general"})
     return result
 
 

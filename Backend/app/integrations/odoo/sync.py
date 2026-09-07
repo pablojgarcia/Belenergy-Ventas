@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ... import models, config
 from .client import get_odoo_connection
+from .industry import classify_industry
 
 CATEGORY_ALIASES = {
     "deye": "deye",
@@ -94,7 +95,7 @@ def sync_customers(db: Session):
             "vendedor_interno": interno_val or "",
             "salesperson_id": salesperson_val,
             "website": str(p.get('website') or ""),
-            "industry": str(p.get('industry_id')[1] if p.get('industry_id') else ""),
+            "industry": classify_industry(str(p.get('industry_id')[1] if p.get('industry_id') else "")),
         }
 
         db.execute(

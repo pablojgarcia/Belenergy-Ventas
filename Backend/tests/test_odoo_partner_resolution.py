@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from app.integrations.odoo.partner import (
+    create_partner,
     resolve_app_user_partner_id,
     resolve_res_users_id_by_name,
 )
@@ -91,3 +92,68 @@ def test_resolve_res_users_id_by_name():
         assert resolve_res_users_id_by_name("Inexistente") is None
         assert resolve_res_users_id_by_name("") is None
         assert resolve_res_users_id_by_name(None) is None
+
+
+class _CreatingOdoo:
+    def __init__(self):
+        self.env = {
+            "res.partner": self,
+            "res.users": self,
+            "res.country.state": self,
+            "res.country": self,
+        }
+        self.created_vals = None
+
+    def search_count(self, domain):
+        return 0
+
+    def search(self, domain):
+        return []
+
+    def read(self, ids, fields):
+        return [{"partner_id": [1]}]
+
+    def create(self, vals):
+        self.created_vals = vals
+        return 100001
+
+
+def test_create_partner_empresa():
+    fake = _CreatingOdoo()
+    with patch("app.integrations.odoo.partner.get_odoo_connection", return_value=fake):
+        create_partner({
+            "company_name": "Empresa SA",
+            "contact_name": "Empresa SA",
+            "vat": "30600000000",
+            "is_company": True,
+        })
+    assert fake.created_vals["company_type"] == "company"
+    assert fake.created_vals["name"] == "Empresa SA"
+    assert fake.created_vals["company_name"] == "Empresa SA"
+    assert "industry_id" not in fake.created_vals
+
+
+def test_create_partner_persona():
+    fake = _CreatingOdoo()
+    with patch("app.integrations.odoo.partner.get_odoo_connection", return_value=fake):
+        create_partner({
+            "company_name": "Persona",
+            "contact_name": "Juan Pérez",
+            "vat": "30600000000",
+            "is_company": False,
+        })
+    assert fake.created_vals["company_type"] == "person"
+    assert fake.created_vals["name"] == "Juan Pérez"
+    assert fake.created_vals["company_name"] == ""
+
+
+def test_create_partner_includes_industry_id():
+    fake = _CreatingOdoo()
+    with patch("app.integrations.odoo.partner.get_odoo_connection", return_value=fake):
+        create_partner({
+            "company_name": "Campo SA",
+            "contact_name": "Campo SA",
+            "vat": "30600000000",
+            "industry_id": 42,
+        })
+    assert fake.created_vals["industry_id"] == 42

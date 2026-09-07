@@ -114,6 +114,9 @@ if "quotation_drafts" in inspector.get_table_names():
     if "new_client_industry" not in draft_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_industry VARCHAR"))
+    if "new_client_is_company" not in draft_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN new_client_is_company BOOLEAN"))
     if "terms_and_conditions_id" not in draft_cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE quotation_drafts ADD COLUMN terms_and_conditions_id UUID"))
