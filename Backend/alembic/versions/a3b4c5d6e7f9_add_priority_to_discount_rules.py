@@ -1,15 +1,15 @@
 """add priority to discount_rules
 
-Revision ID: a3b4c5d6e7f8
-Revises: f2e1d4c3b2a1
+Revision ID: a3b4c5d6e7f9
+Revises: a3b4c5d6e7f8
 Create Date: 2026-08-19
 
 """
 from alembic import op
 
 
-revision = "a3b4c5d6e7f8"
-down_revision = "f2e1d4c3b2a1"
+revision = "a3b4c5d6e7f9"
+down_revision = "a3b4c5d6e7f8"
 branch_labels = None
 depends_on = None
 

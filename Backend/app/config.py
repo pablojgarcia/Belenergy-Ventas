@@ -27,5 +27,6 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), "../../.env")
+        extra = "ignore"
 
 settings = Settings()
