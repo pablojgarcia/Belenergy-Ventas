@@ -102,7 +102,7 @@ class _SyncPageState extends State<SyncPage> {
     if (s == null) return 'Sin ejecuciones previas';
     switch (s.status) {
       case 'running':
-        return _stageName(s.stage);
+        return _stageName(s.stage) ?? 'Sincronizando...';
       case 'completed':
         return 'Completado';
       case 'failed':
