@@ -1,19 +1,24 @@
-"""Notificación por email (vía Odoo) al terminar la corrida del cron.
+"""Notificación por email (vía Resend) al terminar la corrida del cron.
 
-No hay infraestructura SMTP propia en el proyecto: se crea un mail.mail en Odoo
-con odoorpc y Odoo lo despacha con su propio servidor de correo. Solo aplica a
-corridas triggered_by="scheduled"; se notifica tanto éxito como fallo.
+Odoo no tiene SMTP saliente configurado, así que la notificación sale por la
+API HTTP de Resend (stdlib urllib, sin dependencia nueva). Solo aplica a
+corridas triggered_by="scheduled"; se notifica tanto éxito como fallo. Sin
+RESEND_API_KEY los mails no se envían (queda el aviso en el log).
 """
 
+import json
 import logging
+import urllib.error
+import urllib.request
 
-from . import models, config
+from . import config, models
 from .database import SessionLocal
-from .integrations.odoo.client import get_odoo_connection
 
 logger = logging.getLogger(__name__)
 
 NAMES = {"customers": "clientes", "products": "productos", "taxes": "impuestos"}
+
+RESEND_API = "https://api.resend.com/emails"
 
 
 def _recipients() -> list[str]:
@@ -24,6 +29,35 @@ def _recipients() -> list[str]:
         return [u.email for u in db.query(models.User).filter(models.User.role == "admin").all() if u.email]
     finally:
         db.close()
+
+
+def _send_email(to: list[str], subject: str, html: str) -> None:
+    if not config.settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY no configurada; no se envía la notificación del sync")
+        return
+    payload = json.dumps({
+        "from": config.settings.RESEND_FROM,
+        "to": to,
+        "subject": subject,
+        "html": html,
+    }).encode()
+    req = urllib.request.Request(
+        RESEND_API,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {config.settings.RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            logger.info("Notificación del sync enviada a %s (HTTP %s)", to, resp.status)
+    except urllib.error.HTTPError as e:
+        # Mensajes de error de Resend dentro del body (p. ej. dominio sin verificar)
+        logger.error("Resend rechazó la notificación (HTTP %s): %s", e.code, e.read().decode(errors="replace")[:300])
+    except Exception:
+        logger.exception("No se pudo enviar la notificación del sync por Resend")
 
 
 def notify_sync_result(run_id: int) -> None:
@@ -47,15 +81,15 @@ def notify_sync_result(run_id: int) -> None:
     subject = f"[Belenergy] Sync de {name}: {'completado' if ok else 'fallado'}"
     if ok:
         body = (
-            f"Sincronización de {name} completada automáticamente.\n"
-            f"Registros procesados: {processed}\n"
-            f"Duración: {elapsed:.1f}s\n"
+            f"Sincronización de {name} completada automáticamente.<br/>"
+            f"Registros procesados: {processed}<br/>"
+            f"Duración: {elapsed:.1f}s<br/>"
         )
     else:
         body = (
-            f"La sincronización automática de {name} falló.\n"
-            f"Error: {error}\n"
-            f"Duración: {elapsed:.1f}s\n"
+            f"La sincronización automática de {name} falló.<br/>"
+            f"Error: {error}<br/>"
+            f"Duración: {elapsed:.1f}s<br/>"
         )
     body += f"Corrida: {started_at} a {finished_at} (UTC)"
 
@@ -63,15 +97,4 @@ def notify_sync_result(run_id: int) -> None:
     if not recipients:
         logger.warning("Sin destinatarios para notificar el resultado del sync")
         return
-
-    try:
-        odoo = get_odoo_connection()
-        odoo.env["mail.mail"].create({
-            "subject": subject,
-            "body_html": body.replace("\n", "<br/>"),
-            "email_to": recipients,
-            "state": "outgoing",
-        })
-        logger.info("Notificación del sync %s encolada para %s", sync_type, recipients)
-    except Exception:
-        logger.exception("No se pudo encolar la notificación del sync en Odoo")
+    _send_email(recipients, subject, body)

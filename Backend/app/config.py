@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # (emails separados por coma). Si no se setea, se usan los usuarios con
     # role=admin de la tabla users.
     SYNC_NOTIFY_TO: Optional[str] = None
+    # Envío de las notificaciones por Resend (HTTP, sin SMTP propio). Si falta
+    # la API key, los mails no se envían (solo queda el aviso en el log).
+    RESEND_API_KEY: Optional[str] = os.getenv("RESEND_API_KEY")
+    RESEND_FROM: str = os.getenv("RESEND_FROM", "Belenergy <notificaciones@email.belenergy.com.ar>")
 
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), "../../.env")

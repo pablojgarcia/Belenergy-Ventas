@@ -22,17 +22,24 @@ SYNC_JOBS = {
     "taxes": sync_taxes,
 }
 
+ART = "America/Argentina/Buenos_Aires"
+
+
+def cron_trigger() -> CronTrigger:
+    return CronTrigger(
+        hour=config.settings.SYNC_CRON_HOUR,
+        minute=config.settings.SYNC_CRON_MINUTE,
+        timezone=ART,
+    )
+
 
 def start_sync_scheduler() -> BackgroundScheduler | None:
     if not (config.settings.ODOO_URL and config.settings.ODOO_PASSWORD):
         logger.info("Odoo no configurado; cron de sincronización desactivado")
         return None
 
-    scheduler = BackgroundScheduler(timezone="America/Argentina/Buenos_Aires")
-    trigger = CronTrigger(
-        hour=config.settings.SYNC_CRON_HOUR,
-        minute=config.settings.SYNC_CRON_MINUTE,
-    )
+    scheduler = BackgroundScheduler(timezone=ART)
+    trigger = cron_trigger()
 
     def job(sync_type: str) -> None:
         started = enqueue_sync(SYNC_JOBS[sync_type], sync_type, triggered_by="scheduled")
