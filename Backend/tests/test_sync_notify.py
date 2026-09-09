@@ -74,6 +74,7 @@ def test_send_email_uses_resend_api_and_bearer_auth(monkeypatch):
     req = demands[0]
     assert req.full_url == "https://api.resend.com/emails"
     assert req.get_header("Authorization") == "Bearer re_test"
+    assert req.get_header("User-Agent").startswith("Belenergy-Ventas/")
     assert b"c.c.sanchez@gmail.com" in req.data
 
 

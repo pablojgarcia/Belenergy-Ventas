@@ -47,6 +47,9 @@ def _send_email(to: list[str], subject: str, html: str) -> None:
         headers={
             "Authorization": f"Bearer {config.settings.RESEND_API_KEY}",
             "Content-Type": "application/json",
+            # Resend está detrás de Cloudflare: sin User-Agent propio, urllib
+            # manda "Python-urllib/3.x" y Cloudflare lo bloquea con 403/1010.
+            "User-Agent": "Belenergy-Ventas/1.0 (sync-notification)",
         },
         method="POST",
     )
