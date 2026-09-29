@@ -69,7 +69,9 @@ def test_sync_products_delta_merges_write_date_and_recent_stock(monkeypatch):
     odoo.env["product.pricelist.item"].search_read.return_value = []
     odoo.env["product.category"].search_read.return_value = []
     odoo.env["product.template"].search.return_value = [11, 22]
-    odoo.env["product.stock.move"].search_read.return_value = [{"product_id": [33]}]
+    # El modelo es `stock.move`, no `product.stock.move`, y la búsqueda va con
+    # with_context(active_test=False).
+    odoo.env["stock.move"].with_context.return_value.search_read.return_value = [{"product_id": [33]}]
     odoo.env["product.product"].read.return_value = [{"id": 33, "product_tmpl_id": [44]}]
     odoo.env["product.template"].search_read.return_value = []
     monkeypatch.setattr(m, "get_odoo_connection", lambda: odoo)
@@ -85,3 +87,52 @@ def test_sync_products_delta_merges_write_date_and_recent_stock(monkeypatch):
     domain = odoo.env["product.template"].search_read.call_args_list[-1].args[0]
     assert domain[0][0] == "id"
     assert sorted(domain[0][2]) == [11, 22, 44]
+
+
+def test_sync_products_stock_delta_filters_by_write_date_not_date(monkeypatch):
+    """El corte del delta de stock debe ser `write_date`.
+
+    Con `date` (fecha programada) se perdían para siempre las recepciones cargadas
+    con fecha anterior, las cancelaciones y los cambios de cantidad: `since` solo
+    crece y nunca vuelve a alcanzar esos movimientos.
+    """
+    odoo = _fake_odoo()
+    odoo.env["product.pricelist.item"].search_read.return_value = []
+    odoo.env["product.category"].search_read.return_value = []
+    odoo.env["product.template"].search.return_value = []
+    moves = odoo.env["stock.move"].with_context.return_value
+    moves.search_read.return_value = []
+    odoo.env["product.template"].search_read.return_value = []
+    monkeypatch.setattr(m, "get_odoo_connection", lambda: odoo)
+    monkeypatch.setattr(m.config.settings, "ODOO_WAREHOUSE_ID", None)
+    db = _session()
+    try:
+        db.add(SyncRun(sync_type="products", status="completed",
+                       finished_at=datetime(2026, 9, 7, 3, 0, tzinfo=timezone.utc)))
+        db.commit()
+        m.sync_products(db)
+    finally:
+        db.close()
+    odoo.env["stock.move"].with_context.assert_called_once_with(active_test=False)
+    assert moves.search_read.call_args.args[0] == [("write_date", ">=", "2026-09-07 02:58:00")]
+
+
+def test_sync_products_never_queries_nonexistent_product_stock_move_model(monkeypatch):
+    """`product.stock.move` no existe en Odoo: la consulta reventaba siempre."""
+    odoo = _fake_odoo()
+    odoo.env["product.pricelist.item"].search_read.return_value = []
+    odoo.env["product.category"].search_read.return_value = []
+    odoo.env["product.template"].search.return_value = []
+    odoo.env["stock.move"].with_context.return_value.search_read.return_value = []
+    odoo.env["product.template"].search_read.return_value = []
+    monkeypatch.setattr(m, "get_odoo_connection", lambda: odoo)
+    monkeypatch.setattr(m.config.settings, "ODOO_WAREHOUSE_ID", None)
+    db = _session()
+    try:
+        db.add(SyncRun(sync_type="products", status="completed",
+                       finished_at=datetime(2026, 9, 7, 3, 0, tzinfo=timezone.utc)))
+        db.commit()
+        m.sync_products(db)
+    finally:
+        db.close()
+    assert "product.stock.move" not in odoo.env._mocks

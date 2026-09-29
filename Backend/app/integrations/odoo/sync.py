@@ -345,10 +345,21 @@ def sync_products(db: Session, progress=None):
         )
         # Los movimientos de stock NO tocan write_date del template (virtual_available
         # es calculado), así que sumamos templates con movimiento reciente.
+        #
+        # Dos trampas que dejaron el delta de stock muerto desde que se escribió:
+        #  - el modelo es `stock.move`, NO `product.stock.move` (no existe en Odoo).
+        #    La llamada reventaba y el except la tragaba en silencio.
+        #  - el corte es por `write_date`, NO por `date`. `date` es la fecha
+        #    PROGRAMADA del movimiento y no cambia al cancelar, editar la cantidad
+        #    o liberar una reserva, ni cuando una recepción se carga con fecha
+        #    anterior a la de validación. Con `date` esos productos se perdían para
+        #    siempre: `since` solo crece y nunca los vuelve a alcanzar.
+        #  - `active_test=False` como hace el propio Odoo al calcular el pronóstico,
+        #    para que un movimiento cancelado (que igual estaba descontando) refresque.
         try:
-            moves = odoo.env['product.stock.move'].search_read(
-                [('date', '>=', since)], ['product_id']
-            )
+            moves = odoo.env['stock.move'].with_context(
+                active_test=False
+            ).search_read([('write_date', '>=', since)], ['product_id'])
             variant_ids = {
                 m['product_id'][0] for m in moves
                 if isinstance(m.get('product_id'), (list, tuple))
@@ -362,8 +373,11 @@ def sync_products(db: Session, progress=None):
                     if not tmpl:
                         continue
                     changed_ids.add(tmpl[0] if isinstance(tmpl, (list, tuple)) else tmpl)
+            print(f"Delta de stock: {len(moves)} movimientos -> {len(changed_ids)} plantillas a refrescar.")
         except Exception as e:
-            logger.warning("No se pudo calcular el delta de stock (%s); solo por write_date", e)
+            # Sin este print el fallo era invisible: logger.warning no llega a los
+            # logs de Railway y el sync "completaba" con 0 productos sin avisar.
+            print(f"ERROR: no se pudo calcular el delta de stock ({e}); se sincroniza solo por write_date.")
         if changed_ids:
             products_data = odoo.env['product.template'].search_read(
                 [('id', 'in', list(changed_ids))], fields,
