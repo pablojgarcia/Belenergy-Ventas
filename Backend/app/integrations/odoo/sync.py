@@ -55,6 +55,49 @@ def _delta_since(db: Session, sync_type: str) -> datetime | None:
     return row.finished_at
 
 
+def _archived_template_ids(odoo, since: str | None) -> set[int]:
+    """IDs de plantillas que Odoo tiene archivadas (`active = False`).
+
+    El sync de productos consulta con `[('active', '=', True)]`, así que un
+    producto archivado en Odoo queda congelado acá para siempre: sigue
+    `active=True` en nuestra base, vendible, con el stock del día en que se
+    archivó. Pasó con 6 cables `PT` que en Odoo están en 0 y acá seguían
+    ofreciendo stock, uno con 25.610 m.
+
+    Archivar es un `write`, así que actualiza `write_date`: en incremental
+    alcanza con mirar las archivadas tocadas desde `since`. En full se listan
+    todas, que es lo que reconcilia un sync completo.
+    """
+    domain = [("active", "=", False)]
+    if since:
+        domain.append(("write_date", ">", since))
+    try:
+        return set(
+            odoo.env["product.template"].with_context(active_test=False).search(domain)
+        )
+    except Exception as e:
+        # Sin esto, un fallo al listar los archivados dejaría productos
+        # desactualizados sin que nadie se entere. Se avisa en stdout.
+        print(f"ERROR: no se pudieron listar los productos archivados ({e}).")
+        return set()
+
+
+def _deactivate_products(db: Session, odoo_ids: set[int]) -> int:
+    """Desactiva en la app los productos que Odoo tiene archivados.
+
+    Solo toca los que hoy están `active=True`. La reactivaridad no hace falta
+    contemplarla acá: el sync normal los vuelve a ver en cuanto `active`
+    vuelve a True en Odoo, y el upsert los reactiva.
+    """
+    if not odoo_ids:
+        return 0
+    return (
+        db.query(models.Product)
+        .filter(models.Product.odoo_id.in_(odoo_ids), models.Product.active == True)  # noqa: E712
+        .update({models.Product.active: False}, synchronize_session=False)
+    )
+
+
 def _delta_cutoff(last: datetime | None) -> str | None:
     """Cutoff UTC naive para el filtro write_date de Odoo, con margen de 2 minutos.
 
@@ -441,5 +484,13 @@ def sync_products(db: Session, progress=None):
 
     _bulk_upsert(db, models.Product, rows)
     db.commit()
+
+    # Los archivados en Odoo no entran en `products_data` (se buscan con
+    # active=True), así que sin esto quedan vivos y vendibles acá para siempre.
+    deactivated = _deactivate_products(db, _archived_template_ids(odoo, since))
+    if deactivated:
+        db.commit()
+        print(f"Archivados en Odoo, desactivados en la app: {deactivated}.")
+
     _progress(stage="completado", processed=len(rows))
     print("Sincronización de productos completada.")
