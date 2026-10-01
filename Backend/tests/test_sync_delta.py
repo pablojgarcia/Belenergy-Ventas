@@ -136,3 +136,46 @@ def test_sync_products_never_queries_nonexistent_product_stock_move_model(monkey
     finally:
         db.close()
     assert "product.stock.move" not in odoo.env._mocks
+
+
+def test_sync_products_force_full_ignores_delta(monkeypatch):
+    """force_full=True no debe calcular ni usar el corte por write_date."""
+    odoo = _fake_odoo()
+    odoo.env["product.pricelist.item"].search_read.return_value = []
+    odoo.env["product.category"].search_read.return_value = []
+    # No hay cambios por write_date, pero force_full debe ignorarlo
+    odoo.env["product.template"].search.return_value = []
+    odoo.env["stock.move"].with_context.return_value.search_read.return_value = []
+    # El camino full pide TODOS los productos activos
+    odoo.env["product.template"].search_read.return_value = [
+        {
+            "id": 7,
+            "name": "P",
+            "list_price": 1.0,
+            "standard_price": 1.0,
+            "type": "product",
+            "categ_id": False,
+            "uom_id": False,
+            "description_sale": "",
+            "active": True,
+            "sale_ok": True,
+            "taxes_id": [],
+            "image_1920": False,
+            "virtual_available": 5.0,
+        }
+    ]
+    monkeypatch.setattr(m, "get_odoo_connection", lambda: odoo)
+    monkeypatch.setattr(m.config.settings, "ODOO_WAREHOUSE_ID", None)
+    db = _session()
+    try:
+        db.add(SyncRun(sync_type="products", status="completed",
+                       finished_at=datetime(2026, 9, 7, 3, 0, tzinfo=timezone.utc)))
+        db.commit()
+        m.sync_products(db, force_full=True)
+    finally:
+        db.close()
+    # En full, NO llama a stock.move en el cálculo del delta
+    assert odoo.env["stock.move"].with_context.call_count == 0
+    # La búsqueda full es por active=True
+    domain = odoo.env["product.template"].search_read.call_args.args[0]
+    assert domain == [("active", "=", True)]

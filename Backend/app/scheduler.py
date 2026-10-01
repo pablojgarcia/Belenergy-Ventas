@@ -9,6 +9,7 @@ import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from functools import partial
 
 from . import config
 from .api.sync import enqueue_sync
@@ -58,10 +59,42 @@ def start_sync_scheduler() -> BackgroundScheduler | None:
             max_instances=1,
         )
 
+    # Full semanal de productos. Comparte el lock con el diario (mismo
+    # sync_type), asi que si se pisan no se duplica el trabajo.
+    def weekly_full_job() -> None:
+        started = enqueue_sync(
+            partial(sync_products, force_full=True),
+            "products",
+            triggered_by="scheduled_full",
+        )
+        if not started:
+            logger.warning("Cron: full semanal de productos omitido, ya habia uno en curso")
+
+    scheduler.add_job(
+        weekly_full_job,
+        CronTrigger(
+            day_of_week=config.settings.SYNC_FULL_WEEKDAY,
+            hour=config.settings.SYNC_FULL_HOUR,
+            minute=config.settings.SYNC_FULL_MINUTE,
+            timezone=ART,
+        ),
+        id="sync-products-full",
+        name="sync-products-full",
+        misfire_grace_time=7200,
+        coalesce=True,
+        max_instances=1,
+    )
+
     scheduler.start()
     logger.info(
         "Cron de sincronización programado a las %02d:%02d ART",
         config.settings.SYNC_CRON_HOUR,
         config.settings.SYNC_CRON_MINUTE,
+    )
+    logger.info(
+        "Full semanal de productos: dia %s a las %02d:%02d ART",
+        config.settings.SYNC_FULL_WEEKDAY,
+        config.settings.SYNC_FULL_HOUR,
+        config.settings.SYNC_FULL_MINUTE,
     )
     return scheduler

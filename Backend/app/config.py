@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     # Cron nocturno de sincronización (APScheduler, hora local de Buenos Aires).
     SYNC_CRON_HOUR: int = int(os.getenv("SYNC_CRON_HOUR", "2"))
     SYNC_CRON_MINUTE: int = int(os.getenv("SYNC_CRON_MINUTE", "30"))
+    # Full semanal de productos. El incremental diario no alcanza para lo que
+    # cambio hace mucho (archivados, correcciones manuales en Odoo): `since`
+    # solo crece y esos productos quedan congelados hasta que corra un full.
+    # Sunday=6 en APScheduler. La hora es distinta a la del diario a proposito:
+    # si coinciden, el lock de enqueue_sync hace que uno de los dos se salte.
+    SYNC_FULL_WEEKDAY: int = int(os.getenv("SYNC_FULL_WEEKDAY", "6"))
+    SYNC_FULL_HOUR: int = int(os.getenv("SYNC_FULL_HOUR", "4"))
+    SYNC_FULL_MINUTE: int = int(os.getenv("SYNC_FULL_MINUTE", "0"))
     # Destinatarios de la notificación al terminar la corrida del cron
     # (emails separados por coma). Si no se setea, se usan los usuarios con
     # role=admin de la tabla users.

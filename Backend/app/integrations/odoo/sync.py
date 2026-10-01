@@ -344,7 +344,7 @@ def _product_search_context():
     return None
 
 
-def sync_products(db: Session, progress=None):
+def sync_products(db: Session, progress=None, force_full: bool = False):
     odoo = get_odoo_connection()
     _progress = progress or (lambda **kwargs: None)
 
@@ -380,7 +380,13 @@ def sync_products(db: Session, progress=None):
 
     print("Buscando productos en Odoo...")
     search_context = _product_search_context()
-    since = _delta_cutoff(_delta_since(db, "products"))
+    # force_full ignora el corte y relee el catalogo entero. Lo usa el full
+    # semanal: el incremental no ve lo que cambio hace mucho (productos
+    # archivados hace semanas, p.ej.) y `since` solo crece, asi que sin un
+    # full periodico esos productos quedan congelados para siempre.
+    since = None if force_full else _delta_cutoff(_delta_since(db, "products"))
+    if force_full:
+        print("Sync COMPLETO de productos (forzado).")
     if since:
         print(f"Sync incremental de productos desde {since}...")
         changed_ids = set(
