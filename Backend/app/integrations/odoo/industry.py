@@ -23,23 +23,31 @@ _industry_cache: dict[str, int] = {}
 
 DEFAULT_SELLER_TYPE = "representante_general"
 
+# seller_type que ya no existe en la matriz de descuentos, y a que se resuelve.
+# El commit 477a88e (2026-08-19) elimino `vendedor_interno` de las reglas y dejo
+# DEFAULT_SELLER_TYPE como fallback, pero el fallback solo dispara cuando la lista
+# viene vacia: un usuario con el valor viejo guardado resuelve a un seller_type sin
+# reglas y todas sus lineas caen en "requiere aprobacion manual". La migracion
+# d3f4a5b6c7d8 limpia los datos; esto evita que el problema vuelva.
+LEGACY_SELLER_TYPES = {"vendedor_interno": DEFAULT_SELLER_TYPE}
+
+
+def _normalize(seller_types: list[str] | None) -> list[str]:
+    """Limpia vacios y mapea los seller_type legacy al default."""
+    if not seller_types:
+        return []
+    return [LEGACY_SELLER_TYPES.get(s, s) for s in seller_types if s]
+
 
 def user_seller_types(seller_types: list[str] | None) -> list[str]:
     """Devuelve la lista de seller_types del usuario, normalizada (default general)."""
-    if seller_types:
-        cleaned = [s for s in seller_types if s]
-        if cleaned:
-            return cleaned
-    return [DEFAULT_SELLER_TYPE]
+    return _normalize(seller_types) or [DEFAULT_SELLER_TYPE]
 
 
 def principal_seller_type(seller_types: list[str] | None) -> str:
     """Seller type principal (el primero de la lista), default general."""
-    if seller_types:
-        cleaned = [s for s in seller_types if s]
-        if cleaned:
-            return cleaned[0]
-    return DEFAULT_SELLER_TYPE
+    normalized = _normalize(seller_types)
+    return normalized[0] if normalized else DEFAULT_SELLER_TYPE
 
 
 def classify_industry(value: str | None) -> str:

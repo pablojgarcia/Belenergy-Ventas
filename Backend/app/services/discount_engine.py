@@ -193,8 +193,17 @@ class DiscountEngine:
             cached = cache_get(cache_key)
             if cached is not None:
                 wanted = set(str(lid) for lid in line_ids)
+                # `id` y `product_line_id` vuelven a UUID: el viaje por json los
+                # deja como str, y `rules_by_line` se indexa contra
+                # `ProductLine.id`, que siempre es UUID. Sin esta conversion la
+                # ruta del cache no matchea nunca, y toda linea cae en "no tiene
+                # una regla aplicable" mientras dura el TTL.
                 return [
-                    SimpleNamespace(**r)
+                    SimpleNamespace(
+                        **r,
+                        id=uuid.UUID(r["id"]),
+                        product_line_id=uuid.UUID(r["product_line_id"]),
+                    )
                     for r in cached
                     if str(r.get("product_line_id")) in wanted
                     and r.get("seller_type") == seller_type

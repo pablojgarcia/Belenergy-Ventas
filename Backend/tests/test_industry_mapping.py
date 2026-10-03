@@ -41,6 +41,41 @@ def test_principal_seller_type_default_internal():
     assert principal_seller_type([]) == "representante_general"
 
 
+def test_legacy_vendedor_interno_maps_to_default():
+    """`vendedor_interno` ya no existe en la matriz de descuentos.
+
+    Con el valor guardado sin migrar, el fallback no dispara (solo corre con la
+    lista vacia) y el usuario resuelve a un seller_type sin reglas: todas sus
+    lineas caen en "requiere aprobacion manual". Ver migracion d3f4a5b6c7d8.
+    """
+    assert user_seller_types(["vendedor_interno"]) == ["representante_general"]
+    assert principal_seller_type(["vendedor_interno"]) == "representante_general"
+
+
+def test_legacy_value_mixed_with_valid_ones():
+    assert user_seller_types(["vendedor_interno", "representante_agro"]) == [
+        "representante_general",
+        "representante_agro",
+    ]
+    assert principal_seller_type(["vendedor_interno", "representante_agro"]) == "representante_general"
+
+
+def test_normalization_preserves_the_other_seller_types():
+    """No debe alterar los valores vigentes."""
+    assert user_seller_types(["representante_general", "representante_agro"]) == [
+        "representante_general",
+        "representante_agro",
+    ]
+    assert user_seller_types(["representante_agro"]) == ["representante_agro"]
+
+
+def test_effective_seller_type_with_legacy_value():
+    """El selector de industria debe funcionar tambien con el valor legacy."""
+    assert effective_seller_type(
+        user_seller_types(["vendedor_interno", "representante_agro"]), "Agricultura"
+    ) == "representante_agro"
+
+
 def test_mapped_industries_single():
     result = mapped_industries(["representante_agro"])
     assert result == [{"name": "Agricultura", "seller_type": "representante_agro"}]

@@ -43,11 +43,6 @@ QTY_RULES = {
         "paneles_astro_575": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
         "paneles_astro_615": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
     },
-    "representante_general": {
-        "paneles_ja": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
-        "paneles_astro_575": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
-        "paneles_astro_615": {"lt_18": 0.0, "medio_pallet": 11.0, "pallet": 11.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
-    },
     "representante_agro": {
         "paneles_ja": {"lt_18": 0.0, "medio_pallet": 5.0, "pallet": 15.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
         "paneles_astro_575": {"lt_18": 0.0, "medio_pallet": 5.0, "pallet": 15.0, "5_pallets": 15.0, "10_pallets": 20.0, "container": None},
